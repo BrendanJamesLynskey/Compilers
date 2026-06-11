@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compilers &mdash; From Source Text to Running Code</title>
+    <meta name="description" content="A ten-part interactive series on compiler construction — history, the pipeline, lexing, parsing, type systems, IR & SSA, optimisation, code generation, runtimes & JITs, and building a mini-compiler end to end.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0f; --bg-card: #0d1117; --bg-code: #161b22;
+            --text-primary: #e6edf3; --text-secondary: #8b949e;
+            --accent: #f5a623; --accent-dim: #f5a62322; --accent-glow: #f5a62333;
+            --accent-2: #f87171; --accent-3: #a78bfa; --accent-4: #4ecb8d;
+            --accent-5: #60a5fa;
+            --border: #21262d;
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+            --font-body: 'Inter', sans-serif;
+            --max-width: 980px;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body { background: var(--bg-primary); color: var(--text-primary);
+               font-family: var(--font-body); font-size: 17px; line-height: 1.7;
+               overflow-x: hidden; }
+
+        /* ── hero ── */
+        .hero { min-height: 60vh; display: flex; flex-direction: column;
+                justify-content: center; align-items: center;
+                padding: 4rem 1.5rem 2.5rem; text-align: center; position: relative; }
+        .hero::before { content: ''; position: absolute; top: 0; left: 50%;
+                        transform: translateX(-50%); width: 760px; height: 640px;
+                        background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+                        pointer-events: none; z-index: 0; }
+        .hero > * { position: relative; z-index: 1; }
+        .series-label { font-family: var(--font-mono); font-size: 0.85rem;
+                        color: var(--accent); letter-spacing: 0.18em;
+                        text-transform: uppercase; margin-bottom: 1rem; }
+        .hero h1 { font-family: var(--font-display);
+                   font-size: clamp(2.1rem, 5.5vw, 3.3rem); font-weight: 700;
+                   color: var(--text-primary); line-height: 1.15; margin-bottom: 1rem; }
+        .hero h1 .accent { color: var(--accent); }
+        .hero .subtitle { font-size: 1.12rem; color: var(--text-secondary);
+                          max-width: 760px; margin-bottom: 1.6rem; }
+
+        /* ── code flow pipeline in hero ── */
+        .pipe { font-family: var(--font-mono); font-size: 0.8rem;
+                color: var(--text-secondary); margin-bottom: 1.6rem;
+                display: flex; flex-wrap: wrap; gap: 0.45rem; justify-content: center;
+                align-items: center; }
+        .pipe .node { padding: 0.25rem 0.6rem; border-radius: 5px;
+                      border: 1px solid var(--border); background: var(--bg-card); }
+        .pipe .node.a { border-color: var(--accent); color: var(--accent); }
+        .pipe .node.g { border-color: var(--accent-4); color: var(--accent-4); }
+        .pipe .node.p { border-color: var(--accent-3); color: var(--accent-3); }
+        .pipe .node.b { border-color: var(--accent-5); color: var(--accent-5); }
+        .pipe .arr { color: var(--accent); }
+
+        .tags { display: flex; flex-wrap: wrap; gap: 0.5rem;
+                justify-content: center; margin-bottom: 0.5rem; max-width: 820px; }
+        .tag { font-family: var(--font-mono); font-size: 0.74rem;
+               padding: 0.25rem 0.7rem; border-radius: 999px;
+               border: 1px solid var(--accent); color: var(--accent);
+               background: var(--accent-dim); white-space: nowrap; }
+        .tag.r { border-color: var(--accent-2); color: var(--accent-2); background: rgba(248,113,113,0.10); }
+        .tag.p { border-color: var(--accent-3); color: var(--accent-3); background: rgba(167,139,250,0.10); }
+        .tag.g { border-color: var(--accent-4); color: var(--accent-4); background: rgba(78,203,141,0.10); }
+        .tag.b { border-color: var(--accent-5); color: var(--accent-5); background: rgba(96,165,250,0.10); }
+
+        .container { max-width: var(--max-width); margin: 0 auto; padding: 2rem 1.5rem; }
+        h2 { font-family: var(--font-display); font-size: 1.65rem; font-weight: 700;
+             color: var(--accent); margin: 1.5rem 0 1.25rem; }
+        h3 { font-family: var(--font-display); font-size: 1.1rem; font-weight: 600;
+             color: var(--text-primary); margin: 1.5rem 0 0.6rem;
+             padding-bottom: 0.3rem; border-bottom: 1px solid var(--border); }
+        p.lead { color: var(--text-secondary); margin-bottom: 1rem; }
+        a { color: var(--accent); }
+
+        /* ── deck list ── */
+        .deck-list { display: flex; flex-direction: column; gap: 0.6rem;
+                     list-style: none; padding: 0; }
+        .deck-card { display: flex; gap: 1rem; padding: 1rem 1.25rem;
+                     background: var(--bg-card); border: 1px solid var(--border);
+                     border-left: 3px solid var(--accent); border-radius: 6px;
+                     transition: border-color 0.15s, transform 0.15s; }
+        .deck-card:hover { border-color: var(--accent); transform: translateX(2px); }
+        .deck-card.r { border-left-color: var(--accent-2); }
+        .deck-card.r:hover { border-color: var(--accent-2); }
+        .deck-card.p { border-left-color: var(--accent-3); }
+        .deck-card.p:hover { border-color: var(--accent-3); }
+        .deck-card.g { border-left-color: var(--accent-4); }
+        .deck-card.g:hover { border-color: var(--accent-4); }
+        .deck-card.b { border-left-color: var(--accent-5); }
+        .deck-card.b:hover { border-color: var(--accent-5); }
+        .deck-card .num { font-family: var(--font-mono); font-size: 0.9rem;
+                          color: var(--accent); min-width: 2.4rem;
+                          padding-top: 0.15rem; font-weight: 500; }
+        .deck-card.r .num { color: var(--accent-2); }
+        .deck-card.p .num { color: var(--accent-3); }
+        .deck-card.g .num { color: var(--accent-4); }
+        .deck-card.b .num { color: var(--accent-5); }
+        .deck-card .body { flex: 1; min-width: 0; }
+        .deck-card .deck-title { font-family: var(--font-display); font-size: 1.06rem;
+                                 font-weight: 600; color: var(--text-primary);
+                                 margin-bottom: 0.2rem; }
+        .deck-card a.deck-title { text-decoration: none; display: inline-block; }
+        .deck-card a.deck-title:hover { color: var(--accent); }
+        .deck-card.r a.deck-title:hover { color: var(--accent-2); }
+        .deck-card.p a.deck-title:hover { color: var(--accent-3); }
+        .deck-card.g a.deck-title:hover { color: var(--accent-4); }
+        .deck-card.b a.deck-title:hover { color: var(--accent-5); }
+        .deck-card .desc { font-size: 0.92rem; color: var(--text-secondary); }
+        .deck-card .meta { font-family: var(--font-mono); font-size: 0.7rem;
+                           color: var(--text-secondary); margin-top: 0.5rem;
+                           display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+        .deck-card .meta a { color: var(--text-secondary); text-decoration: none;
+                             border-bottom: 1px dotted var(--border); }
+        .deck-card .meta a:hover { color: var(--accent); }
+        .badge { display: inline-block; font-family: var(--font-mono);
+                 font-size: 0.65rem; padding: 0.1rem 0.5rem; border-radius: 999px;
+                 border: 1px solid var(--border); color: var(--text-secondary); }
+        .badge.live { border-color: var(--accent-4); color: var(--accent-4);
+                      background: rgba(78,203,141,0.10); }
+
+        /* ── callout ── */
+        .callout { background: var(--bg-card); border-left: 3px solid var(--accent);
+                   border-radius: 0 8px 8px 0; padding: 1rem 1.25rem; margin: 1.5rem 0; }
+        .callout p { margin-bottom: 0; color: var(--text-secondary); }
+        .callout p strong { color: var(--text-primary); }
+        .callout p + p { margin-top: 0.6rem; }
+
+        /* ── arc grid ── */
+        .arc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+                    gap: 0.75rem; margin: 1rem 0 1.5rem; }
+        .arc-cell { background: var(--bg-card); border: 1px solid var(--border);
+                    border-left: 3px solid var(--accent); border-radius: 6px;
+                    padding: 0.85rem 1rem; }
+        .arc-cell.r { border-left-color: var(--accent-2); }
+        .arc-cell.p { border-left-color: var(--accent-3); }
+        .arc-cell.g { border-left-color: var(--accent-4); }
+        .arc-cell.b { border-left-color: var(--accent-5); }
+        .arc-cell h4 { font-family: var(--font-display); font-size: 0.95rem;
+                       color: var(--accent); margin-bottom: 0.3rem; }
+        .arc-cell.r h4 { color: var(--accent-2); }
+        .arc-cell.p h4 { color: var(--accent-3); }
+        .arc-cell.g h4 { color: var(--accent-4); }
+        .arc-cell.b h4 { color: var(--accent-5); }
+        .arc-cell p { font-size: 0.85rem; color: var(--text-secondary); margin: 0; }
+
+        /* ── controls ── */
+        .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+                    gap: 0.6rem; margin: 1rem 0; }
+        .control { background: var(--bg-card); border: 1px solid var(--border);
+                   border-radius: 6px; padding: 0.7rem 0.9rem; font-size: 0.85rem;
+                   color: var(--text-secondary); }
+        .control kbd { font-family: var(--font-mono); font-size: 0.75rem;
+                       background: var(--bg-code); border: 1px solid var(--border);
+                       border-radius: 4px; padding: 0.05rem 0.4rem; color: var(--accent); }
+
+        /* ── diagram strip ── */
+        .diagram-wrap { background: var(--bg-card); border: 1px solid var(--border);
+                        border-radius: 8px; padding: 1.25rem; margin: 1rem 0 1.5rem;
+                        overflow-x: auto; }
+        svg.flow { display: block; margin: 0 auto; overflow: visible; min-width: 720px; }
+
+        .footer { text-align: center; padding: 3rem 1.5rem;
+                  color: var(--text-secondary); font-size: 0.85rem;
+                  border-top: 1px solid var(--border); max-width: var(--max-width);
+                  margin: 3rem auto 0; }
+        .footer a { color: var(--accent); text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+<header class="hero">
+    <div class="series-label">Interactive Series &middot; 10 Parts</div>
+    <h1>Compilers <span class="accent">&mdash;</span><br>From Source Text to Running Code</h1>
+    <p class="subtitle">A ten-part, deeply illustrated tour of how a compiler turns the text you type into instructions a machine runs &mdash; the history, the classic pipeline, and every stage in between, ending by building a small compiler end to end.</p>
+    <div class="pipe">
+        <span class="node">source</span><span class="arr">&rarr;</span>
+        <span class="node a">tokens</span><span class="arr">&rarr;</span>
+        <span class="node g">AST</span><span class="arr">&rarr;</span>
+        <span class="node p">typed&nbsp;AST</span><span class="arr">&rarr;</span>
+        <span class="node b">IR&nbsp;/&nbsp;SSA</span><span class="arr">&rarr;</span>
+        <span class="node b">opt&nbsp;IR</span><span class="arr">&rarr;</span>
+        <span class="node a">asm</span><span class="arr">&rarr;</span>
+        <span class="node">machine&nbsp;code</span>
+    </div>
+    <div class="tags">
+        <span class="tag">Lexing</span>
+        <span class="tag g">Finite Automata</span>
+        <span class="tag g">CFGs</span>
+        <span class="tag">LL / LR / LALR</span>
+        <span class="tag p">Type Inference</span>
+        <span class="tag p">Hindley&ndash;Milner</span>
+        <span class="tag b">SSA</span>
+        <span class="tag b">LLVM IR</span>
+        <span class="tag">Data-Flow Analysis</span>
+        <span class="tag">Register Allocation</span>
+        <span class="tag r">JIT</span>
+        <span class="tag r">GC</span>
+        <span class="tag">WebAssembly</span>
+    </div>
+</header>
+<main class="container">
+
+    <div class="callout">
+        <p><strong>Who this is for.</strong> Programmers who want to understand what happens between &ldquo;save&rdquo; and &ldquo;run&rdquo; &mdash; CS students, language hobbyists, and engineers who use compilers daily and want to see inside one. No prior compiler experience assumed; comfort reading code helps.</p>
+        <p><strong>How to use it.</strong> Each part is a self-contained interactive deck (Reveal.js) with hand-drawn diagrams and copy-and-run code. Read them in order for a full course, or jump to a topic. Every deck also ships a plain-Markdown version for reading on GitHub.</p>
+    </div>
+
+    <h2>The compiler pipeline at a glance</h2>
+    <div class="diagram-wrap">
+      <svg class="flow" viewBox="0 0 860 220" width="860" height="220" role="img" aria-label="The compiler pipeline from source to machine code">
+        <defs>
+          <marker id="ar" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="#f5a623"/></marker>
+        </defs>
+        <!-- front end -->
+        <rect x="10" y="70" width="250" height="80" rx="7" fill="none" stroke="#4ecb8d" stroke-width="1.4" stroke-dasharray="5"/>
+        <text x="135" y="62" text-anchor="middle" fill="#4ecb8d" font-family="Space Grotesk" font-size="13" font-weight="700">Front End &middot; analysis</text>
+        <!-- middle end -->
+        <rect x="300" y="70" width="230" height="80" rx="7" fill="none" stroke="#a78bfa" stroke-width="1.4" stroke-dasharray="5"/>
+        <text x="415" y="62" text-anchor="middle" fill="#a78bfa" font-family="Space Grotesk" font-size="13" font-weight="700">Middle End</text>
+        <!-- back end -->
+        <rect x="570" y="70" width="280" height="80" rx="7" fill="none" stroke="#f5a623" stroke-width="1.4" stroke-dasharray="5"/>
+        <text x="710" y="62" text-anchor="middle" fill="#f5a623" font-family="Space Grotesk" font-size="13" font-weight="700">Back End &middot; synthesis</text>
+
+        <!-- stage boxes -->
+        <g font-family="JetBrains Mono" font-size="10">
+          <rect x="22" y="92" width="68" height="40" rx="5" fill="#181824" stroke="#4ecb8d"/><text x="56" y="110" text-anchor="middle" fill="#4ecb8d">Lexer</text><text x="56" y="124" text-anchor="middle" fill="#8b949e">03</text>
+          <rect x="100" y="92" width="68" height="40" rx="5" fill="#181824" stroke="#4ecb8d"/><text x="134" y="110" text-anchor="middle" fill="#4ecb8d">Parser</text><text x="134" y="124" text-anchor="middle" fill="#8b949e">04</text>
+          <rect x="178" y="92" width="72" height="40" rx="5" fill="#181824" stroke="#4ecb8d"/><text x="214" y="108" text-anchor="middle" fill="#4ecb8d">Semantic</text><text x="214" y="124" text-anchor="middle" fill="#8b949e">05</text>
+
+          <rect x="312" y="92" width="86" height="40" rx="5" fill="#181824" stroke="#a78bfa"/><text x="355" y="108" text-anchor="middle" fill="#a78bfa">IR / SSA</text><text x="355" y="124" text-anchor="middle" fill="#8b949e">06</text>
+          <rect x="408" y="92" width="110" height="40" rx="5" fill="#181824" stroke="#a78bfa"/><text x="463" y="108" text-anchor="middle" fill="#a78bfa">Optimiser</text><text x="463" y="124" text-anchor="middle" fill="#8b949e">07</text>
+
+          <rect x="582" y="92" width="100" height="40" rx="5" fill="#181824" stroke="#f5a623"/><text x="632" y="108" text-anchor="middle" fill="#f5a623">Codegen</text><text x="632" y="124" text-anchor="middle" fill="#8b949e">08</text>
+          <rect x="692" y="92" width="146" height="40" rx="5" fill="#181824" stroke="#f5a623"/><text x="765" y="108" text-anchor="middle" fill="#f5a623">Runtime / JIT</text><text x="765" y="124" text-anchor="middle" fill="#8b949e">09</text>
+        </g>
+
+        <!-- flow arrows between stages -->
+        <g stroke="#f5a623" stroke-width="1.4">
+          <line x1="90"  y1="112" x2="99"  y2="112" marker-end="url(#ar)"/>
+          <line x1="168" y1="112" x2="177" y2="112" marker-end="url(#ar)"/>
+          <line x1="250" y1="112" x2="311" y2="112" marker-end="url(#ar)"/>
+          <line x1="398" y1="112" x2="407" y2="112" marker-end="url(#ar)"/>
+          <line x1="518" y1="112" x2="581" y2="112" marker-end="url(#ar)"/>
+          <line x1="682" y1="112" x2="691" y2="112" marker-end="url(#ar)"/>
+        </g>
+
+        <!-- source / output endpoints -->
+        <text x="56" y="180" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">source text</text>
+        <text x="765" y="180" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">machine code</text>
+
+        <!-- cross-cutting -->
+        <rect x="190" y="22" width="470" height="26" rx="5" fill="#0e0e18" stroke="#60a5fa" stroke-dasharray="3"/>
+        <text x="425" y="39" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="9">Symbol Table &middot; Error Reporting &middot; Source Locations &mdash; threaded through every phase</text>
+
+        <text x="425" y="205" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">History &amp; framing in Part 01&ndash;02 &middot; the whole thing built by hand in Part 10</text>
+      </svg>
+    </div>
+
+    <h2>Presentations in this series</h2>
+    <ol class="deck-list">
+        <li class="deck-card"><div class="num">01</div><div class="body"><a class="deck-title" href="01_History_of_Compilers/">A History of Compilers &rarr;</a><div class="desc">Seventy years from machine code to MLIR &mdash; the first assemblers (Booth, Wheeler), Grace Hopper's A-0 and the word &ldquo;compiler&rdquo;, FORTRAN's optimiser, ALGOL &amp; BNF, the Chomsky hierarchy, LR/LALR parsing, lex &amp; yacc, the Dragon Book, GCC, SSA, the JIT lineage (Self &rarr; HotSpot), LLVM, and the modern infrastructure era.</div><div class="meta"><span class="badge live">live</span><span>Part 01 &middot; History</span><a href="01_History_of_Compilers/presentation.md">markdown</a></div></div></li>
+
+        <li class="deck-card"><div class="num">02</div><div class="body"><a class="deck-title" href="02_The_Compiler_Pipeline/">The Compiler Pipeline &rarr;</a><div class="desc">The architecture that frames the series &mdash; compiler vs interpreter vs JIT, analysis vs synthesis, the phases end to end, a worked trace of one statement through every stage, front/middle/back ends and the N&times;M &ldquo;narrow waist&rdquo;, the full toolchain (driver &rarr; linker &rarr; loader), bootstrapping &amp; T-diagrams, and cross-compilation.</div><div class="meta"><span class="badge live">live</span><span>Part 02 &middot; Overview</span><a href="02_The_Compiler_Pipeline/presentation.md">markdown</a></div></div></li>
+
+        <li class="deck-card g"><div class="num">03</div><div class="body"><a class="deck-title" href="03_Lexical_Analysis/">Lexical Analysis &rarr;</a><div class="desc">Turning characters into tokens &mdash; regular expressions and regular languages, NFA vs DFA, Thompson's construction, the subset construction and DFA minimisation, maximal munch and lookahead, hand-written vs generated scanners (lex/flex/re2c), literals and Unicode, and the hard cases (Python INDENT/DEDENT, the C lexer hack).</div><div class="meta"><span class="badge live">live</span><span>Part 03 &middot; Front End</span><a href="03_Lexical_Analysis/presentation.md">markdown</a></div></div></li>
+
+        <li class="deck-card g"><div class="num">04</div><div class="body"><a class="deck-title" href="04_Syntax_Analysis/">Syntax Analysis (Parsing) &rarr;</a><div class="desc">From tokens to trees &mdash; context-free grammars, derivations, parse trees vs ASTs, ambiguity and precedence; top-down (recursive descent, FIRST/FOLLOW, LL(1), Pratt parsing); bottom-up (shift-reduce, LR(0) items, SLR/LALR(1)); conflicts; the generator landscape (yacc/bison, ANTLR, tree-sitter, PEG); and error recovery.</div><div class="meta"><span class="badge live">live</span><span>Part 04 &middot; Front End</span><a href="04_Syntax_Analysis/presentation.md">markdown</a></div></div></li>
+
+        <li class="deck-card g"><div class="num">05</div><div class="body"><a class="deck-title" href="05_Semantic_Analysis_and_Types/">Semantic Analysis &amp; Type Systems &rarr;</a><div class="desc">Meaning, not just shape &mdash; symbol tables and scope, name resolution and shadowing, attribute grammars and syntax-directed translation, type-system axes, typing judgements (&Gamma; &#8866; e : &tau;), Hindley&ndash;Milner inference and unification, subtyping &amp; variance, generics and type classes, and producing good diagnostics.</div><div class="meta"><span class="badge live">live</span><span>Part 05 &middot; Front End</span><a href="05_Semantic_Analysis_and_Types/presentation.md">markdown</a></div></div></li>
+
+        <li class="deck-card p"><div class="num">06</div><div class="body"><a class="deck-title" href="06_Intermediate_Representations/">Intermediate Representations &rarr;</a><div class="desc">The language the middle end speaks &mdash; why an IR, the HIR/MIR/LIR spectrum, three-address code, stack vs register bytecode (JVM/CPython/Wasm vs Lua/Dalvik), control-flow graphs, dominators, SSA and &phi;-functions (construction and destruction), LLVM IR in depth, plus CPS, sea-of-nodes and MLIR.</div><div class="meta"><span class="badge live">live</span><span>Part 06 &middot; Middle End</span><a href="06_Intermediate_Representations/presentation.md">markdown</a></div></div></li>
+
+        <li class="deck-card p"><div class="num">07</div><div class="body"><a class="deck-title" href="07_Optimization/">Optimization &rarr;</a><div class="desc">Making it faster without changing what it does &mdash; the &ldquo;as-if&rdquo; rule, scope levels up to LTO &amp; PGO, the data-flow framework (lattices, transfer functions, fixed points), the four classic analyses, the classic transforms (CSE, DCE, inlining, strength reduction), loop optimisations &amp; vectorisation, SSA-based passes (SCCP, GVN), alias analysis and phase ordering.</div><div class="meta"><span class="badge live">live</span><span>Part 07 &middot; Middle End</span><a href="07_Optimization/presentation.md">markdown</a></div></div></li>
+
+        <li class="deck-card"><div class="num">08</div><div class="body"><a class="deck-title" href="08_Code_Generation/">Code Generation &rarr;</a><div class="desc">IR down to real instructions &mdash; the three interacting subproblems; instruction selection (tree tiling, BURS, SelectionDAG/GlobalISel); register allocation (interference graphs, graph colouring, Chaitin&ndash;Briggs, linear scan, coalescing); instruction scheduling and pipeline hazards; the System V AMD64 ABI, stack frames and prologue/epilogue; a worked x86-64 / AArch64 example.</div><div class="meta"><span class="badge live">live</span><span>Part 08 &middot; Back End</span><a href="08_Code_Generation/presentation.md">markdown</a></div></div></li>
+
+        <li class="deck-card r"><div class="num">09</div><div class="body"><a class="deck-title" href="09_Runtime_JIT_and_Backends/">Runtimes, JITs &amp; Modern Backends &rarr;</a><div class="desc">What runs the code &mdash; interpreters and dispatch (threaded code, computed goto), JITs (baseline vs optimising, tracing, tiered execution in V8/HotSpot), inline caches, deoptimisation and OSR, garbage collection (generational, concurrent), exception handling and dynamic linking (PLT/GOT), and modern backends: LLVM, Cranelift, GraalVM, MLIR and WebAssembly.</div><div class="meta"><span class="badge live">live</span><span>Part 09 &middot; Runtime</span><a href="09_Runtime_JIT_and_Backends/presentation.md">markdown</a></div></div></li>
+
+        <li class="deck-card b"><div class="num">10</div><div class="body"><a class="deck-title" href="10_Building_a_Mini_Compiler/">Building a Mini-Compiler &rarr;</a><div class="desc">The capstone &mdash; one tiny language (&ldquo;MiniLang&rdquo;) threaded through the whole pipeline in real, runnable code: grammar &rarr; hand-written lexer &rarr; recursive-descent + Pratt parser &rarr; type checker &rarr; three-address IR &rarr; constant folding &amp; DCE &rarr; stack-VM bytecode &rarr; an interpreter that runs it &mdash; plus testing, error messages, and where to go next.</div><div class="meta"><span class="badge live">live</span><span>Part 10 &middot; Capstone</span><a href="10_Building_a_Mini_Compiler/presentation.md">markdown</a></div></div></li>
+    </ol>
+
+    <h2>The learning arc</h2>
+    <div class="arc-grid">
+        <div class="arc-cell"><h4>Frame it</h4><p>Parts 01&ndash;02 &mdash; the <strong>history</strong> of the field and the <strong>pipeline</strong> that organises everything that follows.</p></div>
+        <div class="arc-cell g"><h4>Front end</h4><p>Parts 03&ndash;05 &mdash; <strong>lexing</strong>, <strong>parsing</strong> and <strong>semantic analysis</strong>: text &rarr; tokens &rarr; a typed tree.</p></div>
+        <div class="arc-cell p"><h4>Middle end</h4><p>Parts 06&ndash;07 &mdash; the <strong>IR</strong> (with SSA) and the <strong>optimiser</strong> that improves it, target-independently.</p></div>
+        <div class="arc-cell"><h4>Back end</h4><p>Part 08 &mdash; <strong>code generation</strong>: instruction selection, register allocation and scheduling down to assembly.</p></div>
+        <div class="arc-cell r"><h4>Run it</h4><p>Part 09 &mdash; <strong>runtimes, JITs and GC</strong>; how modern engines and backends (LLVM, Wasm) actually execute code.</p></div>
+        <div class="arc-cell b"><h4>Build it</h4><p>Part 10 &mdash; the <strong>capstone</strong>: assemble everything into a working compiler for a small language.</p></div>
+    </div>
+
+    <h2>Navigating a deck</h2>
+    <div class="controls">
+        <div class="control">Next / Previous &mdash; <kbd>&rarr;</kbd> <kbd>&larr;</kbd> or swipe</div>
+        <div class="control">Slide overview &mdash; <kbd>Esc</kbd></div>
+        <div class="control">Fullscreen &mdash; <kbd>F</kbd></div>
+        <div class="control">Export to PDF &mdash; append <kbd>?print-pdf</kbd> then print</div>
+    </div>
+
+    <h2>How these are built</h2>
+    <p class="lead">Every deck is a single self-contained <span style="font-family:var(--font-mono)">index.html</span> &mdash; no build step, no npm install, nothing to download. Slides are authored in HTML and rendered with <a href="https://revealjs.com" style="text-decoration:none">Reveal.js&nbsp;4.6</a>; code is highlighted with <a href="https://highlightjs.org" style="text-decoration:none">highlight.js</a>; every diagram is hand-drawn inline SVG. Typeset in Playfair Display, DM&nbsp;Sans and JetBrains&nbsp;Mono. Each deck also ships a plain-Markdown <span style="font-family:var(--font-mono)">presentation.md</span> for reading on GitHub.</p>
+
+    <h2>References</h2>
+    <p class="lead">
+        Aho, Lam, Sethi &amp; Ullman, <a href="https://www.pearson.com/en-us/subject-catalog/p/compilers-principles-techniques-and-tools/P200000003472" style="text-decoration:none"><em>Compilers: Principles, Techniques &amp; Tools</em></a> (the &ldquo;Dragon Book&rdquo;) &middot;
+        Robert Nystrom, <a href="https://craftinginterpreters.com/" style="text-decoration:none"><em>Crafting Interpreters</em></a> &middot;
+        Appel, <a href="https://www.cs.princeton.edu/~appel/modern/" style="text-decoration:none"><em>Modern Compiler Implementation</em></a> &middot;
+        Cooper &amp; Torczon, <em>Engineering a Compiler</em> &middot;
+        <a href="https://llvm.org/docs/" style="text-decoration:none">LLVM documentation</a> &middot;
+        <a href="https://llvm.org/docs/tutorial/" style="text-decoration:none">Kaleidoscope tutorial</a> &middot;
+        <a href="https://webassembly.org/" style="text-decoration:none">WebAssembly</a>
+    </p>
+
+</main>
+<footer class="footer">
+    <p>Part of <a href="https://github.com/BrendanJamesLynskey/Software">Brendan Lynskey &middot; Software</a> &mdash; presentations, playgrounds and reference projects.</p>
+    <p style="margin-top:0.5rem">Source: <a href="https://github.com/BrendanJamesLynskey/Compilers">github.com/BrendanJamesLynskey/Compilers</a> &middot; Educational use.</p>
+</footer>
+</body>
+</html>

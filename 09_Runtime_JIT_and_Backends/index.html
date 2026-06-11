@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compilers — Part 09: Runtimes, JITs & Modern Backends</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/theme/black.min.css">
+<style>
+  :root {
+    --amber:  #f5a623;
+    --green:  #4ecb8d;
+    --purple: #a78bfa;
+    --blue:   #60a5fa;
+    --red:    #f87171;
+    --bg:     #0a0a0f;
+    --bg2:    #10101a;
+    --bg3:    #181824;
+    --border: #2a2a3a;
+    --text:   #e8e8f0;
+    --muted:  #8888a8;
+  }
+
+  .reveal-viewport { background: var(--bg); }
+  .reveal .slides section { background: transparent; }
+
+  .reveal { font-family: 'DM Sans', sans-serif; color: var(--text); }
+  .reveal h1, .reveal h2, .reveal h3 { font-family: 'Playfair Display', serif; font-weight: 700; }
+  .reveal h1 { font-size: 1.6em; color: var(--amber); line-height: 1.1; }
+  .reveal h2 { font-size: 1.1em; color: var(--amber); margin-bottom: .2em; }
+  .reveal h3 { font-size: .78em; color: var(--green); margin-bottom: .15em; }
+  .reveal p  { font-size: .56em; line-height: 1.45; color: var(--text); }
+  .reveal li { font-size: .54em; line-height: 1.45; margin-bottom: .1em; }
+  .reveal code { font-family: 'JetBrains Mono', monospace; font-size: .72em; }
+  .reveal pre  { box-shadow: none; background: var(--bg3); border: 1px solid var(--border);
+                 border-radius: 6px; padding: .3em .5em; margin: .25em 0; }
+  .reveal pre code { font-size: .52em; line-height: 1.35; background: transparent; color: #cdd6f4; }
+
+  /* ── slide chrome ── */
+  .slide-hdr {
+    display: flex; align-items: center; gap: .4em;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: .2em; margin-bottom: .3em;
+  }
+  .slide-hdr .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .42em; font-weight: 500;
+    color: var(--bg); background: var(--amber);
+    padding: .1em .4em; border-radius: 3px;
+    letter-spacing: .04em;
+  }
+  .slide-hdr h2 { margin: 0; font-size: .95em; }
+
+  /* ── two-column ── */
+  .cols   { display: grid; gap: .5em; }
+  .cols-2 { grid-template-columns: 1fr 1fr; }
+  .cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .cols-6040 { grid-template-columns: 6fr 4fr; }
+  .cols-4060 { grid-template-columns: 4fr 6fr; }
+
+  /* ── cards ── */
+  .card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 6px; padding: .35em .6em;
+  }
+  .card.amber { border-left: 3px solid var(--amber); }
+  .card.green { border-left: 3px solid var(--green); }
+  .card.purple{ border-left: 3px solid var(--purple); }
+  .card.blue  { border-left: 3px solid var(--blue); }
+  .card.red   { border-left: 3px solid var(--red); }
+  .card h3 { font-size: .64em; margin: 0 0 .12em; }
+  .card p  { font-size: .52em; margin: 0; color: #b8b8d0; }
+  .card ul { margin: 0; padding-left: 1em; }
+  .card li { font-size: .52em; color: #b8b8d0; margin-bottom: .02em; }
+
+  /* ── table ── */
+  .reveal table { width: 100%; border-collapse: collapse; font-size: .5em; }
+  .reveal table th { background: var(--bg3); color: var(--amber); font-weight: 600;
+                     padding: .2em .4em; border: 1px solid var(--border); text-align: left; }
+  .reveal table td { padding: .18em .4em; border: 1px solid var(--border); color: #ccc; }
+  .reveal table tr:nth-child(even) td { background: #0e0e18; }
+
+  /* ── accent spans ── */
+  .a  { color: var(--amber); font-weight: 600; }
+  .g  { color: var(--green); font-weight: 600; }
+  .p  { color: var(--purple); font-weight: 600; }
+  .b  { color: var(--blue); font-weight: 600; }
+  .r  { color: var(--red); font-weight: 600; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* ── SVG graph diagrams ── */
+  svg.diagram { display: block; margin: 0 auto; overflow: visible; }
+
+  /* ── pill badges ── */
+  .pill {
+    display: inline-block; font-family: 'JetBrains Mono', monospace;
+    font-size: .44em; padding: .08em .4em; border-radius: 99px;
+    border: 1px solid; margin: 0 .08em;
+  }
+  .pill.amber { color: var(--amber); border-color: var(--amber); }
+  .pill.green { color: var(--green); border-color: var(--green); }
+  .pill.purple{ color: var(--purple); border-color: var(--purple); }
+  .pill.blue  { color: var(--blue); border-color: var(--blue); }
+
+  /* ── footer — hidden; was overlapping scrollable content ── */
+  .reveal .slide-footer { display: none; }
+  /* title slide special */
+  .title-slide h1 { font-size: 1.8em; }
+  .title-slide .subtitle {
+    font-size: .7em; color: var(--green); font-family: 'DM Sans', sans-serif;
+    font-weight: 300; letter-spacing: .04em; margin: .3em 0 .6em;
+  }
+  .title-slide .meta { font-size: .48em; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+
+  /* ── super-step animator ── */
+  .ss-row {
+    display: flex; gap: .25em; align-items: center;
+    margin: .1em 0; font-size: .55em; font-family: 'JetBrains Mono', monospace;
+  }
+  .ss-node {
+    padding: .2em .55em; border-radius: 5px; font-size: .9em;
+    background: var(--bg3); border: 1px solid var(--border); color: var(--text);
+  }
+  .ss-node.active { background: #1a2a1a; border-color: var(--green); color: var(--green); }
+  .ss-node.done   { background: #1a1a2a; border-color: var(--purple); color: var(--purple); }
+  .ss-arrow { color: var(--amber); }
+  .ss-label { font-size: .8em; color: var(--muted); margin-left: .3em; }
+
+  /* reduce default margins */
+  .reveal ul, .reveal ol { margin: .15em 0 .15em 1em; }
+.reveal .slides > section { display: flex !important; flex-direction: column !important; overflow-y: auto !important; align-items: stretch !important; justify-content: flex-start !important; }
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+
+<!-- ═══════════════════════════════ SLIDE 01 — TITLE ═══════════════════════════════ -->
+<section class="title-slide" data-background-color="#0a0a0f">
+  <div style="text-align:left; max-width:820px; margin:0 auto; padding: 1em 0;">
+    <div style="font-family:'JetBrains Mono',monospace; font-size:.5em; color:var(--muted); margin-bottom:.4em; letter-spacing:.1em;">
+      COMPILERS SERIES &middot; PART 09 OF 10
+    </div>
+    <h1>Runtimes, JITs &amp;<br>Modern Backends</h1>
+    <div class="subtitle">Part 09 &mdash; Where Code Actually Runs</div>
+    <div style="width:60px; height:3px; background:var(--amber); margin-bottom:1.4em;"></div>
+    <div style="display:flex; gap:1.2em; flex-wrap:wrap; margin-bottom:1em;">
+      <span class="pill amber">AOT / JIT / Interp</span>
+      <span class="pill green">Tiered Compilation</span>
+      <span class="pill purple">GC &amp; Deopt</span>
+      <span class="pill blue">LLVM &middot; Wasm &middot; MLIR</span>
+    </div>
+    <div class="ss-row" style="margin-top:0.6em;">
+      <span class="ss-node active">Interpret</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node active">Baseline JIT</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node active">Optimising JIT</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node done">Deopt / OSR</span>
+    </div>
+    <p style="max-width:660px; color:#a0a0c0; font-size:.56em; line-height:1.5; margin-top:1em;">
+      The compiler does not stop at an executable. Between source and silicon lies a whole execution spectrum &mdash; interpreters, just-in-time compilers, tiered pipelines that re-compile hot code, speculation guarded by deoptimisation, and the runtime services (garbage collection, exceptions, dynamic linking) the compiled code leans on. We close with the shared infrastructure shaping the field: LLVM, Cranelift, GraalVM, MLIR and WebAssembly &mdash; the &ldquo;new UNCOL&rdquo;.
+    </p>
+    <div class="meta" style="margin-top:1.4em;">
+      Spectrum &nbsp;&middot;&nbsp; Interpreters &nbsp;&middot;&nbsp; JIT &amp; Tiering &nbsp;&middot;&nbsp; Speculation &nbsp;&middot;&nbsp; GC &nbsp;&middot;&nbsp; Backends &nbsp;&middot;&nbsp; Wasm
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 02 — AGENDA ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">01</span>
+    <h2>Topics</h2>
+  </div>
+  <p>Decks 03&ndash;08 took source text to machine code. This part asks the next question: <span class="a">how does that code actually run</span>, and what does the runtime do for it? We trace the execution spectrum, then the engines and services that make modern dynamic languages fast.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">The Execution Spectrum</h3>
+        <ul>
+          <li>AOT vs interpretation vs JIT; hybrids</li>
+          <li>Startup vs peak, portability, footprint</li>
+          <li>Tree-walking vs bytecode interpreters</li>
+          <li>Dispatch: switch, threaded, computed-goto</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:.45em;">
+        <h3 class="g">JIT Compilation</h3>
+        <ul>
+          <li>Baseline / template vs optimising JITs</li>
+          <li>Method-based vs trace-based</li>
+          <li>Tiered execution; the warmup curve</li>
+          <li>V8, HotSpot, .NET pipelines</li>
+        </ul>
+      </div>
+      <div class="card purple" style="margin-top:.45em;">
+        <h3 class="p">Speculation &amp; Feedback</h3>
+        <ul>
+          <li>Type feedback; inline caches</li>
+          <li>Hidden classes / maps / shapes</li>
+          <li>Deoptimisation &amp; on-stack replacement</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card blue">
+        <h3 class="b">Runtime Services</h3>
+        <ul>
+          <li>Memory management &amp; garbage collection</li>
+          <li>Exception handling &amp; stack unwinding</li>
+          <li>Dynamic linking: PLT / GOT, PIC, relocations</li>
+        </ul>
+      </div>
+      <div class="card red" style="margin-top:.45em;">
+        <h3 class="r">Modern Backends</h3>
+        <ul>
+          <li>LLVM &amp; GCC as reusable backends</li>
+          <li>Cranelift; GraalVM / Truffle; MLIR</li>
+          <li>The trend to shared infrastructure</li>
+        </ul>
+      </div>
+      <div class="card amber" style="margin-top:.45em;">
+        <h3 class="a">WebAssembly &amp; the Future</h3>
+        <ul>
+          <li>A portable stack-machine compile target</li>
+          <li>Engines: Liftoff/TurboFan, Wasmtime/Cranelift</li>
+          <li>WASI; Wasm as the &ldquo;new UNCOL&rdquo;</li>
+          <li>ML-guided optimisation; HW/SW co-design</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 03 — EXECUTION SPECTRUM ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">02</span>
+    <h2>The Execution Spectrum</h2>
+  </div>
+  <p>There is no single way to &ldquo;run&rdquo; a program. The same source can be <span class="a">compiled ahead-of-time</span> to native code, <span class="g">interpreted</span> directly, or <span class="p">compiled just-in-time</span> while it runs. Most real systems are <em>hybrids</em>.</p>
+  <svg class="diagram" viewBox="0 0 900 175" width="900" height="175">
+    <!-- spectrum bar -->
+    <line x1="40" y1="40" x2="860" y2="40" stroke="#2a2a3a" stroke-width="2"/>
+    <text x="40" y="28" fill="#8888a8" font-family="JetBrains Mono" font-size="9">all work before run</text>
+    <text x="860" y="28" text-anchor="end" fill="#8888a8" font-family="JetBrains Mono" font-size="9">all work during run</text>
+    <!-- AOT -->
+    <rect x="40" y="55" width="190" height="100" rx="6" fill="#181824" stroke="#f5a623" stroke-width="1.5"/>
+    <text x="135" y="78" text-anchor="middle" fill="#f5a623" font-family="Playfair Display" font-size="13" font-weight="700">AOT compile</text>
+    <text x="135" y="98" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">C, C++, Rust, Go, Swift</text>
+    <text x="135" y="113" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="8">+ fast start, peak perf</text>
+    <text x="135" y="127" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono" font-size="8">- no runtime feedback</text>
+    <text x="135" y="141" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono" font-size="8">- one target per binary</text>
+    <!-- JIT -->
+    <rect x="355" y="55" width="190" height="100" rx="6" fill="#1a1a2a" stroke="#a78bfa" stroke-width="1.5"/>
+    <text x="450" y="78" text-anchor="middle" fill="#a78bfa" font-family="Playfair Display" font-size="13" font-weight="700">JIT compile</text>
+    <text x="450" y="98" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">JVM, V8, .NET, PyPy</text>
+    <text x="450" y="113" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="8">+ profile-driven, portable</text>
+    <text x="450" y="127" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono" font-size="8">- warmup, memory cost</text>
+    <text x="450" y="141" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono" font-size="8">- compiler ships at runtime</text>
+    <!-- Interpret -->
+    <rect x="670" y="55" width="190" height="100" rx="6" fill="#1a2a1a" stroke="#4ecb8d" stroke-width="1.5"/>
+    <text x="765" y="78" text-anchor="middle" fill="#4ecb8d" font-family="Playfair Display" font-size="13" font-weight="700">Interpret</text>
+    <text x="765" y="98" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">CPython, Ruby, shells</text>
+    <text x="765" y="113" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="8">+ instant start, tiny, portable</text>
+    <text x="765" y="127" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono" font-size="8">- slowest steady-state</text>
+    <text x="765" y="141" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">- dispatch overhead per op</text>
+    <line x1="232" y1="105" x2="352" y2="105" stroke="#2a2a3a" stroke-width="1" stroke-dasharray="3"/>
+    <line x1="547" y1="105" x2="667" y2="105" stroke="#2a2a3a" stroke-width="1" stroke-dasharray="3"/>
+  </svg>
+  <div class="cols cols-2" style="margin-top:.2em;">
+    <div class="card amber">
+      <h3 class="a">The Core Trade-off</h3>
+      <p>Work moved <em>earlier</em> (AOT) gives fast startup and predictable peak but cannot see actual inputs. Work moved <em>later</em> (JIT/interp) can specialise to observed behaviour, at the cost of warmup time and runtime footprint.</p>
+    </div>
+    <div class="card green">
+      <h3 class="g">Nobody Is Pure</h3>
+      <p>CPython compiles to bytecode then interprets. The JVM interprets <em>then</em> JITs. V8 has no interpreter-free mode. Even C uses a runtime (libc, the dynamic loader). The lines are practical, not absolute.</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 04 — TRADEOFFS TABLE ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">03</span>
+    <h2>Tradeoffs at a Glance</h2>
+  </div>
+  <p>Each strategy optimises a different point on the <span class="a">startup&ndash;peak&ndash;footprint&ndash;portability</span> surface. A serverless function and a long-running server want opposite ends of it.</p>
+  <table>
+    <thead>
+      <tr><th>Property</th><th>AOT native</th><th>Bytecode interpreter</th><th>Tiered JIT</th><th>AOT + PGO</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Startup latency</td><td class="g">instant</td><td class="g">instant</td><td>warmup needed</td><td class="g">instant</td></tr>
+      <tr><td>Peak throughput</td><td>high</td><td class="r">low</td><td class="g">highest</td><td>high</td></tr>
+      <tr><td>Memory footprint</td><td class="g">small</td><td class="g">small</td><td class="r">large (code + profiles + GC)</td><td class="g">small</td></tr>
+      <tr><td>Uses runtime feedback</td><td class="r">no</td><td class="r">no</td><td class="g">yes (online)</td><td>offline only</td></tr>
+      <tr><td>Portability of artefact</td><td class="r">one ISA/ABI</td><td class="g">bytecode is portable</td><td class="g">bytecode is portable</td><td class="r">one ISA/ABI</td></tr>
+      <tr><td>Ships a compiler?</td><td>no</td><td>no</td><td class="r">yes, at runtime</td><td>no</td></tr>
+      <tr><td>Sweet spot</td><td>CLIs, systems, FaaS</td><td>scripting, glue</td><td>servers, browsers</td><td>predictable hot paths</td></tr>
+    </tbody>
+  </table>
+  <div class="cols cols-2" style="margin-top:.3em;">
+    <div class="card purple">
+      <h3 class="p">Startup vs Peak Is The Tension</h3>
+      <p>A JIT pays a <em>warmup tax</em> before reaching peak. For short-lived processes (a Lambda invocation, a CLI run) that tax may never amortise &mdash; which is exactly why <span class="b">GraalVM native-image</span> and CRaC-style snapshots exist.</p>
+    </div>
+    <div class="card blue">
+      <h3 class="b">PGO: A Middle Path</h3>
+      <p>Profile-guided optimisation runs the program on representative input, records branch/edge profiles, then re-compiles AOT using them &mdash; offline feedback without a runtime compiler.</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 05 — INTERPRETERS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">04</span>
+    <h2>Interpreters: Tree-Walking vs Bytecode</h2>
+  </div>
+  <p>The simplest interpreter <span class="g">walks the AST</span> directly. It is easy to write but slow: every node is a virtual dispatch, pointers chase all over the heap, and there is no locality. Real engines first lower the AST to a <span class="a">linear bytecode</span> and interpret that.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card green">
+        <h3 class="g">Tree-Walking</h3>
+        <ul>
+          <li>Recursively <code>eval(node)</code> over the AST</li>
+          <li>Trivial to implement &mdash; good for teaching, config DSLs</li>
+          <li>Poor locality; one polymorphic call per node</li>
+          <li>e.g. early Ruby (MRI &lt;1.9), many embedded DSLs</li>
+        </ul>
+      </div>
+      <div class="card amber" style="margin-top:.45em;">
+        <h3 class="a">Bytecode</h3>
+        <ul>
+          <li>Compile AST &rarr; flat array of opcodes (deck 06)</li>
+          <li>A <em>dispatch loop</em> fetches, decodes, executes</li>
+          <li>Compact, cache-friendly, easy to JIT later</li>
+          <li>e.g. CPython, the JVM, Lua, V8 Ignition, Wasm</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <pre><code class="language-c">// Stack bytecode interpreter — the classic
+// fetch/decode/execute switch dispatch loop
+for (;;) {
+  Op op = *ip++;              // fetch
+  switch (op) {               // decode + dispatch
+    case OP_CONST: push(*ip++);          break;
+    case OP_ADD:   { int b=pop(),a=pop();
+                     push(a+b); }        break;
+    case OP_JMP:   ip += (int8_t)*ip;    break;
+    case OP_RET:   return pop();
+    /* ... one case per opcode ... */
+  }
+}</code></pre>
+      <div class="card purple" style="margin-top:.35em;">
+        <h3 class="p">Why the Switch Is Slow</h3>
+        <p>Each iteration ends in <em>one</em> indirect branch (the switch jump). The CPU's branch predictor sees a single site whose target is effectively random &mdash; near-constant mispredicts. That is the cost we attack next.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 06 — DISPATCH TECHNIQUES ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">05</span>
+    <h2>Dispatch Dominates Interpreter Cost</h2>
+  </div>
+  <p>In a bytecode interpreter the <em>useful</em> work of an opcode (an add, a load) is tiny; the <span class="r">dispatch</span> &mdash; fetch, decode, branch to the handler &mdash; dominates. Faster interpreters are mostly about cheaper dispatch and better branch prediction.</p>
+  <svg class="diagram" viewBox="0 0 900 220" width="900" height="220">
+    <defs>
+      <marker id="aAmber" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#f5a623"/></marker>
+      <marker id="aGreen" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#4ecb8d"/></marker>
+      <marker id="aRed" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#f87171"/></marker>
+    </defs>
+    <!-- switch model -->
+    <text x="170" y="22" text-anchor="middle" fill="#f87171" font-family="Playfair Display" font-size="13" font-weight="700">Switch-based</text>
+    <rect x="60" y="35" width="220" height="40" rx="5" fill="#181824" stroke="#f87171" stroke-width="1.2"/>
+    <text x="170" y="60" text-anchor="middle" fill="#cdd6f4" font-family="JetBrains Mono" font-size="9">single switch jump (1 branch site)</text>
+    <rect x="40" y="95" width="80" height="30" rx="4" fill="#0e0e18" stroke="#8888a8"/><text x="80" y="114" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">ADD</text>
+    <rect x="130" y="95" width="80" height="30" rx="4" fill="#0e0e18" stroke="#8888a8"/><text x="170" y="114" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">LOAD</text>
+    <rect x="220" y="95" width="80" height="30" rx="4" fill="#0e0e18" stroke="#8888a8"/><text x="260" y="114" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">JMP</text>
+    <line x1="170" y1="75" x2="80" y2="93" stroke="#f87171" stroke-width="1" marker-end="url(#aRed)"/>
+    <line x1="170" y1="75" x2="170" y2="93" stroke="#f87171" stroke-width="1" marker-end="url(#aRed)"/>
+    <line x1="170" y1="75" x2="260" y2="93" stroke="#f87171" stroke-width="1" marker-end="url(#aRed)"/>
+    <line x1="80" y1="125" x2="160" y2="145" stroke="#f87171" stroke-width="1" stroke-dasharray="3"/>
+    <line x1="170" y1="125" x2="170" y2="145" stroke="#f87171" stroke-width="1" stroke-dasharray="3"/>
+    <rect x="60" y="145" width="220" height="30" rx="4" fill="#181824" stroke="#f87171" stroke-width="1"/>
+    <text x="170" y="164" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono" font-size="8">all handlers loop back to one site</text>
+    <text x="170" y="200" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">predictor cannot learn — mispredicts</text>
+    <!-- threaded model -->
+    <text x="640" y="22" text-anchor="middle" fill="#4ecb8d" font-family="Playfair Display" font-size="13" font-weight="700">Direct-threaded (computed goto)</text>
+    <rect x="500" y="40" width="120" height="34" rx="5" fill="#1a2a1a" stroke="#4ecb8d" stroke-width="1.2"/>
+    <text x="560" y="62" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="9">ADD handler</text>
+    <rect x="660" y="40" width="120" height="34" rx="5" fill="#1a2a1a" stroke="#4ecb8d" stroke-width="1.2"/>
+    <text x="720" y="62" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="9">LOAD handler</text>
+    <rect x="580" y="120" width="120" height="34" rx="5" fill="#1a2a1a" stroke="#4ecb8d" stroke-width="1.2"/>
+    <text x="640" y="142" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="9">JMP handler</text>
+    <line x1="620" y1="57" x2="658" y2="57" stroke="#4ecb8d" stroke-width="1.2" marker-end="url(#aGreen)"/>
+    <line x1="720" y1="74" x2="660" y2="118" stroke="#4ecb8d" stroke-width="1.2" marker-end="url(#aGreen)"/>
+    <line x1="580" y1="138" x2="540" y2="74" stroke="#4ecb8d" stroke-width="1.2" marker-end="url(#aGreen)"/>
+    <text x="640" y="185" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">each handler jumps straight to the next:</text>
+    <text x="640" y="200" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">many branch sites — predictor learns op-pair correlations</text>
+  </svg>
+  <table style="margin-top:.2em;">
+    <thead><tr><th>Technique</th><th>Mechanism</th><th>Note</th></tr></thead>
+    <tbody>
+      <tr><td>Switch dispatch</td><td>One <code>switch</code>; compiler emits a jump table</td><td>Simplest; one mispredicting branch site</td></tr>
+      <tr><td>Indirect threading</td><td>Bytecode &rarr; table of handler addresses; jump via table</td><td>Used where computed-goto is unavailable</td></tr>
+      <tr><td>Direct threading</td><td>Each handler ends in <code>goto *next_handler</code> (GCC labels-as-values)</td><td>Distinct branch per opcode &rarr; better prediction</td></tr>
+      <tr><td>Token / subroutine threading</td><td>Bytecode is a list of <code>call</code>s to handlers</td><td>Forth heritage; trades CALL/RET overhead</td></tr>
+      <tr><td>Superinstructions</td><td>Fuse common opcode <em>sequences</em> into one handler</td><td>Amortises dispatch over several ops</td></tr>
+    </tbody>
+  </table>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 07 — COMPUTED GOTO CODE ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">06</span>
+    <h2>Direct Threading &amp; the Computed Goto</h2>
+  </div>
+  <p>The standard speedup: a GNU C <span class="a">labels-as-values</span> table maps each opcode to its handler's address, and every handler ends by <em>jumping directly</em> to the next op's handler &mdash; no central switch. CPython adopted this; it gave a 15&ndash;20% interpreter win.</p>
+  <div class="cols cols-2">
+    <div>
+      <pre><code class="language-c">// Direct-threaded dispatch (GCC/Clang extension)
+static void *table[] = {
+  [OP_CONST]=&amp;&amp;do_const, [OP_ADD]=&amp;&amp;do_add,
+  [OP_JMP]=&amp;&amp;do_jmp,     [OP_RET]=&amp;&amp;do_ret,
+};
+#define NEXT() goto *table[*ip++]
+
+  NEXT();                       // start dispatch
+do_const: push(*ip++);  NEXT();
+do_add:  { int b=pop(),a=pop();
+           push(a+b); }         NEXT();
+do_jmp:   ip += (int8_t)*ip;    NEXT();
+do_ret:   return pop();</code></pre>
+      <div class="card green" style="margin-top:.35em;">
+        <h3 class="g">Why It Predicts Better</h3>
+        <p>Each <code>NEXT()</code> is its <em>own</em> indirect branch. The hardware predictor keys on the site, so it learns correlations like &ldquo;after a <code>LOAD</code> usually comes an <code>ADD</code>&rdquo; &mdash; impossible with one shared switch site.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card amber">
+        <h3 class="a">Superinstructions</h3>
+        <p>Profile the bytecode, find hot opcode <em>pairs</em> or <em>triples</em> (e.g. <code>LOAD_FAST; LOAD_FAST; BINARY_ADD</code>), and synthesise a single fused handler. One dispatch now does three ops' work. Forth called these &ldquo;compiled words&rdquo;.</p>
+      </div>
+      <div class="card purple" style="margin-top:.4em;">
+        <h3 class="p">Modern Twists</h3>
+        <ul>
+          <li><span class="b">Inline caching in bytecode</span> &mdash; CPython 3.11+ &ldquo;specialising adaptive interpreter&rdquo; rewrites opcodes in place to specialised forms</li>
+          <li><span class="b">Register bytecode</span> (Lua, Dalvik) &mdash; fewer push/pop ops, so fewer dispatches overall</li>
+          <li><span class="b">Stack caching</span> &mdash; keep the top-of-stack in a register</li>
+        </ul>
+      </div>
+      <div class="card red" style="margin-top:.4em;">
+        <h3 class="r">The Ceiling</h3>
+        <p>Even a perfect interpreter still <em>dispatches</em> once per op. To go faster you must remove dispatch entirely &mdash; that means compiling to native code. Enter the JIT.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 08 — JIT BASICS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">07</span>
+    <h2>Just-in-Time Compilation</h2>
+  </div>
+  <p>A JIT compiles bytecode (or a trace) to <span class="a">native machine code at runtime</span>, then jumps into it. Because it runs <em>during</em> execution, it can specialise to the program's actual behaviour &mdash; the inputs, the types, the hot paths it has observed. The idea dates to McCarthy's LISP (1960) and Hansen's adaptive FORTRAN.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">Baseline / Template JIT</h3>
+        <ul>
+          <li>One-pass: each bytecode &rarr; a fixed template of native instructions</li>
+          <li>Almost no optimisation; compiles <em>fast</em></li>
+          <li>Goal: kill dispatch overhead, reach native quickly</li>
+          <li>e.g. V8 <span class="b">Sparkplug</span>, JSC baseline, HotSpot C1 (light)</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:.45em;">
+        <h3 class="g">Optimising JIT</h3>
+        <ul>
+          <li>Full SSA IR, inlining, GVN, LICM, allocation (decks 06&ndash;08)</li>
+          <li>Uses <em>profile + type feedback</em> to specialise &amp; speculate</li>
+          <li>Slow to compile, fast code &mdash; reserved for hot methods</li>
+          <li>e.g. V8 TurboFan, HotSpot C2, JSC FTL (built on B3/LLVM)</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">Where Does The Code Go?</h3>
+        <p>Into an executable <em>code cache</em> &mdash; pages mapped <code>RWX</code> (or W^X with flips). The runtime patches call sites to point at compiled entries, manages the cache, and can throw code away when it deoptimises.</p>
+      </div>
+      <div class="card blue" style="margin-top:.4em;">
+        <h3 class="b">Method-based vs Trace-based</h3>
+        <ul>
+          <li><span class="a">Method JIT</span>: the unit of compilation is a function/method (HotSpot, V8, .NET RyuJIT)</li>
+          <li><span class="a">Trace JIT</span>: record a hot linear path through loops/calls, compile <em>that</em> trace, guard side-exits (TraceMonkey, PyPy, LuaJIT)</li>
+        </ul>
+      </div>
+      <div class="card red" style="margin-top:.4em;">
+        <h3 class="r">Trace JITs Today</h3>
+        <p>Traces handle tight loops superbly but struggle with branchy, megamorphic code (trace explosion). Most mainstream VMs settled on method JITs with inlining; <span class="b">PyPy</span> and <span class="b">LuaJIT</span> remain the great trace-based survivors.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 09 — TIERED PIPELINE SVG ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">08</span>
+    <h2>Tiered Execution</h2>
+  </div>
+  <p>No single compiler wins on both startup and peak, so modern VMs run a <span class="a">tiered pipeline</span>: start interpreting for instant launch, then promote hot code through progressively more optimising compilers as profiles accumulate. Counters (invocation + back-edge) trigger each promotion.</p>
+  <svg class="diagram" viewBox="0 0 900 260" width="900" height="260">
+    <defs>
+      <marker id="tArr" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="#f5a623"/></marker>
+      <marker id="tArrR" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="#f87171"/></marker>
+    </defs>
+    <!-- tiers -->
+    <rect x="20" y="60" width="160" height="80" rx="6" fill="#1a2a1a" stroke="#4ecb8d" stroke-width="1.5"/>
+    <text x="100" y="85" text-anchor="middle" fill="#4ecb8d" font-family="Playfair Display" font-size="12" font-weight="700">Interpreter</text>
+    <text x="100" y="104" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">Ignition</text>
+    <text x="100" y="118" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">instant start</text>
+    <text x="100" y="132" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">gathers feedback</text>
+
+    <rect x="230" y="60" width="160" height="80" rx="6" fill="#181824" stroke="#60a5fa" stroke-width="1.5"/>
+    <text x="310" y="85" text-anchor="middle" fill="#60a5fa" font-family="Playfair Display" font-size="12" font-weight="700">Baseline JIT</text>
+    <text x="310" y="104" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">Sparkplug</text>
+    <text x="310" y="118" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">template, no opt</text>
+    <text x="310" y="132" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">compiles fast</text>
+
+    <rect x="440" y="60" width="160" height="80" rx="6" fill="#1a1a2a" stroke="#a78bfa" stroke-width="1.5"/>
+    <text x="520" y="85" text-anchor="middle" fill="#a78bfa" font-family="Playfair Display" font-size="12" font-weight="700">Mid-tier JIT</text>
+    <text x="520" y="104" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">Maglev</text>
+    <text x="520" y="118" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">SSA, some specul.</text>
+    <text x="520" y="132" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">balanced</text>
+
+    <rect x="650" y="60" width="160" height="80" rx="6" fill="#181824" stroke="#f5a623" stroke-width="1.5"/>
+    <text x="730" y="85" text-anchor="middle" fill="#f5a623" font-family="Playfair Display" font-size="12" font-weight="700">Optimising JIT</text>
+    <text x="730" y="104" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">TurboFan</text>
+    <text x="730" y="118" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">full specul. opt</text>
+    <text x="730" y="132" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">slow, fastest code</text>
+
+    <!-- promote arrows -->
+    <line x1="180" y1="100" x2="226" y2="100" stroke="#f5a623" stroke-width="1.5" marker-end="url(#tArr)"/>
+    <line x1="390" y1="100" x2="436" y2="100" stroke="#f5a623" stroke-width="1.5" marker-end="url(#tArr)"/>
+    <line x1="600" y1="100" x2="646" y2="100" stroke="#f5a623" stroke-width="1.5" marker-end="url(#tArr)"/>
+    <text x="100" y="48" text-anchor="middle" fill="#f5a623" font-family="JetBrains Mono" font-size="8">hot? (counters)</text>
+    <text x="415" y="50" text-anchor="middle" fill="#f5a623" font-family="JetBrains Mono" font-size="8">hotter</text>
+    <text x="623" y="50" text-anchor="middle" fill="#f5a623" font-family="JetBrains Mono" font-size="8">hottest</text>
+
+    <!-- deopt arrow back -->
+    <path d="M730 140 Q 730 210 410 210 Q 100 210 100 142" fill="none" stroke="#f87171" stroke-width="1.5" stroke-dasharray="5" marker-end="url(#tArrR)"/>
+    <text x="415" y="228" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono" font-size="9">DEOPTIMISE: speculation failed &rarr; fall back to interpreter, re-profile</text>
+  </svg>
+  <p style="margin-top:.2em;">V8's modern shape is <span class="g">Ignition</span> &rarr; <span class="b">Sparkplug</span> &rarr; <span class="p">Maglev</span> &rarr; <span class="a">TurboFan</span>. HotSpot uses interpreter &rarr; <span class="b">C1</span> &rarr; <span class="a">C2</span>; .NET uses the interpreter-free <span class="b">Quick JIT</span> (Tier-0) &rarr; optimising <span class="a">RyuJIT</span> (Tier-1), plus ReadyToRun AOT.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 10 — WARMUP CURVE ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">09</span>
+    <h2>Warmup &amp; the Performance Curve</h2>
+  </div>
+  <p>Tiering trades a brief slow start for a far higher ceiling. Plotting throughput over time shows the classic <span class="a">warmup curve</span>: each tier steps performance up as hot code is recompiled &mdash; with a temporary dip whenever a deopt throws optimised code away.</p>
+  <svg class="diagram" viewBox="0 0 900 250" width="900" height="250">
+    <!-- axes -->
+    <line x1="60" y1="210" x2="860" y2="210" stroke="#8888a8" stroke-width="1.2"/>
+    <line x1="60" y1="30" x2="60" y2="210" stroke="#8888a8" stroke-width="1.2"/>
+    <text x="460" y="240" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="9">time / invocations &rarr;</text>
+    <text x="22" y="120" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="9" transform="rotate(-90 22 120)">throughput &rarr;</text>
+    <!-- interp step -->
+    <line x1="60" y1="185" x2="230" y2="185" stroke="#4ecb8d" stroke-width="2.5"/>
+    <text x="145" y="178" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="8">interpret</text>
+    <!-- baseline step -->
+    <line x1="230" y1="185" x2="245" y2="150" stroke="#60a5fa" stroke-width="2.5"/>
+    <line x1="245" y1="150" x2="430" y2="150" stroke="#60a5fa" stroke-width="2.5"/>
+    <text x="335" y="143" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="8">baseline JIT</text>
+    <!-- maglev step -->
+    <line x1="430" y1="150" x2="450" y2="105" stroke="#a78bfa" stroke-width="2.5"/>
+    <line x1="450" y1="105" x2="600" y2="105" stroke="#a78bfa" stroke-width="2.5"/>
+    <text x="525" y="98" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono" font-size="8">mid-tier</text>
+    <!-- turbofan step -->
+    <line x1="600" y1="105" x2="625" y2="55" stroke="#f5a623" stroke-width="2.5"/>
+    <line x1="625" y1="55" x2="720" y2="55" stroke="#f5a623" stroke-width="2.5"/>
+    <text x="672" y="48" text-anchor="middle" fill="#f5a623" font-family="JetBrains Mono" font-size="8">optimising JIT (peak)</text>
+    <!-- deopt dip -->
+    <line x1="720" y1="55" x2="735" y2="130" stroke="#f87171" stroke-width="2.5"/>
+    <line x1="735" y1="130" x2="770" y2="130" stroke="#f87171" stroke-width="2.5"/>
+    <line x1="770" y1="130" x2="790" y2="60" stroke="#f5a623" stroke-width="2.5"/>
+    <line x1="790" y1="60" x2="850" y2="58" stroke="#f5a623" stroke-width="2.5"/>
+    <text x="745" y="148" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono" font-size="8">deopt dip</text>
+    <text x="820" y="50" text-anchor="middle" fill="#f5a623" font-family="JetBrains Mono" font-size="8">re-opt</text>
+  </svg>
+  <div class="cols cols-2" style="margin-top:.1em;">
+    <div class="card amber">
+      <h3 class="a">Why Warmup Hurts</h3>
+      <p>Microbenchmarks and short jobs may finish before reaching peak, so they measure mostly warmup. Benchmark harnesses (JMH, the SunSpider/JetStream successors) explicitly discard warmup iterations.</p>
+    </div>
+    <div class="card green">
+      <h3 class="g">Fighting Warmup</h3>
+      <p>AOT-compile a baseline (<span class="b">.NET ReadyToRun</span>, OpenJDK AOT/Leyden), snapshot a warmed heap (<span class="b">CRaC</span>), or skip the JIT entirely (<span class="b">GraalVM native-image</span>) &mdash; trading peak ceiling for fast, predictable start.</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 11 — TYPE FEEDBACK / INLINE CACHES ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">10</span>
+    <h2>Speculation: Type Feedback &amp; Inline Caches</h2>
+  </div>
+  <p>In a dynamic language <code>a.x</code> or <code>a + b</code> could mean anything &mdash; the lookup is potentially a full hash search every time. The <span class="a">inline cache</span> (Deutsch &amp; Schiffman, Smalltalk-80; refined in Self) caches the result of the last lookup at the call site and reuses it while the type stays the same.</p>
+  <svg class="diagram" viewBox="0 0 900 215" width="900" height="215">
+    <defs><marker id="icA" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#8888a8"/></marker></defs>
+    <!-- mono -->
+    <rect x="20" y="40" width="250" height="150" rx="6" fill="#1a2a1a" stroke="#4ecb8d" stroke-width="1.5"/>
+    <text x="145" y="62" text-anchor="middle" fill="#4ecb8d" font-family="Playfair Display" font-size="12" font-weight="700">Monomorphic</text>
+    <rect x="45" y="80" width="200" height="34" rx="4" fill="#0e0e18" stroke="#4ecb8d"/>
+    <text x="145" y="96" text-anchor="middle" fill="#cdd6f4" font-family="JetBrains Mono" font-size="8">site obj.x — seen shape S1</text>
+    <text x="145" y="108" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="7">if shape==S1 &rarr; load @offset 16</text>
+    <text x="145" y="140" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="9">1 type &rarr; fastest</text>
+    <text x="145" y="160" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">guard + direct field load,</text>
+    <text x="145" y="173" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">fully inlinable</text>
+    <!-- poly -->
+    <rect x="320" y="40" width="250" height="150" rx="6" fill="#1a1a2a" stroke="#a78bfa" stroke-width="1.5"/>
+    <text x="445" y="62" text-anchor="middle" fill="#a78bfa" font-family="Playfair Display" font-size="12" font-weight="700">Polymorphic</text>
+    <rect x="345" y="80" width="200" height="22" rx="3" fill="#0e0e18" stroke="#a78bfa"/><text x="445" y="95" text-anchor="middle" fill="#cdd6f4" font-family="JetBrains Mono" font-size="7">S1 &rarr; offset 16</text>
+    <rect x="345" y="106" width="200" height="22" rx="3" fill="#0e0e18" stroke="#a78bfa"/><text x="445" y="121" text-anchor="middle" fill="#cdd6f4" font-family="JetBrains Mono" font-size="7">S2 &rarr; offset 24</text>
+    <text x="445" y="150" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono" font-size="9">2&ndash;4 types &rarr; small list</text>
+    <text x="445" y="170" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">linear check, still fast</text>
+    <!-- mega -->
+    <rect x="620" y="40" width="250" height="150" rx="6" fill="#181824" stroke="#f87171" stroke-width="1.5"/>
+    <text x="745" y="62" text-anchor="middle" fill="#f87171" font-family="Playfair Display" font-size="12" font-weight="700">Megamorphic</text>
+    <rect x="645" y="80" width="200" height="34" rx="4" fill="#0e0e18" stroke="#f87171"/>
+    <text x="745" y="101" text-anchor="middle" fill="#cdd6f4" font-family="JetBrains Mono" font-size="8">many shapes &rarr; give up cache</text>
+    <text x="745" y="140" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono" font-size="9">&gt;N types &rarr; slow path</text>
+    <text x="745" y="160" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">full runtime lookup,</text>
+    <text x="745" y="173" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">no inlining, deopt source</text>
+    <line x1="272" y1="115" x2="318" y2="115" stroke="#8888a8" stroke-width="1" marker-end="url(#icA)"/>
+    <line x1="572" y1="115" x2="618" y2="115" stroke="#8888a8" stroke-width="1" marker-end="url(#icA)"/>
+    <text x="295" y="108" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="7">+type</text>
+    <text x="595" y="108" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="7">+more</text>
+  </svg>
+  <p style="margin-top:.1em;">An IC <em>degrades</em> as it sees more types: <span class="g">monomorphic</span> (1) &rarr; <span class="p">polymorphic</span> (2&ndash;4) &rarr; <span class="r">megamorphic</span> (many). The optimising JIT reads these states as <em>type feedback</em>: a monomorphic site can be inlined to a single guarded field load; a megamorphic one cannot.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 12 — HIDDEN CLASSES ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">11</span>
+    <h2>Hidden Classes / Maps / Shapes</h2>
+  </div>
+  <p>Inline caches need a cheap, stable answer to &ldquo;what type is this object?&rdquo; &mdash; but dynamic objects have no declared class. The trick from <span class="a">Self</span>: synthesise one. Objects with the same set of properties in the same order share a <span class="g">hidden class</span> (V8 calls it a <em>Map</em>; JSC a <em>Structure</em>; SpiderMonkey a <em>Shape</em>).</p>
+  <div class="cols cols-6040">
+    <div>
+      <pre><code class="language-javascript">function Point(x, y) {
+  this.x = x;   // transition: {} -> M1 (has x)
+  this.y = y;   // transition: M1 -> M2 (has x,y)
+}
+let a = new Point(1, 2);   // hidden class M2
+let b = new Point(3, 4);   // SAME hidden class M2  ✓
+
+// M2 records: x @ offset 0, y @ offset 1
+// IC at "p.x" specialises to: load slot 0 if map==M2
+
+b.z = 9;   // b transitions M2 -> M3; a stays M2
+           // now the .x site is polymorphic — slower</code></pre>
+      <div class="card red" style="margin-top:.35em;">
+        <h3 class="r">Why Initialisation Order Matters</h3>
+        <p>Adding properties in different orders, or adding them after construction, forks the transition tree into <em>different</em> hidden classes &mdash; turning monomorphic sites polymorphic. Hence the perennial advice: initialise all fields, in the same order, in the constructor.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card green">
+        <h3 class="g">What a Hidden Class Buys</h3>
+        <ul>
+          <li>O(1) type identity = one pointer compare</li>
+          <li>Property &rarr; fixed slot offset, like a C struct</li>
+          <li>Field access becomes a guarded <em>load</em>, not a hash probe</li>
+        </ul>
+      </div>
+      <div class="card amber" style="margin-top:.4em;">
+        <h3 class="a">Transition Trees</h3>
+        <p>Hidden classes form a tree of transitions keyed by &ldquo;added property X&rdquo;. Constructing objects the same way walks the same path &mdash; reusing maps and keeping caches monomorphic.</p>
+      </div>
+      <div class="card blue" style="margin-top:.4em;">
+        <h3 class="b">Heritage</h3>
+        <p>Maps + inline caches are the <em>same two ideas</em> from Self (Chambers, Ungar, H&ouml;lzle, 1989&ndash;91) that made dynamically-typed code competitive with statically-typed code &mdash; later carried into HotSpot and V8.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 13 — DEOPT / OSR ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">12</span>
+    <h2>Speculation, Deoptimisation &amp; OSR</h2>
+  </div>
+  <p>The optimising JIT <em>bets</em>: &ldquo;<code>x</code> is always a small integer&rdquo;, &ldquo;this call is always <code>Array.map</code>&rdquo;. It compiles fast code that assumes the bet, protected by a cheap <span class="a">guard</span>. If a guard ever fails, it must <span class="r">deoptimise</span> &mdash; bail out of the optimised code mid-execution, without losing the running computation.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">Deoptimisation (bailout)</h3>
+        <ul>
+          <li>A guard fails (unexpected type, overflow, map change)</li>
+          <li>The VM <em>reconstructs</em> the interpreter's stack frame(s) from the optimised frame using a <span class="b">deopt map</span></li>
+          <li>Execution resumes in the interpreter/baseline at the exact bytecode</li>
+          <li>The bad assumption is recorded so it isn't re-made</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">On-Stack Replacement (OSR)</h3>
+        <p>The dual of deopt. A long-running loop is <em>already</em> on the stack in the interpreter when it goes hot. OSR swaps that live frame for an optimised one &mdash; entering compiled code <em>in the middle</em> of the loop, mid-execution. (&ldquo;OSR exit&rdquo; = the deopt direction.)</p>
+      </div>
+    </div>
+    <div>
+      <pre><code class="language-javascript">// What the optimiser speculates on:
+function sum(arr) {
+  let s = 0;
+  for (let i = 0; i &lt; arr.length; i++)
+    s += arr[i];   // guard: arr is a packed
+                   // Smi (small-int) array
+  return s;
+}
+// Hot, monomorphic -> TurboFan inlines a
+// tight int loop, no bounds re-check, no boxing.
+//
+// Later: sum([1, 2, "x"])  -> guard FAILS
+//   -> DEOPT: rebuild interpreter frame,
+//      resume at the "+=" bytecode, mark
+//      the array element type as polymorphic.</code></pre>
+      <div class="card purple" style="margin-top:.35em;">
+        <h3 class="p">Why It's Safe</h3>
+        <p>Every speculation is guarded and every optimised point has a recorded mapping back to bytecode state (locals, stack, PC). Speculation is therefore <em>always</em> recoverable &mdash; the program's observable semantics never change.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 14 — GC INTRO / MANUAL VS AUTO ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">13</span>
+    <h2>Runtime Services: Memory Management</h2>
+  </div>
+  <p>Compiled code rarely manages memory alone. The runtime provides allocation and reclamation &mdash; either <span class="a">manual</span> (<code>malloc/free</code>, RAII, ownership) or <span class="g">automatic</span> (a garbage collector). The compiler must cooperate: it emits the metadata the collector needs.</p>
+  <div class="cols cols-3">
+    <div class="card amber">
+      <h3 class="a">Manual</h3>
+      <ul>
+        <li><code>malloc</code>/<code>free</code>, <code>new</code>/<code>delete</code></li>
+        <li>RAII / smart pointers (C++)</li>
+        <li>Ownership &amp; borrows (Rust) &mdash; checked at compile time</li>
+        <li>No pauses; bugs: leaks, use-after-free, double-free</li>
+      </ul>
+    </div>
+    <div class="card green">
+      <h3 class="g">Reference Counting</h3>
+      <ul>
+        <li>Each object holds a count; free at zero</li>
+        <li>Prompt, incremental, simple (CPython, Swift ARC)</li>
+        <li>Count traffic + atomics cost; <span class="r">cannot collect cycles</span></li>
+        <li>Needs a backup cycle collector or weak refs</li>
+      </ul>
+    </div>
+    <div class="card purple">
+      <h3 class="p">Tracing GC</h3>
+      <ul>
+        <li>Periodically trace from <em>roots</em> (stack, globals, registers)</li>
+        <li>Anything unreachable is garbage &mdash; cycles handled naturally</li>
+        <li>Mark-sweep, mark-compact, copying, generational&hellip;</li>
+        <li>Needs <em>safepoints</em> &amp; <em>stack maps</em> from the compiler</li>
+      </ul>
+    </div>
+  </div>
+  <div class="cols cols-2" style="margin-top:.4em;">
+    <div class="card blue">
+      <h3 class="b">The Compiler's Job</h3>
+      <p>For a precise tracing GC, the compiler must tell the collector, at each safepoint, <em>which registers and stack slots hold live pointers</em> (a stack map), and emit <span class="a">write barriers</span> on pointer stores. Without this, the GC can't move or even find objects safely.</p>
+    </div>
+    <div class="card red">
+      <h3 class="r">Reference Cycles</h3>
+      <p>Two objects referencing each other never reach count zero. CPython runs a separate generational cycle detector; Swift relies on the programmer marking <code>weak</code>/<code>unowned</code> references to break cycles.</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 15 — GC ALGORITHMS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">14</span>
+    <h2>Tracing GC Algorithms</h2>
+  </div>
+  <p>All tracing collectors find the live set the same way; they differ in <span class="a">how they reclaim and compact</span> &mdash; trading throughput, pause time, space overhead and fragmentation.</p>
+  <table>
+    <thead><tr><th>Algorithm</th><th>How it works</th><th>Pros</th><th>Cons</th></tr></thead>
+    <tbody>
+      <tr><td><span class="g">Mark&ndash;sweep</span></td><td>Mark live, sweep dead onto free lists</td><td>No copying; simple</td><td>Fragmentation; sweep cost</td></tr>
+      <tr><td><span class="b">Mark&ndash;compact</span></td><td>Mark, then slide live objects together</td><td>No fragmentation; bump allocation</td><td>Extra compaction pass; moves objects</td></tr>
+      <tr><td><span class="p">Copying / semispace</span></td><td>Copy live from &ldquo;from&rdquo;-space to &ldquo;to&rdquo;-space (Cheney)</td><td>Fast bump alloc; compacts for free</td><td>Halves usable heap</td></tr>
+      <tr><td><span class="a">Generational</span></td><td>Separate young/old; collect young often</td><td>Cheap, high yield on young gen</td><td>Needs write barriers + remembered set</td></tr>
+    </tbody>
+  </table>
+  <div class="cols cols-2" style="margin-top:.3em;">
+    <div class="card green">
+      <h3 class="g">The Weak Generational Hypothesis</h3>
+      <p><em>&ldquo;Most objects die young.&rdquo;</em> Empirically, the vast majority of allocations become garbage almost immediately. So collect the young generation frequently and cheaply (a small copying collection), and promote the rare survivors to an old generation collected rarely.</p>
+    </div>
+    <div class="card amber">
+      <h3 class="a">Write Barriers &amp; Remembered Sets</h3>
+      <p>To collect the young gen alone, the GC must know about old&rarr;young pointers. A <span class="b">write barrier</span> &mdash; a few instructions the compiler emits on every pointer store &mdash; records such cross-generation (or cross-region) references into a <em>remembered set</em> / card table.</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 16 — GENERATIONAL HEAP SVG ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">15</span>
+    <h2>The Generational Heap</h2>
+  </div>
+  <p>A typical generational layout: a small <span class="g">young generation</span> (an Eden plus two survivor spaces for copying), and a large <span class="b">old generation</span> for tenured survivors. New objects bump-allocate into Eden; minor GCs copy survivors and age them; long-lived objects are promoted.</p>
+  <svg class="diagram" viewBox="0 0 900 230" width="900" height="230">
+    <defs><marker id="gA" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="#f5a623"/></marker></defs>
+    <!-- young gen -->
+    <rect x="30" y="45" width="430" height="120" rx="6" fill="none" stroke="#4ecb8d" stroke-width="1.5" stroke-dasharray="4"/>
+    <text x="245" y="38" text-anchor="middle" fill="#4ecb8d" font-family="Playfair Display" font-size="12" font-weight="700">Young Generation (collected often, copying)</text>
+    <rect x="50" y="70" width="220" height="70" rx="5" fill="#1a2a1a" stroke="#4ecb8d"/>
+    <text x="160" y="92" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="10">Eden</text>
+    <text x="160" y="110" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">bump-allocate new objects</text>
+    <text x="160" y="124" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">most die here</text>
+    <rect x="285" y="70" width="80" height="70" rx="5" fill="#0e0e18" stroke="#4ecb8d"/>
+    <text x="325" y="100" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">Survivor</text>
+    <text x="325" y="112" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">S0</text>
+    <rect x="375" y="70" width="80" height="70" rx="5" fill="#0e0e18" stroke="#4ecb8d"/>
+    <text x="415" y="100" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">Survivor</text>
+    <text x="415" y="112" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">S1</text>
+    <!-- old gen -->
+    <rect x="520" y="45" width="350" height="120" rx="6" fill="none" stroke="#60a5fa" stroke-width="1.5" stroke-dasharray="4"/>
+    <text x="695" y="38" text-anchor="middle" fill="#60a5fa" font-family="Playfair Display" font-size="12" font-weight="700">Old / Tenured (collected rarely)</text>
+    <rect x="540" y="70" width="310" height="70" rx="5" fill="#1a1a2a" stroke="#60a5fa"/>
+    <text x="695" y="98" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="10">long-lived objects</text>
+    <text x="695" y="116" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">mark-compact or concurrent collection</text>
+    <!-- promote arrow -->
+    <line x1="458" y1="105" x2="536" y2="105" stroke="#f5a623" stroke-width="1.5" marker-end="url(#gA)"/>
+    <text x="497" y="98" text-anchor="middle" fill="#f5a623" font-family="JetBrains Mono" font-size="8">promote</text>
+    <text x="497" y="120" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="7">(survived N GCs)</text>
+    <!-- remembered set -->
+    <rect x="540" y="170" width="310" height="40" rx="5" fill="#181824" stroke="#f5a623" stroke-width="1"/>
+    <text x="695" y="186" text-anchor="middle" fill="#f5a623" font-family="JetBrains Mono" font-size="8">remembered set / card table</text>
+    <text x="695" y="200" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="7">old&rarr;young pointers recorded by write barrier</text>
+    <text x="245" y="200" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">minor GC = trace roots + remembered set, copy survivors Eden+Sx &rarr; other Sx</text>
+  </svg>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 17 — CONCURRENT GC ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">16</span>
+    <h2>Incremental &amp; Concurrent GC</h2>
+  </div>
+  <p>A naive collector is <span class="r">stop-the-world</span>: it pauses every thread while it traces. For interactive and server workloads those pauses are unacceptable, so modern collectors do most of their work <em>concurrently with</em> the running program &mdash; the headline goal is bounded, sub-millisecond pauses.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">Spreading the Work</h3>
+        <ul>
+          <li><span class="b">Incremental</span> &mdash; trace in small slices interleaved with mutation</li>
+          <li><span class="b">Concurrent</span> &mdash; collector threads run alongside mutator threads</li>
+          <li><span class="b">Parallel</span> &mdash; many GC threads cooperate on one phase</li>
+          <li>The <em>tri-colour invariant</em> (white/grey/black) keeps a concurrent trace correct; write barriers preserve it</li>
+        </ul>
+      </div>
+      <div class="card red" style="margin-top:.4em;">
+        <h3 class="r">The Hard Part</h3>
+        <p>While the collector traces, the program keeps mutating pointers. A barrier must catch any store that would hide a live object behind already-scanned (black) memory &mdash; otherwise the GC frees something still in use.</p>
+      </div>
+    </div>
+    <div>
+      <table>
+        <thead><tr><th>Collector</th><th>Style</th><th>Target</th></tr></thead>
+        <tbody>
+          <tr><td>Java <span class="g">G1</span></td><td>Generational, region-based, mostly-concurrent</td><td>Balanced, bounded pauses</td></tr>
+          <tr><td>Java <span class="b">ZGC</span> / Shenandoah</td><td>Concurrent, load/colour-pointer barriers</td><td>Sub-ms pauses, huge heaps</td></tr>
+          <tr><td><span class="p">Go</span> GC</td><td>Concurrent mark-sweep, non-generational</td><td>Low latency, simple</td></tr>
+          <tr><td>V8 <span class="a">Orinoco</span></td><td>Generational, parallel + concurrent</td><td>Short main-thread pauses</td></tr>
+          <tr><td>.NET</td><td>Generational (0/1/2), bg concurrent</td><td>Server &amp; workstation modes</td></tr>
+        </tbody>
+      </table>
+      <div class="card green" style="margin-top:.35em;">
+        <h3 class="g">The Trade Triangle</h3>
+        <p>Throughput, latency (pause time) and footprint form a trilemma &mdash; you tune two at the third's expense. ZGC buys tiny pauses with barrier overhead and memory; a simple STW copying GC maximises throughput but pauses.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 18 — EXCEPTIONS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">17</span>
+    <h2>Exception Handling &amp; Unwinding</h2>
+  </div>
+  <p>Exceptions need the runtime to abandon the current computation and transfer control to a handler further up the stack &mdash; <span class="a">unwinding</span> intervening frames and running their cleanup. How that is implemented determines whether the <em>non</em>-throwing path costs anything.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card green">
+        <h3 class="g">Table-Driven (&ldquo;zero-cost&rdquo;) EH</h3>
+        <ul>
+          <li>The normal path executes with <em>no</em> extra instructions</li>
+          <li>The compiler emits side <span class="b">unwind tables</span> (e.g. <code>.eh_frame</code> / DWARF CFI, LSDA)</li>
+          <li>On <code>throw</code>: a personality routine walks the tables to find a matching handler &amp; runs destructors</li>
+          <li>Throwing is <em>expensive</em>; not throwing is free. C++, Rust, Swift</li>
+        </ul>
+      </div>
+      <div class="card amber" style="margin-top:.4em;">
+        <h3 class="a">setjmp / longjmp</h3>
+        <ul>
+          <li>Each <code>try</code> saves machine state with <code>setjmp</code></li>
+          <li><code>throw</code> = <code>longjmp</code> back to the saved point</li>
+          <li>Cost on the <em>normal</em> path (the save) &mdash; not zero-cost</li>
+          <li>Portable; older / constrained implementations</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">Stack Unwinding</h3>
+        <p>Walking frames from the throw point up to the handler, running each frame's cleanup (C++ destructors, Rust <code>Drop</code>, <code>finally</code> blocks). The unwinder reads the same CFI tables a debugger uses to reconstruct frames.</p>
+      </div>
+      <div class="card blue" style="margin-top:.4em;">
+        <h3 class="b">Stack Maps &amp; Safepoints (ties to GC)</h3>
+        <p>The very same precise-frame metadata serves the collector. At a <span class="a">safepoint</span>, a <span class="g">stack map</span> tells the GC which slots are live pointers &mdash; so it can find and move objects. Threads are brought to safepoints to be paused consistently.</p>
+      </div>
+      <div class="card red" style="margin-top:.4em;">
+        <h3 class="r">Wasm Aside</h3>
+        <p>Core Wasm long lacked exceptions; the <em>exception-handling proposal</em> (<code>try</code>/<code>catch</code>/<code>throw</code> with tags) now standardises them for compiled C++/Swift targets.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 19 — DYNAMIC LINKING ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">18</span>
+    <h2>Dynamic Linking &amp; Loading</h2>
+  </div>
+  <p>Deck 08 emitted an object file with <span class="a">relocations</span>. At load time the dynamic linker (<code>ld.so</code>) finishes the job: it maps shared libraries, resolves cross-module symbols, and patches addresses &mdash; ideally <em>lazily</em>, only on first use.</p>
+  <div class="cols cols-2">
+    <div>
+      <pre><code class="language-x86asm">; A call to an external function via the PLT
+    call    printf@PLT
+; printf@PLT (the stub):
+printf_plt:
+    jmp     *printf@GOT(%rip)   ; 1st call: GOT
+                                ; still points back
+                                ; into the resolver
+    push    $reloc_index        ; which symbol
+    jmp     _dl_runtime_resolve ; ld.so resolves,
+                                ; rewrites the GOT,
+                                ; then tail-calls printf
+; 2nd call onward: jmp *GOT goes straight to printf</code></pre>
+      <div class="card green" style="margin-top:.35em;">
+        <h3 class="g">PLT + GOT = Lazy Binding</h3>
+        <p>The <span class="b">PLT</span> (Procedure Linkage Table) holds call stubs; the <span class="b">GOT</span> (Global Offset Table) holds resolved addresses. First call routes through <code>ld.so</code> which fills the GOT slot; every later call is a single indirect jump.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card amber">
+        <h3 class="a">Position-Independent Code (PIC)</h3>
+        <ul>
+          <li>A shared library can load at <em>any</em> address</li>
+          <li>So code addresses globals <em>relative</em> to itself (RIP-relative on x86-64) and goes through the GOT</li>
+          <li>Required for ASLR and <code>.so</code>/<code>.dylib</code> sharing across processes</li>
+        </ul>
+      </div>
+      <div class="card purple" style="margin-top:.4em;">
+        <h3 class="p">Relocations</h3>
+        <p>Entries telling the loader &ldquo;patch the address here once you know where the symbol landed&rdquo;. Resolved at link time (static), load time (e.g. <code>R_X86_64_RELATIVE</code>), or first use (PLT/GOT, lazy).</p>
+      </div>
+      <div class="card blue" style="margin-top:.4em;">
+        <h3 class="b">Static vs Dynamic</h3>
+        <p>Static linking bakes everything into one binary &mdash; fast start, larger, no shared updates. Dynamic linking shares libraries across processes and allows security patching, at the cost of load-time resolution. <code>RELRO</code> + eager binding hardens the GOT.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 20 — LLVM / GCC BACKENDS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">19</span>
+    <h2>Modern Backends: LLVM &amp; GCC</h2>
+  </div>
+  <p>Writing a production backend (instruction selection, scheduling, register allocation, every ISA) is enormous. The field's answer: <span class="a">reusable backend infrastructure</span>. A new language emits a shared IR and inherits decades of optimisation and dozens of targets &mdash; the N&times;M argument from deck 06, realised.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">LLVM (Lattner, 2003)</h3>
+        <ul>
+          <li>SSA-based <span class="b">LLVM IR</span> as a common currency</li>
+          <li>Frontends: Clang, Rust, Swift, Julia, Zig&hellip;</li>
+          <li>Backends: x86-64, AArch64, RISC-V, Wasm, GPUs&hellip;</li>
+          <li>Library-structured &mdash; embeddable as a JIT (<span class="b">ORC</span>) too</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">GCC (1987, Stallman)</h3>
+        <ul>
+          <li>GENERIC &rarr; GIMPLE (SSA) &rarr; RTL pipeline</li>
+          <li>Many frontends (C/C++/Fortran/Ada/Go/D/Rust-gccrs)</li>
+          <li>Broadest target/architecture coverage of any compiler</li>
+          <li>Historically monolithic; now exposes <code>libgccjit</code></li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">Why It Reshaped The Field</h3>
+        <p>Before LLVM, every language paid the backend tax alone. Sharing the optimiser and code generator let small teams ship serious languages (Rust, Swift, Julia, Zig) and let researchers prototype passes against a real, multi-target backend.</p>
+      </div>
+      <div class="card blue" style="margin-top:.4em;">
+        <h3 class="b">Trade-offs of a Big Backend</h3>
+        <ul>
+          <li>Superb generated code; <em>slow</em> to compile</li>
+          <li>Heavy &mdash; ill-suited as a low-latency JIT (WebKit FTL eventually moved off LLVM to in-house <span class="b">B3</span>)</li>
+          <li>Spawned demand for <em>fast</em> backends &rarr; next slide</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 21 — CRANELIFT / GRAALVM / MLIR ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">20</span>
+    <h2>Cranelift, GraalVM &amp; MLIR</h2>
+  </div>
+  <p>LLVM optimises hard but compiles slowly. A wave of newer infrastructure targets different points: <span class="a">fast</span> codegen, <span class="g">language-agnostic</span> JITs, and <span class="p">extensible, multi-level</span> IRs.</p>
+  <div class="cols cols-3">
+    <div class="card amber">
+      <h3 class="a">Cranelift</h3>
+      <ul>
+        <li>Fast, secure code generator (Bytecode Alliance)</li>
+        <li>Own SSA IR (CLIF); designed for <em>compile speed</em></li>
+        <li>Wasmtime's baseline + rustc's debug-build backend (<code>rustc_codegen_cranelift</code>)</li>
+        <li>Right tool where LLVM is too slow</li>
+      </ul>
+    </div>
+    <div class="card green">
+      <h3 class="g">GraalVM / Truffle</h3>
+      <ul>
+        <li>Write an AST interpreter on the <span class="b">Truffle</span> framework</li>
+        <li>Graal <em>partially evaluates</em> it &rarr; an optimising JIT for free</li>
+        <li>This is the <span class="p">first Futamura projection</span> in production</li>
+        <li>Also <span class="b">native-image</span>: closed-world AOT to a small, fast-start binary</li>
+      </ul>
+    </div>
+    <div class="card purple">
+      <h3 class="p">MLIR</h3>
+      <ul>
+        <li>Multi-Level IR: <em>dialects</em> at many abstraction levels</li>
+        <li>Progressive lowering (e.g. <code>linalg</code> &rarr; <code>affine</code> &rarr; <code>llvm</code>)</li>
+        <li>Born in TensorFlow; now the substrate for ML &amp; HW compilers</li>
+        <li>Lets domains share infra instead of reinventing it</li>
+      </ul>
+    </div>
+  </div>
+  <div class="cols cols-2" style="margin-top:.4em;">
+    <div class="card blue">
+      <h3 class="b">Futamura Projections (1971)</h3>
+      <p>Specialising an interpreter to a fixed program yields a <em>compiled</em> program (1st projection). Specialising the specialiser to the interpreter yields a <em>compiler</em> (2nd). GraalVM/Truffle makes the 1st projection a practical, language-agnostic JIT &mdash; one optimiser, many guest languages.</p>
+    </div>
+    <div class="card amber">
+      <h3 class="a">The Through-Line</h3>
+      <p>All four &mdash; LLVM, Cranelift, Graal, MLIR &mdash; are bets that <span class="g">compiler infrastructure should be shared</span>. The frontier is no longer one compiler per language but reusable, composable layers that many languages and accelerators plug into.</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 22 — WASM INTRO ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">21</span>
+    <h2>WebAssembly: A Portable Target</h2>
+  </div>
+  <p><span class="a">WebAssembly</span> (Wasm, 2017) is a compact, portable bytecode for a <span class="g">stack machine</span> &mdash; designed as a <em>compile target</em>, not a language to write by hand. It is fast to validate, fast to compile, sandboxed by construction, and deterministic. C/C++/Rust/Go/Swift all emit it.</p>
+  <div class="cols cols-2">
+    <div>
+      <pre><code class="language-plaintext">;; A Wasm function (text format) — stack machine
+(func $sum (param $n i32) (result i32)
+  (local $acc i32) (local $i i32)
+  (loop $L
+    (local.set $acc
+      (i32.add (local.get $acc) (local.get $i)))
+    (local.set $i
+      (i32.add (local.get $i) (i32.const 1)))
+    (br_if $L                       ;; structured
+      (i32.lt_s (local.get $i)      ;; control flow:
+                (local.get $n))))   ;; no raw jumps
+  (local.get $acc))</code></pre>
+      <div class="card green" style="margin-top:.35em;">
+        <h3 class="g">Structured Control Flow</h3>
+        <p>No arbitrary <code>goto</code> &mdash; only nested <code>block</code> / <code>loop</code> / <code>if</code> with labelled breaks (<code>br</code>, <code>br_if</code>). This guarantees a reducible CFG, makes single-pass validation trivial, and lets baseline engines compile in one fast linear sweep.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card amber">
+        <h3 class="a">Design Goals</h3>
+        <ul>
+          <li><span class="b">Portable</span> &mdash; one binary runs on any compliant engine</li>
+          <li><span class="b">Safe</span> &mdash; linear memory sandbox, validated types, no raw pointers to host</li>
+          <li><span class="b">Fast</span> &mdash; near-native; streaming compile while downloading</li>
+          <li><span class="b">Compact &amp; deterministic</span> &mdash; small modules, defined semantics</li>
+        </ul>
+      </div>
+      <div class="card purple" style="margin-top:.4em;">
+        <h3 class="p">Beyond the Browser</h3>
+        <ul>
+          <li><span class="b">WASI</span> &mdash; a capability-based syscall interface so Wasm runs server-side, in edge/CDN functions, plugins, databases</li>
+          <li><span class="b">Component Model</span> &mdash; typed, language-neutral interfaces between modules</li>
+          <li>Threads, SIMD, GC, tail-calls, EH &mdash; ongoing proposals</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 23 — WASM PIPELINE SVG ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">22</span>
+    <h2>Wasm Engines &amp; the &ldquo;New UNCOL&rdquo;</h2>
+  </div>
+  <p>A Wasm module is itself executed by an engine that re-uses everything in this deck: an <span class="g">interpreter</span>, a <span class="b">baseline JIT</span>, an <span class="a">optimising JIT</span> &mdash; or an AOT compile. Many source languages converge on Wasm, and many engines run it: Wasm is increasingly the portable waypoint McCarthy &amp; Strachey called <span class="p">UNCOL</span> in 1958.</p>
+  <svg class="diagram" viewBox="0 0 900 250" width="900" height="250">
+    <defs><marker id="wA" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="#a78bfa"/></marker>
+          <marker id="wB" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="#f5a623"/></marker></defs>
+    <!-- sources fan in -->
+    <rect x="20" y="35" width="120" height="26" rx="4" fill="#181824" stroke="#60a5fa"/><text x="80" y="52" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="9">C / C++ (clang)</text>
+    <rect x="20" y="75" width="120" height="26" rx="4" fill="#181824" stroke="#60a5fa"/><text x="80" y="92" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="9">Rust</text>
+    <rect x="20" y="115" width="120" height="26" rx="4" fill="#181824" stroke="#60a5fa"/><text x="80" y="132" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="9">Go / Swift</text>
+    <rect x="20" y="155" width="120" height="26" rx="4" fill="#181824" stroke="#60a5fa"/><text x="80" y="172" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="9">AssemblyScript</text>
+    <!-- wasm hub -->
+    <rect x="350" y="80" width="190" height="90" rx="8" fill="#1a1a2a" stroke="#a78bfa" stroke-width="2"/>
+    <text x="445" y="118" text-anchor="middle" fill="#a78bfa" font-family="Playfair Display" font-size="16" font-weight="700">.wasm</text>
+    <text x="445" y="140" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">portable stack-machine</text>
+    <text x="445" y="153" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">module (the waypoint)</text>
+    <line x1="142" y1="48" x2="348" y2="100" stroke="#a78bfa" stroke-width="1.2" marker-end="url(#wA)"/>
+    <line x1="142" y1="88" x2="348" y2="112" stroke="#a78bfa" stroke-width="1.2" marker-end="url(#wA)"/>
+    <line x1="142" y1="128" x2="348" y2="128" stroke="#a78bfa" stroke-width="1.2" marker-end="url(#wA)"/>
+    <line x1="142" y1="168" x2="348" y2="150" stroke="#a78bfa" stroke-width="1.2" marker-end="url(#wA)"/>
+    <!-- engines fan out -->
+    <rect x="700" y="30" width="180" height="30" rx="4" fill="#1a2a1a" stroke="#4ecb8d"/><text x="790" y="50" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="8">V8 Liftoff (baseline)</text>
+    <rect x="700" y="68" width="180" height="30" rx="4" fill="#181824" stroke="#f5a623"/><text x="790" y="88" text-anchor="middle" fill="#f5a623" font-family="JetBrains Mono" font-size="8">V8 TurboFan (optimising)</text>
+    <rect x="700" y="106" width="180" height="30" rx="4" fill="#181824" stroke="#f5a623"/><text x="790" y="126" text-anchor="middle" fill="#f5a623" font-family="JetBrains Mono" font-size="8">Wasmtime + Cranelift</text>
+    <rect x="700" y="144" width="180" height="30" rx="4" fill="#1a1a2a" stroke="#60a5fa"/><text x="790" y="164" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="8">Wasmer / WAMR / wasm3</text>
+    <line x1="542" y1="110" x2="698" y2="45" stroke="#f5a623" stroke-width="1.2" marker-end="url(#wB)"/>
+    <line x1="542" y1="118" x2="698" y2="83" stroke="#f5a623" stroke-width="1.2" marker-end="url(#wB)"/>
+    <line x1="542" y1="125" x2="698" y2="121" stroke="#f5a623" stroke-width="1.2" marker-end="url(#wB)"/>
+    <line x1="542" y1="133" x2="698" y2="159" stroke="#f5a623" stroke-width="1.2" marker-end="url(#wB)"/>
+    <text x="445" y="205" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="9">M languages &rarr; 1 portable target &rarr; N engines  —  the UNCOL dream, finally working</text>
+  </svg>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 24 — FUTURE ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">23</span>
+    <h2>Where Compilers Are Going</h2>
+  </div>
+  <p>The runtime story keeps moving. A few directions visible from here &mdash; the common thread is <span class="a">co-design</span>: compilers, runtimes, and hardware increasingly evolve together rather than over a fixed interface.</p>
+  <div class="cols cols-3">
+    <div class="card amber">
+      <h3 class="a">ML-Guided Optimisation</h3>
+      <ul>
+        <li>Learned heuristics for inlining, unrolling, register allocation</li>
+        <li>MLGO (LLVM) replaces hand-tuned cost models with trained policies</li>
+        <li>Superoptimisation &amp; learned phase ordering</li>
+      </ul>
+    </div>
+    <div class="card green">
+      <h3 class="g">Shared Multi-Level IR</h3>
+      <ul>
+        <li>MLIR dialects unifying ML, HPC, hardware &amp; general compilers</li>
+        <li>Progressive lowering instead of one monolithic IR</li>
+        <li>Verified / formally-checked passes (CompCert lineage)</li>
+      </ul>
+    </div>
+    <div class="card purple">
+      <h3 class="p">HW / SW Co-Design</h3>
+      <ul>
+        <li>Compilers for GPUs, TPUs, NPUs, FPGAs &amp; dataflow accelerators</li>
+        <li>Domain-specific architectures need domain-specific compilers</li>
+        <li>Wasm + the Component Model as a universal deployment substrate</li>
+      </ul>
+    </div>
+  </div>
+  <div class="card blue" style="margin-top:.5em;">
+    <h3 class="b">The Constant</h3>
+    <p>From A-0 and FORTRAN to TurboFan and MLIR, the job has not changed: <em>bridge the gap between how humans want to express computation and how machines actually execute it</em> &mdash; and keep moving work to whichever moment (compile, link, load, run) makes the program fastest, smallest or safest.</p>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 25 — SUMMARY ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">24</span>
+    <h2>Summary &amp; Further Reading</h2>
+  </div>
+  <div class="cols cols-2">
+    <div>
+      <div class="card green">
+        <h3 class="g">Key Takeaways</h3>
+        <ul>
+          <li>Execution is a spectrum: AOT &harr; JIT &harr; interpret, trading startup vs peak vs footprint &mdash; real systems are hybrids</li>
+          <li>Interpreter cost is <em>dispatch</em>; threaded code &amp; superinstructions attack it</li>
+          <li>Tiered JITs interpret first, then recompile hot code through baseline &rarr; optimising tiers</li>
+          <li>Speculation = type feedback + inline caches + hidden classes, made safe by <span class="a">deopt</span> and <span class="a">OSR</span></li>
+          <li>GC variants (ref-counting, mark-sweep/compact, copying, generational, concurrent) need compiler-emitted stack maps &amp; write barriers</li>
+          <li>EH, unwinding, PLT/GOT &amp; PIC are runtime services the compiler feeds</li>
+          <li>Shared infra (LLVM, Cranelift, Graal, MLIR) &amp; Wasm are the modern backend story</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card blue">
+        <h3 class="b">Further Reading</h3>
+        <ul>
+          <li>Jones, Hosking &amp; Moss &mdash; <em>The Garbage Collection Handbook</em></li>
+          <li>Aycock &mdash; <em>A Brief History of Just-in-Time</em> (ACM CSUR, 2003)</li>
+          <li>H&ouml;lzle &amp; Ungar &mdash; Self: type feedback &amp; deoptimisation papers</li>
+          <li>Smith &amp; Nair &mdash; <em>Virtual Machines</em></li>
+          <li>The V8 blog (Ignition, Sparkplug, Maglev, TurboFan, Orinoco)</li>
+          <li>LLVM, Cranelift, MLIR &amp; the WebAssembly spec docs</li>
+        </ul>
+      </div>
+      <div class="card amber" style="margin-top:.4em;">
+        <h3 class="a">Exercises</h3>
+        <ul>
+          <li>Convert a switch interpreter to computed-goto; measure the win</li>
+          <li>Add an inline cache to a toy property-lookup interpreter</li>
+          <li>Write a Cheney semispace copying collector</li>
+          <li>Compile a C function to Wasm and read the <code>.wat</code></li>
+        </ul>
+      </div>
+      <div class="card purple" style="margin-top:.4em;">
+        <h3 class="p">Next &rarr; Part 10</h3>
+        <p><span class="a">Building a Mini-Compiler</span> &mdash; tying the whole series together: lexer, parser, types, IR, optimisation and codegen in one small, working compiler.</p>
+      </div>
+      <div class="ss-row" style="margin-top:.4em; justify-content:center;">
+        <span class="ss-node done">Part 09 ✓</span>
+        <span class="ss-arrow">&rarr;</span>
+        <span class="ss-node active">Part 10: Building a Mini-Compiler</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+</div><!-- /slides -->
+</div><!-- /reveal -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/highlight/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/highlight/monokai.min.css">
+<script>
+Reveal.initialize({
+  hash: true,
+  slideNumber: 'c/t',
+  transition: 'fade',
+  transitionSpeed: 'fast',
+  controls: true,
+  progress: true,
+  center: false,
+  width: 1100,
+  height: 900,
+  margin: 0.01,
+  plugins: [RevealHighlight],
+  highlight: { theme: 'monokai' }
+});
+</script>
+<script>
+(function(){
+  var h = Reveal.getConfig().height || 900;
+  var m = Reveal.getConfig().margin || 0.02;
+  var maxH = Math.floor(h * (1 - 2 * m)) + 'px';
+  function fixSlides(){
+    document.querySelectorAll('.reveal .slides>section,.reveal .slides>section>section').forEach(function(s){
+      s.style.display = 'block';
+      s.style.maxHeight = maxH;
+    });
+  }
+  Reveal.on('ready', fixSlides);
+  Reveal.on('slidechanged', fixSlides);
+})();
+</script>
+</body>
+</html>

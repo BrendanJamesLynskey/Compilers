@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compilers — Part 08: Code Generation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/theme/black.min.css">
+<style>
+  :root {
+    --amber:  #f5a623;
+    --green:  #4ecb8d;
+    --purple: #a78bfa;
+    --blue:   #60a5fa;
+    --red:    #f87171;
+    --bg:     #0a0a0f;
+    --bg2:    #10101a;
+    --bg3:    #181824;
+    --border: #2a2a3a;
+    --text:   #e8e8f0;
+    --muted:  #8888a8;
+  }
+
+  .reveal-viewport { background: var(--bg); }
+  .reveal .slides section { background: transparent; }
+
+  .reveal { font-family: 'DM Sans', sans-serif; color: var(--text); }
+  .reveal h1, .reveal h2, .reveal h3 { font-family: 'Playfair Display', serif; font-weight: 700; }
+  .reveal h1 { font-size: 1.6em; color: var(--amber); line-height: 1.1; }
+  .reveal h2 { font-size: 1.1em; color: var(--amber); margin-bottom: .2em; }
+  .reveal h3 { font-size: .78em; color: var(--green); margin-bottom: .15em; }
+  .reveal p  { font-size: .56em; line-height: 1.45; color: var(--text); }
+  .reveal li { font-size: .54em; line-height: 1.45; margin-bottom: .1em; }
+  .reveal code { font-family: 'JetBrains Mono', monospace; font-size: .72em; }
+  .reveal pre  { box-shadow: none; background: var(--bg3); border: 1px solid var(--border);
+                 border-radius: 6px; padding: .3em .5em; margin: .25em 0; }
+  .reveal pre code { font-size: .52em; line-height: 1.35; background: transparent; color: #cdd6f4; }
+
+  /* ── slide chrome ── */
+  .slide-hdr {
+    display: flex; align-items: center; gap: .4em;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: .2em; margin-bottom: .3em;
+  }
+  .slide-hdr .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .42em; font-weight: 500;
+    color: var(--bg); background: var(--amber);
+    padding: .1em .4em; border-radius: 3px;
+    letter-spacing: .04em;
+  }
+  .slide-hdr h2 { margin: 0; font-size: .95em; }
+
+  /* ── two-column ── */
+  .cols   { display: grid; gap: .5em; }
+  .cols-2 { grid-template-columns: 1fr 1fr; }
+  .cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .cols-6040 { grid-template-columns: 6fr 4fr; }
+  .cols-4060 { grid-template-columns: 4fr 6fr; }
+
+  /* ── cards ── */
+  .card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 6px; padding: .35em .6em;
+  }
+  .card.amber { border-left: 3px solid var(--amber); }
+  .card.green { border-left: 3px solid var(--green); }
+  .card.purple{ border-left: 3px solid var(--purple); }
+  .card.blue  { border-left: 3px solid var(--blue); }
+  .card.red   { border-left: 3px solid var(--red); }
+  .card h3 { font-size: .64em; margin: 0 0 .12em; }
+  .card p  { font-size: .52em; margin: 0; color: #b8b8d0; }
+  .card ul { margin: 0; padding-left: 1em; }
+  .card li { font-size: .52em; color: #b8b8d0; margin-bottom: .02em; }
+
+  /* ── table ── */
+  .reveal table { width: 100%; border-collapse: collapse; font-size: .5em; }
+  .reveal table th { background: var(--bg3); color: var(--amber); font-weight: 600;
+                     padding: .2em .4em; border: 1px solid var(--border); text-align: left; }
+  .reveal table td { padding: .18em .4em; border: 1px solid var(--border); color: #ccc; }
+  .reveal table tr:nth-child(even) td { background: #0e0e18; }
+
+  /* ── accent spans ── */
+  .a  { color: var(--amber); font-weight: 600; }
+  .g  { color: var(--green); font-weight: 600; }
+  .p  { color: var(--purple); font-weight: 600; }
+  .b  { color: var(--blue); font-weight: 600; }
+  .r  { color: var(--red); font-weight: 600; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* ── SVG graph diagrams ── */
+  svg.diagram { display: block; margin: 0 auto; overflow: visible; }
+
+  /* ── pill badges ── */
+  .pill {
+    display: inline-block; font-family: 'JetBrains Mono', monospace;
+    font-size: .44em; padding: .08em .4em; border-radius: 99px;
+    border: 1px solid; margin: 0 .08em;
+  }
+  .pill.amber { color: var(--amber); border-color: var(--amber); }
+  .pill.green { color: var(--green); border-color: var(--green); }
+  .pill.purple{ color: var(--purple); border-color: var(--purple); }
+  .pill.blue  { color: var(--blue); border-color: var(--blue); }
+
+  /* ── footer — hidden; was overlapping scrollable content ── */
+  .reveal .slide-footer { display: none; }
+  /* title slide special */
+  .title-slide h1 { font-size: 1.8em; }
+  .title-slide .subtitle {
+    font-size: .7em; color: var(--green); font-family: 'DM Sans', sans-serif;
+    font-weight: 300; letter-spacing: .04em; margin: .3em 0 .6em;
+  }
+  .title-slide .meta { font-size: .48em; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+
+  /* ── super-step animator ── */
+  .ss-row {
+    display: flex; gap: .25em; align-items: center;
+    margin: .1em 0; font-size: .55em; font-family: 'JetBrains Mono', monospace;
+  }
+  .ss-node {
+    padding: .2em .55em; border-radius: 5px; font-size: .9em;
+    background: var(--bg3); border: 1px solid var(--border); color: var(--text);
+  }
+  .ss-node.active { background: #1a2a1a; border-color: var(--green); color: var(--green); }
+  .ss-node.done   { background: #1a1a2a; border-color: var(--purple); color: var(--purple); }
+  .ss-arrow { color: var(--amber); }
+  .ss-label { font-size: .8em; color: var(--muted); margin-left: .3em; }
+
+  /* reduce default margins */
+  .reveal ul, .reveal ol { margin: .15em 0 .15em 1em; }
+.reveal .slides > section { display: flex !important; flex-direction: column !important; overflow-y: auto !important; align-items: stretch !important; justify-content: flex-start !important; }
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+
+<!-- ═══════════════════════════════ SLIDE 01 — TITLE ═══════════════════════════════ -->
+<section class="title-slide" data-background-color="#0a0a0f">
+  <div style="text-align:left; max-width:820px; margin:0 auto; padding: 1em 0;">
+    <div style="font-family:'JetBrains Mono',monospace; font-size:.5em; color:var(--muted); margin-bottom:.4em; letter-spacing:.1em;">
+      COMPILERS SERIES &middot; PART 08 OF 10
+    </div>
+    <h1>Code<br>Generation</h1>
+    <div class="subtitle">Part 08 &mdash; The Back End: Lowering IR to Real Machine Code</div>
+    <div style="width:60px; height:3px; background:var(--amber); margin-bottom:1.4em;"></div>
+    <div style="display:flex; gap:1.2em; flex-wrap:wrap; margin-bottom:1em;">
+      <span class="pill amber">Instruction Selection</span>
+      <span class="pill green">Register Allocation</span>
+      <span class="pill purple">Scheduling</span>
+      <span class="pill blue">ABI &amp; Stack Frames</span>
+    </div>
+    <div class="ss-row" style="margin-top:0.6em;">
+      <span class="ss-node active">Optimised IR</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node active">Select</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node active">Allocate</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node active">Schedule</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node done">Emit</span>
+    </div>
+    <p style="max-width:640px; color:#a0a0c0; font-size:.56em; line-height:1.5; margin-top:1em;">
+      The back end turns optimised, machine-independent IR into a concrete instruction stream for a real ISA. Three classic, interacting subproblems dominate &mdash; choosing instructions (selection), mapping unbounded virtual values onto finite registers (allocation), and ordering instructions to keep the pipeline busy (scheduling) &mdash; all bound by the target's calling convention. We work each one, then walk a function from IR to x86-64 and AArch64.
+    </p>
+    <div class="meta" style="margin-top:1.4em;">
+      Selection &nbsp;&middot;&nbsp; Allocation &nbsp;&middot;&nbsp; Scheduling &nbsp;&middot;&nbsp; ABI &nbsp;&middot;&nbsp; Emission
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 02 — AGENDA ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">01</span>
+    <h2>Topics</h2>
+  </div>
+  <p>The back end is where portability ends and the silicon begins. By the close you will have walked optimised IR all the way to <span class="a">x86-64</span> and <span class="b">AArch64</span> assembly, naming every instruction and register chosen.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">Targets &amp; Selection</h3>
+        <ul>
+          <li>The back end's job; three interacting subproblems</li>
+          <li>RISC vs CISC; x86-64 / AArch64 / RISC-V primer</li>
+          <li>Instruction selection: tiling, BURS, SelectionDAG, GlobalISel</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:.45em;">
+        <h3 class="g">Register Allocation</h3>
+        <ul>
+          <li>Live ranges, interference graphs</li>
+          <li>Graph colouring: Chaitin&ndash;Briggs; spilling &amp; coalescing</li>
+          <li>Linear scan; SSA-based allocation; PBQP</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">Scheduling &amp; ABI</h3>
+        <ul>
+          <li>Pipeline hazards, latencies, list scheduling</li>
+          <li>Scheduling vs register pressure; software pipelining</li>
+          <li>System V AMD64 ABI; stack frames; prologue/epilogue</li>
+        </ul>
+      </div>
+      <div class="card blue" style="margin-top:.45em;">
+        <h3 class="b">Putting It Together</h3>
+        <ul>
+          <li>A worked function: IR &rarr; x86-64 &amp; AArch64</li>
+          <li>Emission: assembly text vs the LLVM MC layer</li>
+          <li>Relocations &amp; the assembler/linker handoff</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 03 — THE BACK END'S JOB ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">02</span>
+    <h2>The Back End's Job</h2>
+  </div>
+  <p>Optimisation (Part 07) left us with clean, machine-independent IR &mdash; unbounded virtual registers, abstract operations, no notion of the target. <span class="a">Code generation</span> lowers this to a concrete instruction stream: real opcodes, real registers, a real stack frame, obeying a real ABI. Three subproblems dominate &mdash; and they <em>interact</em>, which is what makes the back end hard.</p>
+  <svg class="diagram" viewBox="0 0 900 215" width="900" height="215">
+    <defs>
+      <marker id="aBE" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#f5a623"/></marker>
+    </defs>
+    <rect x="15" y="80" width="130" height="56" rx="6" fill="#1a1a2a" stroke="#a78bfa" stroke-width="1.5"/>
+    <text x="80" y="104" text-anchor="middle" fill="#a78bfa" font-family="Playfair Display" font-size="12" font-weight="700">Optimised IR</text>
+    <text x="80" y="122" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">virtual regs, SSA</text>
+
+    <rect x="200" y="40" width="160" height="56" rx="6" fill="#181824" stroke="#f5a623" stroke-width="1.5"/>
+    <text x="280" y="63" text-anchor="middle" fill="#f5a623" font-family="JetBrains Mono" font-size="10">Instruction Selection</text>
+    <text x="280" y="80" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">IR ops &rarr; real opcodes</text>
+
+    <rect x="200" y="120" width="160" height="56" rx="6" fill="#1a2a1a" stroke="#4ecb8d" stroke-width="1.5"/>
+    <text x="280" y="143" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="10">Register Allocation</text>
+    <text x="280" y="160" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">vregs &rarr; phys regs / spills</text>
+
+    <rect x="420" y="80" width="160" height="56" rx="6" fill="#101820" stroke="#60a5fa" stroke-width="1.5"/>
+    <text x="500" y="103" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="10">Scheduling</text>
+    <text x="500" y="120" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">order for the pipeline</text>
+
+    <rect x="640" y="80" width="150" height="56" rx="6" fill="#181824" stroke="#f5a623" stroke-width="1.5"/>
+    <text x="715" y="103" text-anchor="middle" fill="#f5a623" font-family="JetBrains Mono" font-size="10">Emission</text>
+    <text x="715" y="120" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">.s text / object code</text>
+
+    <rect x="840" y="80" width="50" height="56" rx="6" fill="#1a1a2a" stroke="#a78bfa" stroke-width="1.5"/>
+    <text x="865" y="112" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono" font-size="9">ASM</text>
+
+    <g stroke="#f5a623" stroke-width="1.4" fill="none">
+      <path d="M145,100 L196,72" marker-end="url(#aBE)"/>
+      <path d="M145,116 L196,144" marker-end="url(#aBE)"/>
+      <path d="M360,68 C395,80 395,95 418,104" marker-end="url(#aBE)"/>
+      <path d="M360,148 C395,136 395,121 418,112" marker-end="url(#aBE)"/>
+      <path d="M580,108 L638,108" marker-end="url(#aBE)"/>
+      <path d="M790,108 L838,108" marker-end="url(#aBE)"/>
+    </g>
+    <text x="280" y="200" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono" font-size="8.5">selection &amp; allocation are mutually constraining &mdash; a phase-ordering problem</text>
+  </svg>
+  <div class="card amber" style="margin-top:.3em;">
+    <h3 class="a">The Phase-Ordering Dilemma</h3>
+    <p>Selection fixes which instructions exist &mdash; and so which registers they demand. Allocation may then insert <em>spill</em> code, creating new loads and stores that selection never saw. Scheduling reorders to hide latency &mdash; but spreading live ranges apart raises register pressure, fighting the allocator. No order is globally optimal; real compilers iterate and approximate.</p>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 04 — TARGET ARCH PRIMER ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">03</span>
+    <h2>Target Architecture Primer</h2>
+  </div>
+  <p>The ISA dictates everything downstream. A <span class="a">register</span> is a small, fast, named store inside the CPU; an <span class="g">addressing mode</span> is a rule for computing an operand's memory address. The deepest split is <span class="b">RISC</span> vs <span class="r">CISC</span>.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card blue">
+        <h3 class="b">RISC &mdash; Reduced</h3>
+        <ul>
+          <li>Fixed-width instructions, simple to decode</li>
+          <li><em>Load/store</em> architecture: ALU ops touch registers only</li>
+          <li>Few, orthogonal addressing modes</li>
+          <li>Many registers (32+); regular encoding</li>
+          <li>ARM64, RISC-V, MIPS, POWER, SPARC</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card red">
+        <h3 class="r">CISC &mdash; Complex</h3>
+        <ul>
+          <li>Variable-length instructions (x86: 1&ndash;15 bytes)</li>
+          <li>Memory operands on arithmetic: <code>add [rax], rbx</code></li>
+          <li>Rich addressing: <code>base + index*scale + disp</code></li>
+          <li>Fewer architectural registers (16 GPRs)</li>
+          <li>x86-64 is CISC &mdash; but decodes to RISC-like &micro;ops</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <p style="margin-top:.3em;">ISA choice reshapes the back end: CISC's memory operands make <span class="a">instruction selection</span> matter more (one instruction can do a load + an add); RISC's load/store regularity makes <span class="g">scheduling</span> and register pressure the main game. A good selector exploits exactly the addressing modes the target offers.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 05 — THREE ISAs COMPARED ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">04</span>
+    <h2>x86-64 &middot; AArch64 &middot; RISC-V</h2>
+  </div>
+  <p>The three ISAs a modern back end is most likely to target. They differ in register count, encoding and addressing &mdash; each pushing codegen in a different direction.</p>
+  <table>
+    <thead><tr><th>Property</th><th>x86-64</th><th>AArch64 (ARM64)</th><th>RISC-V (RV64)</th></tr></thead>
+    <tbody>
+      <tr><td>Class</td><td>CISC</td><td>RISC (load/store)</td><td>RISC (load/store)</td></tr>
+      <tr><td>GP registers</td><td>16 (RAX&hellip;R15)</td><td>31 + XZR/SP</td><td>32 (x0=zero &hellip; x31)</td></tr>
+      <tr><td>Instr. width</td><td>1&ndash;15 bytes (variable)</td><td>4 bytes fixed (+ 16-bit Thumb on A32)</td><td>4 bytes (+ 2-byte "C" compressed)</td></tr>
+      <tr><td>Mem operands on ALU</td><td>yes</td><td>no</td><td>no</td></tr>
+      <tr><td>Addressing</td><td>base+index*scale+disp</td><td>base+offset, pre/post-index</td><td>base+12-bit disp only</td></tr>
+      <tr><td>Flags register</td><td>RFLAGS (implicit)</td><td>NZCV (explicit, opt-in)</td><td>no flags &mdash; compare-and-branch</td></tr>
+      <tr><td>Calling-convention args</td><td>RDI, RSI, RDX, RCX, R8, R9</td><td>X0&ndash;X7</td><td>a0&ndash;a7 (x10&ndash;x17)</td></tr>
+    </tbody>
+  </table>
+  <div class="cols cols-3" style="margin-top:.35em;">
+    <div class="card amber"><h3 class="a">x86-64</h3><p>Dense code, but variable-length decode and few registers stress the allocator. Two-operand form (<code>dst</code> is also a source) forces extra copies.</p></div>
+    <div class="card green"><h3 class="g">AArch64</h3><p>Three-operand, 31 GPRs, clean encoding &mdash; the allocator breathes easy. <code>x31</code> reads as zero or means SP by context.</p></div>
+    <div class="card blue"><h3 class="b">RISC-V</h3><p>Minimal, extensible base (RV64I) plus optional extensions (M, A, F, D, C, V). <code>x0</code> is hard-wired zero &mdash; a free constant.</p></div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 06 — INSTRUCTION SELECTION: THE PROBLEM ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">05</span>
+    <h2>Instruction Selection &mdash; the Problem</h2>
+  </div>
+  <p><span class="a">Instruction selection</span> maps IR operations to target instructions. It is rarely one-to-one. The mapping is both <span class="g">many-to-one</span> (a multiply-by-4 plus add becomes a single <code>lea</code>) and <span class="p">one-to-many</span> (a 64-bit divide may expand to a sequence). The selector must find a <em>covering</em> of the IR by available instructions &mdash; ideally the cheapest one.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">Many-to-One</h3>
+        <p>IR <code>t1 = i*4; t2 = b + t1; v = load t2</code> &mdash; the whole address calculation <em>and</em> the load fold into a single x86 instruction:</p>
+        <pre><code class="language-x86asm">mov rax, [rbx + rcx*4]   ; one instr</code></pre>
+      </div>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">One-to-Many</h3>
+        <p>A high-level IR op may have no single instruction. A 128-bit add, a <code>select</code>, or saturating arithmetic each expand to several real instructions.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">Why It Matters</h3>
+        <ul>
+          <li>Exploiting complex instructions (<code>lea</code>, <code>madd</code>, fused multiply-add) cuts instruction count and register pressure</li>
+          <li>The same IR has many valid coverings of different cost</li>
+          <li>Cost &approx; latency &times; frequency, or code size &mdash; the selector minimises it</li>
+        </ul>
+      </div>
+      <div class="card red" style="margin-top:.4em;">
+        <h3 class="r">The Goal</h3>
+        <p>Cover the IR DAG/tree completely, every node accounted for, choosing tiles (instructions) that minimise total cost. This is the <em>tiling</em> problem.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 07 — SELECTION APPROACHES ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">06</span>
+    <h2>Selection Approaches &mdash; a Spectrum</h2>
+  </div>
+  <p>From dead-simple to provably optimal, selection techniques trade implementation effort against code quality.</p>
+  <table>
+    <thead><tr><th>Approach</th><th>Idea</th><th>Code quality</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><span class="a">Macro / template expansion</span></td><td>Emit a fixed instruction sequence per IR op, independently</td><td>poor</td><td>Trivial; misses every cross-op opportunity. Needs heavy peephole cleanup</td></tr>
+      <tr><td><span class="g">Tree pattern matching (tiling)</span></td><td>Cover the expression tree with instruction "tiles"; maximal munch</td><td>good</td><td>Greedy; pick the largest matching tile at each node</td></tr>
+      <tr><td><span class="p">BURS / DP tiling</span></td><td>Dynamic programming over the tree; bottom-up rewrite system</td><td>optimal (per tree)</td><td>iburg, BEG, lburg &mdash; cost-minimal tiling in linear time</td></tr>
+      <tr><td><span class="b">DAG-based selection</span></td><td>Match over the DAG, sharing common sub-expressions</td><td>better than trees</td><td>NP-hard in general; LLVM's SelectionDAG</td></tr>
+    </tbody>
+  </table>
+  <div class="cols cols-2" style="margin-top:.35em;">
+    <div class="card green">
+      <h3 class="g">Maximal Munch</h3>
+      <p>Top-down greedy: at each node pick the <em>largest</em> tile that matches, recurse on the leaves it left uncovered. Fast and produces good code; not guaranteed optimal because a locally-large tile can force costlier choices below.</p>
+    </div>
+    <div class="card purple">
+      <h3 class="p">BURS &mdash; Bottom-Up Rewrite</h3>
+      <p>Two passes: a bottom-up labelling pass computes the minimum cost to produce each non-terminal at each node (dynamic programming), then a top-down pass reads off the optimal tiles. <em>iburg</em> (Fraser, Hanson, Proebsting) generates such selectors from a cost-annotated grammar.</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 08 — TREE TILING SVG ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">07</span>
+    <h2>Tree Tiling &mdash; Covering an Expression</h2>
+  </div>
+  <p>Take <code>a[i] = a[i] + 1</code> where <code>a</code> is a 4-byte array at base <code>rbx</code> and <code>i</code> is in <code>rcx</code>. The address tree <code>MEM(+ (base, * (i, 4)))</code> can be covered by tiles. On x86-64, a single addressing mode swallows the whole sub-tree.</p>
+  <svg class="diagram" viewBox="0 0 900 320" width="900" height="320">
+    <defs>
+      <marker id="aTile" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6" fill="#8888a8"/></marker>
+    </defs>
+    <!-- tree nodes -->
+    <g font-family="JetBrains Mono" font-size="9">
+      <circle cx="250" cy="36" r="20" fill="#0e0e18" stroke="#f5a623" stroke-width="1.4"/><text x="250" y="40" text-anchor="middle" fill="#f5a623">MEM</text>
+      <circle cx="250" cy="116" r="20" fill="#0e0e18" stroke="#4ecb8d" stroke-width="1.4"/><text x="250" y="120" text-anchor="middle" fill="#4ecb8d">+</text>
+      <circle cx="160" cy="196" r="22" fill="#0e0e18" stroke="#60a5fa" stroke-width="1.4"/><text x="160" y="200" text-anchor="middle" fill="#60a5fa">rbx</text>
+      <circle cx="350" cy="196" r="20" fill="#0e0e18" stroke="#4ecb8d" stroke-width="1.4"/><text x="350" y="200" text-anchor="middle" fill="#4ecb8d">*</text>
+      <circle cx="300" cy="280" r="22" fill="#0e0e18" stroke="#60a5fa" stroke-width="1.4"/><text x="300" y="284" text-anchor="middle" fill="#60a5fa">rcx</text>
+      <circle cx="408" cy="280" r="20" fill="#0e0e18" stroke="#a78bfa" stroke-width="1.4"/><text x="408" y="284" text-anchor="middle" fill="#a78bfa">4</text>
+    </g>
+    <g stroke="#8888a8" stroke-width="1.2" fill="none">
+      <path d="M250,56 L250,94" marker-end="url(#aTile)"/>
+      <path d="M236,131 L178,178" marker-end="url(#aTile)"/>
+      <path d="M264,131 L338,178" marker-end="url(#aTile)"/>
+      <path d="M340,213 L312,260" marker-end="url(#aTile)"/>
+      <path d="M362,213 L398,262" marker-end="url(#aTile)"/>
+    </g>
+    <!-- tile outline covering whole address tree -->
+    <path d="M210,12 Q300,8 300,40 L300,150 Q420,150 440,230 Q455,300 408,304 Q360,308 350,260 L250,150 Q200,150 200,40 Q200,12 210,12 Z"
+          fill="none" stroke="#f5a623" stroke-width="1.6" stroke-dasharray="5 3" opacity="0.8"/>
+    <text x="120" y="40" fill="#f5a623" font-family="JetBrains Mono" font-size="9">tile T1</text>
+    <!-- right: the chosen instructions -->
+    <g font-family="JetBrains Mono">
+      <rect x="540" y="40" width="330" height="240" rx="6" fill="#181824" stroke="#2a2a3a"/>
+      <text x="560" y="68" fill="#f5a623" font-size="11" font-weight="700" font-family="Playfair Display">Chosen covering</text>
+      <text x="560" y="96"  fill="#8888a8" font-size="9">T1 = full address mode</text>
+      <text x="560" y="112" fill="#4ecb8d" font-size="9">[rbx + rcx*4]   &larr; base+index*scale</text>
+      <text x="560" y="140" fill="#8888a8" font-size="9">load + add-immediate + store:</text>
+      <text x="560" y="160" fill="#60a5fa" font-size="9">mov  rax, [rbx + rcx*4]</text>
+      <text x="560" y="178" fill="#60a5fa" font-size="9">add  rax, 1</text>
+      <text x="560" y="196" fill="#60a5fa" font-size="9">mov  [rbx + rcx*4], rax</text>
+      <text x="560" y="226" fill="#8888a8" font-size="9">or fold the +1 directly into memory:</text>
+      <text x="560" y="246" fill="#a78bfa" font-size="9">add  qword [rbx + rcx*4], 1</text>
+      <text x="560" y="270" fill="#f87171" font-size="8.5">one CISC instruction does load+add+store</text>
+    </g>
+  </svg>
+  <p style="margin-top:.2em;">A naive tiler would emit a <code>lea</code> to compute the address, a load, an add and a store. A good selector recognises the whole address sub-tree as one addressing-mode tile &mdash; and on x86 may fold the increment into a single memory-destination <code>add</code>.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 09 — SELECTIONDAG & GLOBALISEL ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">08</span>
+    <h2>LLVM: SelectionDAG &amp; GlobalISel</h2>
+  </div>
+  <p>Real selectors operate on a <span class="a">DAG</span>, not a tree, so common sub-expressions are shared. LLVM has shipped two selectors; the newer one was built to fix the older's weaknesses.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">SelectionDAG (classic)</h3>
+        <ul>
+          <li>Builds a DAG per basic block from LLVM IR</li>
+          <li>Legalises types &amp; operations the target can't handle natively</li>
+          <li>Pattern-matches via target <code>.td</code> TableGen rules + custom C++</li>
+          <li>Then schedules the DAG into a linear <code>MachineInstr</code> list</li>
+          <li>Block-local only &mdash; cannot select across BB boundaries</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card green">
+        <h3 class="g">GlobalISel (newer)</h3>
+        <ul>
+          <li>A pipeline of passes, not one monolith: <em>IRTranslator &rarr; Legalizer &rarr; RegBankSelect &rarr; InstructionSelect</em></li>
+          <li>Operates on Generic MIR (gMIR) &mdash; whole-function, not per-block</li>
+          <li>Faster compiles (no separate DAG build); better debuggability</li>
+          <li>Default for AArch64 at <code>-O0</code>; growing elsewhere</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="card purple" style="margin-top:.4em;">
+    <h3 class="p">Peephole as Cleanup</h3>
+    <p>Whatever the selector, a final <span class="a">peephole</span> pass scans short instruction windows and rewrites local patterns &mdash; killing redundant moves, folding <code>mov</code>+<code>add</code> into <code>lea</code>, replacing <code>mul</code>-by-constant with shifts, removing <code>xor reg,reg</code> redundancies. It mops up what selection missed.</p>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 10 — REGISTER ALLOCATION: THE PROBLEM ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">09</span>
+    <h2>Register Allocation &mdash; the Problem</h2>
+  </div>
+  <p>The IR has <em>unbounded</em> virtual registers; the machine has <span class="r">k</span> physical ones (16 on x86-64, 31 on AArch64). <span class="a">Register allocation</span> maps virtual registers onto physical registers, and when there are not enough, <span class="g">spills</span> some values to memory (stack slots).</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">Live Range / Live Interval</h3>
+        <p>A value is <em>live</em> from its definition to its last use. Its <span class="g">live range</span> is the set of program points where it holds a needed value. Two values <em>interfere</em> if their live ranges overlap &mdash; they cannot share a register.</p>
+      </div>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">Spilling</h3>
+        <p>When pressure exceeds k, a value is kept in a <em>stack slot</em> and loaded/stored around each use. Spills cost memory traffic &mdash; the allocator picks <em>which</em> values to spill to minimise that cost.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">Liveness (from Part 07)</h3>
+        <p>Computed by backward dataflow: a variable is live at a point if some path forward uses it before redefining it. Liveness gives the live ranges the allocator reasons about.</p>
+      </div>
+      <div class="card blue" style="margin-top:.4em;">
+        <h3 class="b">Caller- vs Callee-Saved</h3>
+        <p>The ABI splits registers: <em>callee-saved</em> survive a call (the allocator prefers them for values live across calls); <em>caller-saved</em> must be spilled by the caller if needed after a call. The allocator is ABI-aware.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 11 — INTERFERENCE GRAPH & COLOURING ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">10</span>
+    <h2>Allocation as Graph Colouring</h2>
+  </div>
+  <p>Build the <span class="a">interference graph</span>: one node per value, an edge between any two that interfere (overlapping live ranges). Assigning registers so that no two interfering values share one is exactly <span class="g">graph k-colouring</span> &mdash; colour the nodes with k colours (registers) so no edge joins two same-coloured nodes. Chaitin (1981) made this the standard formulation.</p>
+  <div class="cols cols-6040">
+    <div>
+      <svg class="diagram" viewBox="0 0 430 290" width="430" height="290">
+        <text x="120" y="16" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="9">Interference graph</text>
+        <text x="345" y="16" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="9">3-colouring (k=3)</text>
+        <!-- left: plain graph -->
+        <g font-family="JetBrains Mono" font-size="10">
+          <circle cx="70"  cy="60"  r="18" fill="#0e0e18" stroke="#8888a8" stroke-width="1.3"/><text x="70"  y="64"  text-anchor="middle" fill="#ccc">a</text>
+          <circle cx="180" cy="55"  r="18" fill="#0e0e18" stroke="#8888a8" stroke-width="1.3"/><text x="180" y="59"  text-anchor="middle" fill="#ccc">b</text>
+          <circle cx="50"  cy="170" r="18" fill="#0e0e18" stroke="#8888a8" stroke-width="1.3"/><text x="50"  y="174" text-anchor="middle" fill="#ccc">c</text>
+          <circle cx="150" cy="200" r="18" fill="#0e0e18" stroke="#8888a8" stroke-width="1.3"/><text x="150" y="204" text-anchor="middle" fill="#ccc">d</text>
+          <circle cx="210" cy="135" r="18" fill="#0e0e18" stroke="#8888a8" stroke-width="1.3"/><text x="210" y="139" text-anchor="middle" fill="#ccc">e</text>
+        </g>
+        <g stroke="#8888a8" stroke-width="1.1">
+          <line x1="86"  y1="54"  x2="164" y2="60"/>
+          <line x1="62"  y1="77"  x2="56"  y2="153"/>
+          <line x1="84"  y1="68"  x2="196" y2="128"/>
+          <line x1="66"  y1="180" x2="134" y2="195"/>
+          <line x1="166" y1="190" x2="200" y2="150"/>
+          <line x1="190" y1="65"  x2="206" y2="118"/>
+        </g>
+        <!-- right: coloured graph -->
+        <g font-family="JetBrains Mono" font-size="10">
+          <circle cx="295" cy="60"  r="18" fill="#3a2a10" stroke="#f5a623" stroke-width="1.6"/><text x="295" y="64"  text-anchor="middle" fill="#f5a623">a</text>
+          <circle cx="405" cy="55"  r="18" fill="#102a1a" stroke="#4ecb8d" stroke-width="1.6"/><text x="405" y="59"  text-anchor="middle" fill="#4ecb8d">b</text>
+          <circle cx="275" cy="170" r="18" fill="#102a1a" stroke="#4ecb8d" stroke-width="1.6"/><text x="275" y="174" text-anchor="middle" fill="#4ecb8d">c</text>
+          <circle cx="375" cy="200" r="18" fill="#1a1a2a" stroke="#a78bfa" stroke-width="1.6"/><text x="375" y="204" text-anchor="middle" fill="#a78bfa">d</text>
+          <circle cx="430" cy="135" r="18" fill="#1a1a2a" stroke="#a78bfa" stroke-width="1.6"/><text x="430" y="139" text-anchor="middle" fill="#a78bfa">e</text>
+        </g>
+        <g stroke="#8888a8" stroke-width="1.1">
+          <line x1="311" y1="54"  x2="389" y2="60"/>
+          <line x1="287" y1="77"  x2="281" y2="153"/>
+          <line x1="309" y1="68"  x2="421" y2="128"/>
+          <line x1="291" y1="180" x2="359" y2="195"/>
+          <line x1="391" y1="190" x2="424" y2="150"/>
+          <line x1="415" y1="65"  x2="426" y2="118"/>
+        </g>
+        <g font-family="JetBrains Mono" font-size="8">
+          <text x="295" y="232" text-anchor="middle" fill="#f5a623">a&rarr;RAX</text>
+          <text x="345" y="248" text-anchor="middle" fill="#4ecb8d">b,c&rarr;RBX</text>
+          <text x="405" y="264" text-anchor="middle" fill="#a78bfa">d,e&rarr;RCX</text>
+        </g>
+      </svg>
+    </div>
+    <div>
+      <div class="card amber">
+        <h3 class="a">k = Number of Registers</h3>
+        <p>If the graph is k-colourable, every value fits in a register. <code>b</code> and <code>c</code> don't interfere, so they share <code>RBX</code>; likewise <code>d</code>,<code>e</code>.</p>
+      </div>
+      <div class="card red" style="margin-top:.4em;">
+        <h3 class="r">It's NP-Complete</h3>
+        <p>General graph k-colouring is NP-complete (Chaitin's reduction). So allocators use heuristics &mdash; simplify, spill, select &mdash; rather than seeking an exact optimum.</p>
+      </div>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">Pre-Coloured Nodes</h3>
+        <p>Some values are pinned to specific registers (ABI args in RDI/RSI&hellip;, the <code>div</code> result in RAX/RDX). These appear as pre-coloured nodes the rest must avoid.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 12 — CHAITIN-BRIGGS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">11</span>
+    <h2>Chaitin&ndash;Briggs: Simplify, Spill, Select</h2>
+  </div>
+  <p>The classic colouring allocator works by <span class="a">graph simplification</span>. The key lemma: a node with <em>fewer than k</em> neighbours (<span class="g">low-degree</span>) can always be coloured <em>after</em> its neighbours, so remove it and recurse.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">The Algorithm</h3>
+        <ul>
+          <li><span class="g">Build</span> the interference graph</li>
+          <li><span class="g">Simplify</span>: repeatedly remove a node of degree &lt; k, push it on a stack</li>
+          <li><span class="g">Spill</span>: if only high-degree nodes remain, mark one a <em>potential spill</em>, remove it, continue</li>
+          <li><span class="g">Select</span>: pop nodes off the stack, giving each a colour free among its (already-coloured) neighbours</li>
+          <li>If a potential spill finds no free colour &rarr; <em>actual spill</em>; insert spill code &amp; restart</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">Chaitin (1981)</h3>
+        <p>Original formulation: a node that <em>must</em> be spilled is spilled immediately and the graph rebuilt.</p>
+      </div>
+      <div class="card green" style="margin-top:.35em;">
+        <h3 class="g">Briggs <em>Optimistic</em> Colouring (1994)</h3>
+        <p>Key improvement: a high-degree node is <em>optimistically</em> pushed onto the stack anyway. At select time it <em>might</em> still find a free colour &mdash; because several of its neighbours often share colours. Only if no colour is free does it actually spill. This colours many graphs Chaitin would have spilled.</p>
+      </div>
+      <div class="card blue" style="margin-top:.35em;">
+        <h3 class="b">Spill Cost</h3>
+        <p>Choose the spill candidate minimising <code>cost / degree</code>, where cost &approx; &Sigma; (use/def frequency, loop-depth weighted). Spill cheap, rarely-used, high-degree values.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 13 — COALESCING & SPLITTING ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">12</span>
+    <h2>Coalescing &amp; Live-Range Splitting</h2>
+  </div>
+  <p>Two refinements make colouring allocators competitive: removing pointless copies (<span class="a">coalescing</span>) and breaking up troublesome ranges (<span class="g">splitting</span>).</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">Coalescing &mdash; Move Elimination</h3>
+        <p>If <code>y = mov x</code> and <code>x</code>,<code>y</code> don't otherwise interfere, give them the <em>same</em> register and the move vanishes. Merge their nodes in the graph.</p>
+        <p style="margin-top:.2em;">But aggressive coalescing raises degree and can make a colourable graph un-colourable. Hence <em>conservative</em> coalescing:</p>
+        <ul>
+          <li><span class="g">Briggs</span>: coalesce only if the merged node has &lt; k neighbours of significant degree</li>
+          <li><span class="g">George</span>: coalesce if every neighbour of <code>x</code> already interferes with <code>y</code> or is low-degree</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card green">
+        <h3 class="g">Live-Range Splitting</h3>
+        <p>The opposite move: split one long live range into several shorter ones connected by copies. A value can then live in a register where pressure is low and be spilled only across the busy region &mdash; instead of spilling the whole range.</p>
+      </div>
+      <div class="card purple" style="margin-top:.4em;">
+        <h3 class="p">The Balance</h3>
+        <p>Coalescing <em>merges</em> ranges (fewer moves, higher degree); splitting <em>divides</em> them (more moves, lower degree, easier colouring). A good allocator interleaves both &mdash; the <em>iterated register coalescing</em> of George &amp; Appel (1996) is the canonical scheme.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 14 — LINEAR SCAN ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">13</span>
+    <h2>Linear-Scan Allocation</h2>
+  </div>
+  <p>Graph colouring is powerful but slow &mdash; building and simplifying the interference graph is super-linear. JITs and <code>-O0</code> need speed. <span class="a">Linear scan</span> (Poletto &amp; Sarkar, 1999) skips the graph entirely.</p>
+  <div class="cols cols-6040">
+    <div>
+      <div class="card amber">
+        <h3 class="a">The Idea</h3>
+        <ul>
+          <li>Approximate each value's live range by one <em>live interval</em> &mdash; <code>[start, end]</code> over a linearised instruction numbering</li>
+          <li>Sort intervals by start point</li>
+          <li>Sweep left-to-right; keep an <em>active</em> set of intervals currently holding registers</li>
+          <li>At each new interval, expire intervals that have ended (free their registers)</li>
+          <li>If a register is free, assign it; else spill the interval with the furthest <em>end</em></li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">Where Used</h3>
+        <p>HotSpot's client (C1) compiler, early V8, many JITs and WebAssembly engines. Linear in practice; near-optimal for straight-line-heavy code. Extended forms (Wimmer&ndash;Mössenböck) handle holes and SSA.</p>
+      </div>
+    </div>
+    <div>
+      <svg class="diagram" viewBox="0 0 360 260" width="360" height="260">
+        <text x="180" y="16" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="9">live intervals over time &rarr;</text>
+        <line x1="40" y1="40" x2="40" y2="230" stroke="#2a2a3a"/>
+        <line x1="40" y1="230" x2="340" y2="230" stroke="#2a2a3a"/>
+        <g font-family="JetBrains Mono" font-size="9">
+          <rect x="55"  y="55"  width="120" height="18" rx="3" fill="#3a2a10" stroke="#f5a623"/><text x="48" y="68" text-anchor="end" fill="#f5a623">v1</text>
+          <rect x="90"  y="85"  width="180" height="18" rx="3" fill="#102a1a" stroke="#4ecb8d"/><text x="48" y="98" text-anchor="end" fill="#4ecb8d">v2</text>
+          <rect x="150" y="115" width="90"  height="18" rx="3" fill="#1a1a2a" stroke="#a78bfa"/><text x="48" y="128" text-anchor="end" fill="#a78bfa">v3</text>
+          <rect x="200" y="145" width="130" height="18" rx="3" fill="#101820" stroke="#60a5fa"/><text x="48" y="158" text-anchor="end" fill="#60a5fa">v4</text>
+          <rect x="120" y="175" width="60"  height="18" rx="3" fill="#2a1010" stroke="#f87171"/><text x="48" y="188" text-anchor="end" fill="#f87171">v5</text>
+        </g>
+        <line x1="175" y1="45" x2="175" y2="210" stroke="#f87171" stroke-width="1" stroke-dasharray="3 3"/>
+        <text x="175" y="222" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono" font-size="7.5">cut: 4 live &rarr; spill?</text>
+      </svg>
+      <p style="font-size:.5em; color:#b8b8d0; margin-top:.2em;">At the dashed cut, v1,v2,v3,v5 overlap. With k=3 one must spill &mdash; pick the furthest-ending (v2).</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 15 — SSA-BASED & PBQP ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">14</span>
+    <h2>SSA-Based Allocation &amp; PBQP</h2>
+  </div>
+  <p>A beautiful result reshaped allocation theory: the interference graph of a program <em>in SSA form</em> is <span class="a">chordal</span> &mdash; and chordal graphs are colourable in polynomial time.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">Why SSA Helps</h3>
+        <ul>
+          <li>In strict SSA, every value has one definition; live ranges align with the dominator tree</li>
+          <li>The interference graph is <em>chordal</em> (every cycle &gt; 3 has a chord)</li>
+          <li>Optimal colouring of a chordal graph is <span class="g">polynomial</span> &mdash; a perfect elimination order exists</li>
+          <li>So the hard part decouples: colour the chordal graph, then handle spilling and &phi;-related copies separately</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">The Catch</h3>
+        <p>The chromatic number equals the maximum register pressure (max simultaneously-live values) &mdash; but <em>spilling</em> to get pressure below k, and resolving &phi;-copies on SSA destruction, remain NP-hard. SSA tames colouring, not the whole problem.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">PBQP Allocation</h3>
+        <p>Cast allocation as a <span class="b">Partitioned Boolean Quadratic Problem</span>: each value gets a cost vector over its candidate registers/spill, and each interference edge a cost <em>matrix</em>. Minimise total cost.</p>
+        <ul>
+          <li>Naturally models irregular ISAs &mdash; register classes, aliasing (AX/AL), pairing constraints</li>
+          <li>Solved heuristically; an alternative LLVM allocator (<code>-regalloc=pbqp</code>)</li>
+        </ul>
+      </div>
+      <div class="card blue" style="margin-top:.4em;">
+        <h3 class="b">LLVM's Default: Greedy</h3>
+        <p>LLVM's production allocator is <em>Greedy</em> &mdash; a global, priority-ordered allocator with live-range splitting and eviction, neither pure colouring nor pure linear scan, but fast and high-quality.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 16 — INSTRUCTION SCHEDULING: HAZARDS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">15</span>
+    <h2>Instruction Scheduling &mdash; Hazards</h2>
+  </div>
+  <p>Modern CPUs are <span class="a">pipelined</span>: an instruction takes several cycles, and the next can start before the previous finishes &mdash; unless a <span class="r">hazard</span> stalls it. <span class="g">Scheduling</span> reorders instructions to hide latency and keep functional units busy, without changing the result.</p>
+  <div class="cols cols-3">
+    <div class="card red">
+      <h3 class="r">Data Hazard</h3>
+      <p>An instruction needs a result not yet ready. <code>add</code> after a <code>load</code> that misses cache stalls until the value arrives. RAW (read-after-write) is the common true dependence.</p>
+    </div>
+    <div class="card amber">
+      <h3 class="a">Structural Hazard</h3>
+      <p>Two instructions want the same functional unit (one divider, one load port) in the same cycle. One must wait.</p>
+    </div>
+    <div class="card purple">
+      <h3 class="p">Control Hazard</h3>
+      <p>A branch's direction isn't known until late, so the pipeline may fetch wrong instructions. Mitigated by branch prediction; the scheduler fills any branch delay slots (on older RISC).</p>
+    </div>
+  </div>
+  <div class="cols cols-2" style="margin-top:.4em;">
+    <div class="card green">
+      <h3 class="g">Latencies Differ</h3>
+      <p>Integer add: ~1 cycle. Load (L1 hit): ~4. Multiply: ~3. Divide: 20&ndash;40. FP varies. The scheduler knows the target's latency table and issues independent work into the shadow of a slow instruction.</p>
+    </div>
+    <div class="card blue">
+      <h3 class="b">In-Order vs Out-of-Order</h3>
+      <p>An <em>out-of-order</em> core (most desktop x86/ARM) reorders dynamically, so scheduling matters less &mdash; but still helps fetch &amp; register pressure. An <em>in-order</em> core (many embedded, some Atom/A55) depends critically on a good static schedule.</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 17 — LIST SCHEDULING & DAG SVG ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">16</span>
+    <h2>List Scheduling over the Dependence DAG</h2>
+  </div>
+  <p>Within a basic block, build the <span class="a">data-dependence DAG</span>: nodes are instructions, edges are dependences (true RAW, plus anti/output and memory ordering), weighted by latency. <span class="g">List scheduling</span> greedily picks, each cycle, a ready instruction (all predecessors done) of highest priority &mdash; usually longest path to the end (critical path).</p>
+  <div class="cols cols-6040">
+    <div>
+      <svg class="diagram" viewBox="0 0 440 280" width="440" height="280">
+        <defs>
+          <marker id="aDag" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6" fill="#8888a8"/></marker>
+        </defs>
+        <g font-family="JetBrains Mono" font-size="8.5">
+          <rect x="40"  y="20"  width="120" height="34" rx="5" fill="#181824" stroke="#60a5fa" stroke-width="1.3"/><text x="100" y="34" text-anchor="middle" fill="#60a5fa">i1: ld r1,[a]</text><text x="100" y="47" text-anchor="middle" fill="#8888a8">lat 4</text>
+          <rect x="250" y="20"  width="120" height="34" rx="5" fill="#181824" stroke="#60a5fa" stroke-width="1.3"/><text x="310" y="34" text-anchor="middle" fill="#60a5fa">i2: ld r2,[b]</text><text x="310" y="47" text-anchor="middle" fill="#8888a8">lat 4</text>
+          <rect x="145" y="110" width="120" height="34" rx="5" fill="#1a2a1a" stroke="#4ecb8d" stroke-width="1.3"/><text x="205" y="124" text-anchor="middle" fill="#4ecb8d">i3: mul r3,r1,r2</text><text x="205" y="137" text-anchor="middle" fill="#8888a8">lat 3</text>
+          <rect x="40"  y="200" width="120" height="34" rx="5" fill="#3a2a10" stroke="#f5a623" stroke-width="1.3"/><text x="100" y="214" text-anchor="middle" fill="#f5a623">i4: add r4,r3,1</text><text x="100" y="227" text-anchor="middle" fill="#8888a8">lat 1</text>
+          <rect x="250" y="200" width="120" height="34" rx="5" fill="#3a2a10" stroke="#f5a623" stroke-width="1.3"/><text x="310" y="214" text-anchor="middle" fill="#f5a623">i5: st [c],r3</text><text x="310" y="227" text-anchor="middle" fill="#8888a8">lat 1</text>
+        </g>
+        <g stroke="#8888a8" stroke-width="1.2" fill="none">
+          <path d="M110,54 L185,108" marker-end="url(#aDag)"/>
+          <path d="M300,54 L225,108" marker-end="url(#aDag)"/>
+          <path d="M190,144 L120,198" marker-end="url(#aDag)"/>
+          <path d="M220,144 L290,198" marker-end="url(#aDag)"/>
+        </g>
+        <text x="220" y="268" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono" font-size="8">critical path i1&rarr;i3&rarr;i4 = 4+3+1 = 8 cyc</text>
+      </svg>
+    </div>
+    <div>
+      <div class="card amber">
+        <h3 class="a">Why Reorder?</h3>
+        <p>Issue <code>i1</code> and <code>i2</code> (the two independent loads) back-to-back so their 4-cycle latencies overlap; by the time <code>i3</code> needs both, they're ready. A naive in-order emit would stall twice.</p>
+      </div>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">Priority = Critical Path</h3>
+        <p>Among ready instructions, prefer the one on the longest remaining path to the block's end. Ties broken by latency, then by register-pressure impact.</p>
+      </div>
+      <div class="card purple" style="margin-top:.4em;">
+        <h3 class="p">Scope</h3>
+        <p>Local (one block) is standard; <em>superblock</em> / <em>trace</em> scheduling crosses blocks along hot paths for more freedom.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 18 — SCHEDULING VS PRESSURE; SW PIPELINING ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">17</span>
+    <h2>Pressure Tension &amp; Software Pipelining</h2>
+  </div>
+  <div class="cols cols-2">
+    <div>
+      <div class="card red">
+        <h3 class="r">Scheduling vs Register Pressure</h3>
+        <p>Moving an instruction's definition <em>earlier</em> (to overlap latency) lengthens its live range &mdash; more values live at once &mdash; raising register pressure and risking <em>spills</em>. The two phases pull opposite ways.</p>
+        <ul>
+          <li>Schedule too eagerly &rarr; spill code negates the latency win</li>
+          <li>Schedule too timidly &rarr; pipeline stalls</li>
+          <li>Modern back ends use <em>pressure-aware</em> schedulers, or schedule twice (pre- and post-allocation)</li>
+        </ul>
+      </div>
+      <div class="card amber" style="margin-top:.4em;">
+        <h3 class="a">Two-Pass Practice</h3>
+        <p>Many compilers schedule <em>before</em> allocation (to expose parallelism) and again <em>after</em> (to clean up spill code and finalise ordering).</p>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">Software Pipelining</h3>
+        <p>For loops, overlap iterations: start iteration <em>i+1</em>'s independent work while <em>i</em> finishes. The body becomes a steady-state <em>kernel</em> bracketed by a <em>prologue</em> and <em>epilogue</em>.</p>
+        <ul>
+          <li><span class="g">Modulo scheduling</span> finds an <em>initiation interval</em> (II) &mdash; the cycle gap between successive iteration starts</li>
+          <li>II is bounded by resources (ResMII) and recurrences (RecMII)</li>
+          <li>Crucial on in-order VLIW/DSP targets; Itanium relied on it</li>
+        </ul>
+      </div>
+      <div class="card blue" style="margin-top:.4em;">
+        <h3 class="b">Diminishing Returns</h3>
+        <p>On big out-of-order cores the hardware already overlaps iterations dynamically, so software pipelining's payoff is largest on in-order and explicitly-parallel machines.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 19 — CALLING CONVENTIONS / ABI ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">18</span>
+    <h2>Calling Conventions &amp; the ABI</h2>
+  </div>
+  <p>The <span class="a">ABI</span> (Application Binary Interface) is the contract that lets separately-compiled functions interoperate: who passes arguments where, who preserves which registers, how the stack is laid out. The back end must obey it exactly &mdash; it constrains the allocator and shapes every call.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">System V AMD64 ABI (Linux/macOS/BSD)</h3>
+        <ul>
+          <li>Integer/pointer args: <code>RDI, RSI, RDX, RCX, R8, R9</code> &mdash; then the stack</li>
+          <li>FP/vector args: <code>XMM0&ndash;XMM7</code></li>
+          <li>Return value: <code>RAX</code> (and <code>RDX</code> for 128-bit / second word)</li>
+          <li>Stack must be <span class="g">16-byte aligned</span> at the point of a <code>call</code></li>
+          <li>The <span class="p">red zone</span>: 128 bytes below <code>RSP</code> a leaf function may use without adjusting RSP</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card green">
+        <h3 class="g">Caller- vs Callee-Saved (SysV)</h3>
+        <table style="margin-top:.2em;">
+          <thead><tr><th>Caller-saved (volatile)</th><th>Callee-saved (preserved)</th></tr></thead>
+          <tbody>
+            <tr><td>RAX RCX RDX</td><td>RBX RBP</td></tr>
+            <tr><td>RSI RDI</td><td>R12 R13</td></tr>
+            <tr><td>R8 R9 R10 R11</td><td>R14 R15</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card blue" style="margin-top:.35em;">
+        <h3 class="b">Other ABIs Differ</h3>
+        <p><span class="r">Windows x64</span> uses RCX, RDX, R8, R9 + 32-byte <em>shadow space</em>, no red zone. <span class="r">AArch64 AAPCS64</span> passes in X0&ndash;X7, returns in X0; X19&ndash;X28 callee-saved. Same idea, different registers.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 20 — STACK FRAME LAYOUT SVG ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">19</span>
+    <h2>Stack Frames, Prologue &amp; Epilogue</h2>
+  </div>
+  <p>Each call gets a <span class="a">stack frame</span>: storage for spills, locals, callee-saved registers and outgoing arguments. The <span class="g">prologue</span> sets it up; the <span class="g">epilogue</span> tears it down. The stack grows <em>down</em> on x86-64.</p>
+  <div class="cols cols-6040">
+    <div>
+      <svg class="diagram" viewBox="0 0 380 320" width="380" height="320">
+        <text x="190" y="16" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="9">higher addresses &uarr;</text>
+        <g font-family="JetBrains Mono" font-size="8.5">
+          <rect x="90" y="28"  width="200" height="30" fill="#1a1a2a" stroke="#a78bfa"/><text x="190" y="47" text-anchor="middle" fill="#a78bfa">caller's frame</text>
+          <rect x="90" y="58"  width="200" height="26" fill="#181824" stroke="#60a5fa"/><text x="190" y="75" text-anchor="middle" fill="#60a5fa">arg 7,8&hellip; (stack args)</text>
+          <rect x="90" y="84"  width="200" height="26" fill="#3a2a10" stroke="#f5a623"/><text x="190" y="101" text-anchor="middle" fill="#f5a623">return address (pushed by call)</text>
+          <rect x="90" y="110" width="200" height="26" fill="#102a1a" stroke="#4ecb8d"/><text x="190" y="127" text-anchor="middle" fill="#4ecb8d">saved RBP &larr; RBP points here</text>
+          <rect x="90" y="136" width="200" height="34" fill="#181824" stroke="#4ecb8d"/><text x="190" y="156" text-anchor="middle" fill="#4ecb8d">saved callee regs (RBX,R12&hellip;)</text>
+          <rect x="90" y="170" width="200" height="40" fill="#181824" stroke="#a78bfa"/><text x="190" y="194" text-anchor="middle" fill="#a78bfa">local variables</text>
+          <rect x="90" y="210" width="200" height="34" fill="#181824" stroke="#60a5fa"/><text x="190" y="230" text-anchor="middle" fill="#60a5fa">spill slots</text>
+          <rect x="90" y="244" width="200" height="26" fill="#3a2a10" stroke="#f5a623"/><text x="190" y="261" text-anchor="middle" fill="#f5a623">outgoing args &larr; RSP</text>
+          <rect x="90" y="276" width="200" height="26" fill="#2a1010" stroke="#f87171" stroke-dasharray="3 2"/><text x="190" y="293" text-anchor="middle" fill="#f87171">red zone (128 B, leaf)</text>
+        </g>
+        <text x="190" y="316" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="9">lower addresses &darr; (stack grows down)</text>
+      </svg>
+    </div>
+    <div>
+      <div class="card amber">
+        <h3 class="a">Prologue</h3>
+        <pre><code class="language-x86asm">push rbp           ; save caller's RBP
+mov  rbp, rsp      ; set frame pointer
+sub  rsp, 48       ; reserve locals+spills
+                   ; (keep 16-byte aligned)
+push rbx           ; save callee-saved used</code></pre>
+      </div>
+      <div class="card green" style="margin-top:.35em;">
+        <h3 class="g">Epilogue</h3>
+        <pre><code class="language-x86asm">pop  rbx           ; restore callee-saved
+mov  rsp, rbp      ; or: leave
+pop  rbp
+ret</code></pre>
+      </div>
+      <div class="card purple" style="margin-top:.35em;">
+        <h3 class="p">RBP vs RSP-Relative</h3>
+        <p>A <em>frame pointer</em> (RBP) gives stable offsets &amp; easy unwinding; <code>-fomit-frame-pointer</code> frees RBP as a GPR and addresses locals off RSP &mdash; one more register for the allocator.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 21 — ABI CONSTRAINS ALLOCATOR ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">20</span>
+    <h2>How the ABI Constrains the Allocator</h2>
+  </div>
+  <p>The calling convention is not advisory &mdash; it injects hard constraints straight into register allocation.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">Pinned Registers at Calls</h3>
+        <ul>
+          <li>Argument values <em>must</em> land in RDI, RSI, RDX&hellip; before a <code>call</code> &mdash; pre-coloured nodes</li>
+          <li>The return value <em>must</em> be in RAX after</li>
+          <li>A <code>call</code> <em>clobbers</em> all caller-saved registers: model it as defining (killing) them</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">Values Live Across Calls</h3>
+        <p>A value needed after a call should live in a <em>callee-saved</em> register (it survives the call for free) &mdash; or be spilled. The allocator weighs the one-off cost of saving a callee-saved register in the prologue against repeated caller-saved spills.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">Returning Structs</h3>
+        <ul>
+          <li>Small structs (&le; 16 bytes) returned in <code>RAX:RDX</code> (or XMM pair) per SysV field classification</li>
+          <li>Large structs: caller allocates space, passes a hidden pointer in <code>RDI</code> (<em>sret</em>); the other args shift right</li>
+        </ul>
+      </div>
+      <div class="card blue" style="margin-top:.4em;">
+        <h3 class="b">Variadic &amp; Alignment</h3>
+        <p>Variadic calls set <code>AL</code> = number of vector args used. The 16-byte alignment requirement at <code>call</code> forces the prologue's <code>sub rsp</code> to round up &mdash; the allocator and frame-layout pass cooperate to keep it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 22 — WORKED EXAMPLE: SOURCE + IR ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">21</span>
+    <h2>Worked Example &mdash; Source &amp; IR</h2>
+  </div>
+  <p>Let's take one small function all the way down. It sums squared differences &mdash; one parameter passed, a loop, a return value.</p>
+  <div class="cols cols-2">
+    <div>
+      <p><span class="g">C source</span>:</p>
+      <pre><code class="language-c">int sumsq(int *a, int n) {
+    int s = 0;
+    for (int i = 0; i &lt; n; i++)
+        s += a[i] * a[i];
+    return s;
+}</code></pre>
+      <div class="card amber" style="margin-top:.3em;">
+        <h3 class="a">What the Back End Must Decide</h3>
+        <ul>
+          <li>Which instructions realise <code>a[i]</code>, the multiply, the add</li>
+          <li>Which registers hold <code>a</code>, <code>n</code>, <code>i</code>, <code>s</code>, the loaded element</li>
+          <li>Where to load <code>a[i]</code> only once (CSE already shared it)</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <p><span class="b">Optimised SSA-ish IR</span> (loop body):</p>
+      <pre><code class="language-llvm">loop:
+  %i   = phi i32 [0, %entry], [%i.n, %loop]
+  %s   = phi i32 [0, %entry], [%s.n, %loop]
+  %p   = getelementptr i32, i32* %a, i32 %i
+  %x   = load i32, i32* %p
+  %sq  = mul i32 %x, %x
+  %s.n = add i32 %s, %sq
+  %i.n = add i32 %i, 1
+  %c   = icmp slt i32 %i.n, %n
+  br i1 %c, label %loop, label %exit</code></pre>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 23 — WORKED EXAMPLE: x86-64 + AArch64 ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">22</span>
+    <h2>Worked Example &mdash; the Assembly</h2>
+  </div>
+  <p>Args arrive per the ABI: <span class="a">x86-64</span> <code>a</code>&rarr;RDI, <code>n</code>&rarr;ESI, return in EAX; <span class="b">AArch64</span> <code>a</code>&rarr;X0, <code>n</code>&rarr;W1, return in W0. Selection picks scaled loads and a fused multiply on ARM; allocation keeps the hot values in registers &mdash; no spills needed.</p>
+  <div class="cols cols-2">
+    <div>
+      <p><span class="a">x86-64</span> (System V):</p>
+      <pre><code class="language-x86asm">sumsq:
+    xor   eax, eax        ; s = 0  (return reg)
+    xor   ecx, ecx        ; i = 0
+    test  esi, esi        ; n &lt;= 0 ?
+    jle   .done
+.loop:
+    mov   edx, [rdi+rcx*4] ; x = a[i]  (scaled)
+    imul  edx, edx         ; x*x
+    add   eax, edx         ; s += x*x
+    add   ecx, 1           ; i++
+    cmp   ecx, esi
+    jl    .loop
+.done:
+    ret                    ; result in EAX</code></pre>
+    </div>
+    <div>
+      <p><span class="b">AArch64</span> (AAPCS64):</p>
+      <pre><code class="language-armasm">sumsq:
+    mov   w8, wzr          // s = 0
+    mov   w9, wzr          // i = 0
+    cmp   w1, #0
+    b.le  .done
+.loop:
+    ldr   w10, [x0, w9, sxtw #2] // x = a[i]
+    madd  w8, w10, w10, w8       // s += x*x (FMA-int)
+    add   w9, w9, #1             // i++
+    cmp   w9, w1
+    b.lt  .loop
+.done:
+    mov   w0, w8           // return s
+    ret</code></pre>
+    </div>
+  </div>
+  <p style="margin-top:.2em;"><code>xor eax,eax</code> is the idiomatic zero on x86 (smaller, breaks dependences); <code>wzr</code> is the AArch64 zero register. <code>madd</code> fuses multiply-add into one instruction &mdash; selection exploited an ISA feature x86 lacks for integers. Both loops are leaf-free of spills, so neither needs a frame: pure <em>red-zone</em>/frameless code.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 24 — EMISSION: MC LAYER ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">23</span>
+    <h2>Emission &mdash; Text vs Object Code</h2>
+  </div>
+  <p>The final step turns the scheduled <code>MachineInstr</code> stream into bytes. Two paths: write <span class="a">assembly text</span> and shell out to an external assembler, or emit an <span class="g">object file directly</span>. LLVM's <span class="b">MC layer</span> does both from one representation.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">Assembly Text (<code>.s</code>)</h3>
+        <ul>
+          <li>Human-readable; what <code>-S</code> prints</li>
+          <li>Portable across assemblers; easy to inspect/debug</li>
+          <li>Slower &mdash; re-parses text, spawns an assembler process</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">Direct Object Emission</h3>
+        <ul>
+          <li>Compiler writes ELF/Mach-O/COFF (<code>.o</code>) itself &mdash; the <em>integrated assembler</em></li>
+          <li>No fork/exec, no re-parse &mdash; faster builds</li>
+          <li>The default for <code>clang -c</code></li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">The LLVM MC Layer</h3>
+        <p><code>MCInst</code> is a target-neutral instruction record. The same MC stream drives:</p>
+        <ul>
+          <li><code>MCAsmStreamer</code> &rarr; textual <code>.s</code></li>
+          <li><code>MCObjectStreamer</code> &rarr; <code>.o</code> via an <code>MCCodeEmitter</code> (encodes opcodes to bytes) and an <code>MCAsmBackend</code> (relaxation, fixups)</li>
+        </ul>
+        <p style="margin-top:.2em;">One encoder, two outputs &mdash; the assembler and the compiler share machinery.</p>
+      </div>
+      <div class="card blue" style="margin-top:.4em;">
+        <h3 class="b">Encoding</h3>
+        <p>The emitter resolves each instruction to its binary form &mdash; opcode, ModRM/SIB on x86, fixed fields on AArch64 &mdash; and lays out sections (<code>.text</code>, <code>.data</code>, <code>.rodata</code>).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 25 — RELOCATIONS & HANDOFF ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">24</span>
+    <h2>Relocations &amp; the Linker Handoff</h2>
+  </div>
+  <p>The compiler emits one object file at a time and cannot know the final address of anything outside it &mdash; an external function, a global, a string. It leaves a <span class="a">relocation</span>: a note telling the linker "patch this field once you know the address". This is the bridge to Part 09.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">What a Relocation Is</h3>
+        <ul>
+          <li>A record: <em>(offset in section, symbol, type)</em></li>
+          <li>Type encodes the patch arithmetic: absolute64, PC-relative32, GOT/PLT-relative&hellip;</li>
+          <li>Emitted whenever an operand references a symbol whose address isn't yet fixed</li>
+        </ul>
+        <pre><code class="language-x86asm">call  printf       ; &rarr; R_X86_64_PLT32 reloc
+lea   rax, [rip + msg] ; &rarr; R_X86_64_PC32</code></pre>
+      </div>
+    </div>
+    <div>
+      <div class="card green">
+        <h3 class="g">The Assembler/Linker Split</h3>
+        <ul>
+          <li><span class="a">Assembler</span>: instructions &rarr; bytes + symbol table + relocations &rarr; <code>.o</code></li>
+          <li><span class="a">Linker</span>: combines objects, assigns final addresses, <em>applies</em> relocations, resolves symbols, builds the executable/shared object</li>
+        </ul>
+      </div>
+      <div class="card purple" style="margin-top:.4em;">
+        <h3 class="p">Teaser &rarr; Part 09</h3>
+        <p>Linking, dynamic loading, the GOT/PLT for position-independent code, and <em>just-in-time</em> compilation &mdash; where code is generated, relocated and executed at run time &mdash; are the subject of the next deck.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 26 — SUMMARY ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">25</span>
+    <h2>Summary &amp; Further Reading</h2>
+  </div>
+  <div class="cols cols-2">
+    <div>
+      <div class="card green">
+        <h3 class="g">Key Takeaways</h3>
+        <ul>
+          <li>The back end lowers optimised IR to target code via three interacting subproblems &mdash; a phase-ordering puzzle</li>
+          <li><span class="a">Selection</span>: cover the IR DAG with instruction tiles &mdash; maximal munch (greedy), BURS/iburg (optimal per tree), LLVM SelectionDAG &amp; GlobalISel; peephole cleans up</li>
+          <li><span class="a">Allocation</span>: map vregs &rarr; k registers as graph k-colouring (Chaitin&ndash;Briggs: simplify/spill/select, optimistic colouring); coalescing (Briggs/George) removes moves; linear scan is the fast JIT choice; SSA &rarr; chordal graphs colour in P; PBQP for irregular ISAs</li>
+          <li><span class="a">Scheduling</span>: list-schedule the dependence DAG by critical path to hide latency &mdash; in tension with register pressure; software pipelining overlaps loop iterations</li>
+          <li>The <span class="a">SysV AMD64 ABI</span> pins args to RDI/RSI/RDX/RCX/R8/R9, returns in RAX, requires 16-byte stack alignment at <code>call</code>, offers a 128-byte red zone &mdash; and constrains the allocator</li>
+          <li>Emission via the MC layer &rarr; <code>.s</code> or <code>.o</code>; relocations defer addresses to the linker</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card blue">
+        <h3 class="b">Further Reading</h3>
+        <ul>
+          <li>Aho, Lam, Sethi &amp; Ullman &mdash; the Dragon Book, ch. 8 (codegen) &amp; 10 (scheduling)</li>
+          <li>Cooper &amp; Torczon &mdash; <em>Engineering a Compiler</em>, ch. 11&ndash;13</li>
+          <li>Appel &mdash; <em>Modern Compiler Implementation</em>, ch. 9&ndash;11 (selection, allocation, scheduling)</li>
+          <li>Chaitin et al. (1981); Briggs, Cooper &amp; Torczon &mdash; <em>Improvements to Graph Colouring Register Allocation</em> (1994)</li>
+          <li>George &amp; Appel &mdash; <em>Iterated Register Coalescing</em> (1996)</li>
+          <li>Poletto &amp; Sarkar &mdash; <em>Linear Scan Register Allocation</em> (1999)</li>
+          <li>Fraser, Hanson &amp; Proebsting &mdash; <em>iburg</em> (BURS code generation)</li>
+          <li>The System V AMD64 ABI document; the AArch64 AAPCS64; the LLVM Code Generator &amp; MC docs</li>
+        </ul>
+      </div>
+      <div class="card purple" style="margin-top:.4em;">
+        <h3 class="p">Next &rarr; Part 09</h3>
+        <p><span class="a">Runtimes, JITs &amp; Modern Backends</span> &mdash; linking &amp; loading, garbage collection, the GOT/PLT, just-in-time compilation, tiered execution and tracing JITs.</p>
+      </div>
+      <div class="ss-row" style="margin-top:.4em; justify-content:center;">
+        <span class="ss-node done">Part 08 ✓</span>
+        <span class="ss-arrow">&rarr;</span>
+        <span class="ss-node active">Part 09: Runtimes, JITs &amp; Modern Backends</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+</div><!-- /slides -->
+</div><!-- /reveal -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/highlight/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/highlight/monokai.min.css">
+<script>
+Reveal.initialize({
+  hash: true,
+  slideNumber: 'c/t',
+  transition: 'fade',
+  transitionSpeed: 'fast',
+  controls: true,
+  progress: true,
+  center: false,
+  width: 1100,
+  height: 900,
+  margin: 0.01,
+  plugins: [RevealHighlight],
+  highlight: { theme: 'monokai' }
+});
+</script>
+<script>
+(function(){
+  var h = Reveal.getConfig().height || 900;
+  var m = Reveal.getConfig().margin || 0.02;
+  var maxH = Math.floor(h * (1 - 2 * m)) + 'px';
+  function fixSlides(){
+    document.querySelectorAll('.reveal .slides>section,.reveal .slides>section>section').forEach(function(s){
+      s.style.display = 'block';
+      s.style.maxHeight = maxH;
+    });
+  }
+  Reveal.on('ready', fixSlides);
+  Reveal.on('slidechanged', fixSlides);
+})();
+</script>
+</body>
+</html>

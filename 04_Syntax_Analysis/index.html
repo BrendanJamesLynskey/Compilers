@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compilers — Part 04: Syntax Analysis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/theme/black.min.css">
+<style>
+  :root {
+    --amber:  #f5a623;
+    --green:  #4ecb8d;
+    --purple: #a78bfa;
+    --blue:   #60a5fa;
+    --red:    #f87171;
+    --bg:     #0a0a0f;
+    --bg2:    #10101a;
+    --bg3:    #181824;
+    --border: #2a2a3a;
+    --text:   #e8e8f0;
+    --muted:  #8888a8;
+  }
+
+  .reveal-viewport { background: var(--bg); }
+  .reveal .slides section { background: transparent; }
+
+  .reveal { font-family: 'DM Sans', sans-serif; color: var(--text); }
+  .reveal h1, .reveal h2, .reveal h3 { font-family: 'Playfair Display', serif; font-weight: 700; }
+  .reveal h1 { font-size: 1.6em; color: var(--amber); line-height: 1.1; }
+  .reveal h2 { font-size: 1.1em; color: var(--amber); margin-bottom: .2em; }
+  .reveal h3 { font-size: .78em; color: var(--green); margin-bottom: .15em; }
+  .reveal p  { font-size: .56em; line-height: 1.45; color: var(--text); }
+  .reveal li { font-size: .54em; line-height: 1.45; margin-bottom: .1em; }
+  .reveal code { font-family: 'JetBrains Mono', monospace; font-size: .72em; }
+  .reveal pre  { box-shadow: none; background: var(--bg3); border: 1px solid var(--border);
+                 border-radius: 6px; padding: .3em .5em; margin: .25em 0; }
+  .reveal pre code { font-size: .52em; line-height: 1.35; background: transparent; color: #cdd6f4; }
+
+  /* ── slide chrome ── */
+  .slide-hdr {
+    display: flex; align-items: center; gap: .4em;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: .2em; margin-bottom: .3em;
+  }
+  .slide-hdr .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .42em; font-weight: 500;
+    color: var(--bg); background: var(--amber);
+    padding: .1em .4em; border-radius: 3px;
+    letter-spacing: .04em;
+  }
+  .slide-hdr h2 { margin: 0; font-size: .95em; }
+
+  /* ── two-column ── */
+  .cols   { display: grid; gap: .5em; }
+  .cols-2 { grid-template-columns: 1fr 1fr; }
+  .cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .cols-6040 { grid-template-columns: 6fr 4fr; }
+  .cols-4060 { grid-template-columns: 4fr 6fr; }
+
+  /* ── cards ── */
+  .card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 6px; padding: .35em .6em;
+  }
+  .card.amber { border-left: 3px solid var(--amber); }
+  .card.green { border-left: 3px solid var(--green); }
+  .card.purple{ border-left: 3px solid var(--purple); }
+  .card.blue  { border-left: 3px solid var(--blue); }
+  .card.red   { border-left: 3px solid var(--red); }
+  .card h3 { font-size: .64em; margin: 0 0 .12em; }
+  .card p  { font-size: .52em; margin: 0; color: #b8b8d0; }
+  .card ul { margin: 0; padding-left: 1em; }
+  .card li { font-size: .52em; color: #b8b8d0; margin-bottom: .02em; }
+
+  /* ── table ── */
+  .reveal table { width: 100%; border-collapse: collapse; font-size: .5em; }
+  .reveal table th { background: var(--bg3); color: var(--amber); font-weight: 600;
+                     padding: .2em .4em; border: 1px solid var(--border); text-align: left; }
+  .reveal table td { padding: .18em .4em; border: 1px solid var(--border); color: #ccc; }
+  .reveal table tr:nth-child(even) td { background: #0e0e18; }
+
+  /* ── accent spans ── */
+  .a  { color: var(--amber); font-weight: 600; }
+  .g  { color: var(--green); font-weight: 600; }
+  .p  { color: var(--purple); font-weight: 600; }
+  .b  { color: var(--blue); font-weight: 600; }
+  .r  { color: var(--red); font-weight: 600; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* ── SVG graph diagrams ── */
+  svg.diagram { display: block; margin: 0 auto; overflow: visible; }
+
+  /* ── pill badges ── */
+  .pill {
+    display: inline-block; font-family: 'JetBrains Mono', monospace;
+    font-size: .44em; padding: .08em .4em; border-radius: 99px;
+    border: 1px solid; margin: 0 .08em;
+  }
+  .pill.amber { color: var(--amber); border-color: var(--amber); }
+  .pill.green { color: var(--green); border-color: var(--green); }
+  .pill.purple{ color: var(--purple); border-color: var(--purple); }
+  .pill.blue  { color: var(--blue); border-color: var(--blue); }
+
+  /* ── footer — hidden; was overlapping scrollable content ── */
+  .reveal .slide-footer { display: none; }
+  /* title slide special */
+  .title-slide h1 { font-size: 1.8em; }
+  .title-slide .subtitle {
+    font-size: .7em; color: var(--green); font-family: 'DM Sans', sans-serif;
+    font-weight: 300; letter-spacing: .04em; margin: .3em 0 .6em;
+  }
+  .title-slide .meta { font-size: .48em; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+
+  /* ── super-step animator ── */
+  .ss-row {
+    display: flex; gap: .25em; align-items: center;
+    margin: .1em 0; font-size: .55em; font-family: 'JetBrains Mono', monospace;
+  }
+  .ss-node {
+    padding: .2em .55em; border-radius: 5px; font-size: .9em;
+    background: var(--bg3); border: 1px solid var(--border); color: var(--text);
+  }
+  .ss-node.active { background: #1a2a1a; border-color: var(--green); color: var(--green); }
+  .ss-node.done   { background: #1a1a2a; border-color: var(--purple); color: var(--purple); }
+  .ss-arrow { color: var(--amber); }
+  .ss-label { font-size: .8em; color: var(--muted); margin-left: .3em; }
+
+  /* reduce default margins */
+  .reveal ul, .reveal ol { margin: .15em 0 .15em 1em; }
+.reveal .slides > section { display: flex !important; flex-direction: column !important; overflow-y: auto !important; align-items: stretch !important; justify-content: flex-start !important; }
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+
+<!-- ═══════════════════════════════ SLIDE 01 — TITLE ═══════════════════════════════ -->
+<section class="title-slide" data-background-color="#0a0a0f">
+  <div style="text-align:left; max-width:820px; margin:0 auto; padding: 1em 0;">
+    <div style="font-family:'JetBrains Mono',monospace; font-size:.5em; color:var(--muted); margin-bottom:.4em; letter-spacing:.1em;">
+      COMPILERS SERIES &middot; PART 04 OF 10
+    </div>
+    <h1>Syntax Analysis<br>(Parsing)</h1>
+    <div class="subtitle">Part 04 &mdash; From a Token Stream to a Tree of Meaning</div>
+    <div style="width:60px; height:3px; background:var(--amber); margin-bottom:1.4em;"></div>
+    <div style="display:flex; gap:1.2em; flex-wrap:wrap; margin-bottom:1em;">
+      <span class="pill amber">CFGs</span>
+      <span class="pill green">LL &amp; LR</span>
+      <span class="pill purple">Pratt</span>
+      <span class="pill blue">ASTs</span>
+    </div>
+    <div class="ss-row" style="margin-top:0.6em;">
+      <span class="ss-node active">Grammar</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node active">Top-Down</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node active">Bottom-Up</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node active">Conflicts</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node done">AST</span>
+    </div>
+    <p style="max-width:640px; color:#a0a0c0; font-size:.56em; line-height:1.5; margin-top:1em;">
+      The parser is where a flat stream of tokens becomes a tree. We map the grammar-class landscape &mdash; LL, LR, SLR, LALR(1), GLR, PEG &mdash; build parsers by hand and by generator, climb expressions with Pratt parsing, trace a shift-reduce automaton, and resolve the conflicts that every real grammar throws at you
+    </p>
+    <div class="meta" style="margin-top:1.4em;">
+      Grammars &nbsp;&middot;&nbsp; FIRST/FOLLOW &nbsp;&middot;&nbsp; LR Tables &nbsp;&middot;&nbsp; AST Construction
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 02 — AGENDA ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">01</span>
+    <h2>Topics</h2>
+  </div>
+  <p>Parsing is the heart of the front end. We start from <span class="a">context-free grammars</span>, contrast the two great parsing families, and finish at the <span class="b">AST</span> that the rest of the compiler consumes.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">Grammars &amp; Trees</h3>
+        <ul>
+          <li>The parser's job; context-free grammars</li>
+          <li>Derivations &amp; sentential forms</li>
+          <li>Parse trees vs ASTs; ambiguity</li>
+          <li>Precedence &amp; associativity in grammars</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:.45em;">
+        <h3 class="g">Top-Down</h3>
+        <ul>
+          <li>Recursive descent &amp; predictive LL(1)</li>
+          <li>FIRST / FOLLOW sets &amp; the LL(1) table</li>
+          <li>Left-recursion &amp; left-factoring</li>
+          <li>Pratt parsing / precedence climbing</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">Bottom-Up</h3>
+        <ul>
+          <li>Shift-reduce, the stack &amp; handles</li>
+          <li>LR(0) items &amp; the canonical automaton</li>
+          <li>SLR vs LR(1) vs LALR(1); ACTION/GOTO</li>
+          <li>Shift/reduce &amp; reduce/reduce conflicts</li>
+        </ul>
+      </div>
+      <div class="card blue" style="margin-top:.45em;">
+        <h3 class="b">Tools &amp; Practice</h3>
+        <ul>
+          <li>The grammar-class hierarchy &amp; map</li>
+          <li>yacc/bison, ANTLR, menhir, tree-sitter, PEG</li>
+          <li>Error recovery &amp; diagnostics</li>
+          <li>AST design &amp; semantic actions</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 03 — ROLE OF THE PARSER ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">02</span>
+    <h2>What the Parser Does</h2>
+  </div>
+  <p>The lexer (Part 03) handed us a flat stream of <span class="g">tokens</span>. The <span class="a">parser</span> checks that those tokens form a valid sentence of the source language's grammar and, in the process, recovers the <em>structure</em> the flat stream lost &mdash; nesting, grouping, precedence.</p>
+  <div class="cols cols-6040">
+    <div>
+      <svg class="diagram" viewBox="0 0 520 175" width="520" height="175">
+        <rect x="10" y="60" width="120" height="50" rx="5" fill="#181824" stroke="#4ecb8d" stroke-width="1.4"/>
+        <text x="70" y="82" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="10">Tokens</text>
+        <text x="70" y="98" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="7.5">flat stream</text>
+        <line x1="132" y1="85" x2="185" y2="85" stroke="#f5a623" stroke-width="1.5" marker-end="url(#aA2)"/>
+        <rect x="188" y="50" width="140" height="70" rx="6" fill="#1a1a2a" stroke="#f5a623" stroke-width="1.6"/>
+        <text x="258" y="80" text-anchor="middle" fill="#f5a623" font-family="Playfair Display" font-size="13" font-weight="700">Parser</text>
+        <text x="258" y="98" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">grammar-driven</text>
+        <line x1="330" y1="85" x2="383" y2="85" stroke="#f5a623" stroke-width="1.5" marker-end="url(#aA2)"/>
+        <rect x="386" y="60" width="124" height="50" rx="5" fill="#181824" stroke="#60a5fa" stroke-width="1.4"/>
+        <text x="448" y="82" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="10">Tree</text>
+        <text x="448" y="98" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="7.5">parse tree / AST</text>
+        <line x1="258" y1="120" x2="258" y2="160" stroke="#f87171" stroke-width="1.3" marker-end="url(#aR2)"/>
+        <text x="258" y="170" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono" font-size="8">syntax errors</text>
+        <defs>
+          <marker id="aA2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#f5a623"/></marker>
+          <marker id="aR2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#f87171"/></marker>
+        </defs>
+      </svg>
+    </div>
+    <div>
+      <div class="card amber">
+        <h3 class="a">Three Jobs</h3>
+        <ul>
+          <li><span class="g">Recognise</span> &mdash; is this a sentence of the language?</li>
+          <li><span class="b">Build</span> &mdash; produce a tree capturing structure</li>
+          <li><span class="r">Diagnose</span> &mdash; report &amp; recover from errors</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">Why a Grammar?</h3>
+        <p>Regular expressions (the lexer's tool) cannot count nesting &mdash; they can't match balanced brackets. Recursion in the language needs a <span class="a">context-free grammar</span> and a stack.</p>
+      </div>
+    </div>
+  </div>
+  <p style="margin-top:.3em;">The lexer/parser split mirrors the Chomsky hierarchy: <span class="g">regular languages</span> for tokens, <span class="a">context-free languages</span> for phrase structure. Anything beyond &mdash; declared-before-use, type agreement &mdash; is left to <em>semantic</em> analysis (Part 05).</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 04 — CFGs ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">03</span>
+    <h2>Context-Free Grammars</h2>
+  </div>
+  <p>A <span class="a">CFG</span> is a 4-tuple <code>G = (N, &Sigma;, P, S)</code>: non-terminals <code>N</code>, terminals <code>&Sigma;</code>, productions <code>P</code>, and a distinguished start symbol <code>S</code>. Each production rewrites <em>one</em> non-terminal into a string of terminals and non-terminals.</p>
+  <div class="cols cols-2">
+    <div>
+      <pre><code class="language-ebnf">Expr   → Expr "+" Term
+       | Expr "-" Term
+       | Term
+Term   → Term "*" Factor
+       | Term "/" Factor
+       | Factor
+Factor → "(" Expr ")"
+       | number
+       | ident</code></pre>
+      <p style="margin-top:.2em; color:var(--muted); font-size:.5em;">The classic expression grammar. <code>Expr</code> is the start symbol; <code>+ - * / ( ) number ident</code> are terminals.</p>
+    </div>
+    <div>
+      <div class="card amber">
+        <h3 class="a">Terminals (<code>&Sigma;</code>)</h3>
+        <p>The token classes from the lexer &mdash; the leaves of every tree. They never appear on a production's left-hand side.</p>
+      </div>
+      <div class="card green" style="margin-top:.35em;">
+        <h3 class="g">Non-terminals (<code>N</code>)</h3>
+        <p>Syntactic variables naming <em>phrases</em>: <code>Expr</code>, <code>Term</code>, <code>Stmt</code>. Defined by their productions.</p>
+      </div>
+      <div class="card purple" style="margin-top:.35em;">
+        <h3 class="p">Productions (<code>P</code>)</h3>
+        <p>Rewrite rules <code>A → &alpha;</code>. &ldquo;Context-free&rdquo; because the LHS is a <em>single</em> non-terminal, replaceable regardless of context.</p>
+      </div>
+      <div class="card blue" style="margin-top:.35em;">
+        <h3 class="b">Start Symbol (<code>S</code>)</h3>
+        <p>The root non-terminal. The language <code>L(G)</code> is every terminal string derivable from <code>S</code>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 05 — DERIVATIONS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">04</span>
+    <h2>Derivations &amp; Sentential Forms</h2>
+  </div>
+  <p>A <span class="a">derivation</span> applies productions step by step, each rewriting one non-terminal, until only terminals remain. Each intermediate string is a <span class="g">sentential form</span>; one with no non-terminals left is a <em>sentence</em>.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card green">
+        <h3 class="g">Leftmost Derivation</h3>
+        <p>Always rewrite the <em>leftmost</em> non-terminal. For <code>a + b * c</code>:</p>
+      </div>
+      <pre><code class="language-plaintext">Expr
+⇒ Expr + Term         (Expr→Expr+Term)
+⇒ Term + Term         (Expr→Term)
+⇒ Factor + Term       (Term→Factor)
+⇒ a + Term            (Factor→ident)
+⇒ a + Term * Factor   (Term→Term*Factor)
+⇒ a + Factor * Factor
+⇒ a + b * Factor
+⇒ a + b * c</code></pre>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">Rightmost Derivation</h3>
+        <p>Always rewrite the <em>rightmost</em> non-terminal. Bottom-up (LR) parsers build a rightmost derivation <em>in reverse</em> &mdash; this is why they matter.</p>
+      </div>
+      <div class="card amber" style="margin-top:.4em;">
+        <h3 class="a">The Key Insight</h3>
+        <ul>
+          <li><span class="g">LL</span> parsers trace a <em>leftmost</em> derivation, top-down</li>
+          <li><span class="p">LR</span> parsers trace a <em>rightmost</em> derivation in reverse, bottom-up</li>
+          <li>Different leftmost/rightmost derivations can still yield the <em>same</em> parse tree</li>
+        </ul>
+      </div>
+      <div class="card blue" style="margin-top:.4em;">
+        <h3 class="b">Notation</h3>
+        <p><code>&alpha; ⇒ &beta;</code> is one step; <code>&alpha; ⇒* &beta;</code> is zero-or-more steps. <code>L(G) = { w &isin; &Sigma;* | S ⇒* w }</code>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 06 — PARSE TREE vs AST ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">05</span>
+    <h2>Parse Tree vs AST</h2>
+  </div>
+  <p>The <span class="g">parse tree</span> (concrete syntax tree) records <em>every</em> grammar symbol used &mdash; including chains like <code>Term→Factor</code> and the parentheses. The <span class="b">AST</span> (abstract syntax tree) keeps only the essential structure. Same input <code>a + b * c</code>:</p>
+  <svg class="diagram" viewBox="0 0 900 250" width="900" height="250">
+    <text x="225" y="18" text-anchor="middle" fill="#4ecb8d" font-family="Playfair Display" font-size="13" font-weight="700">Parse Tree (concrete)</text>
+    <text x="685" y="18" text-anchor="middle" fill="#60a5fa" font-family="Playfair Display" font-size="13" font-weight="700">AST (abstract)</text>
+    <!-- divider -->
+    <line x1="450" y1="30" x2="450" y2="245" stroke="#2a2a3a" stroke-width="1" stroke-dasharray="4"/>
+    <!-- PARSE TREE -->
+    <g font-family="JetBrains Mono" font-size="9">
+      <!-- nodes -->
+      <circle cx="225" cy="42" r="13" fill="#0e0e18" stroke="#4ecb8d"/><text x="225" y="46" text-anchor="middle" fill="#4ecb8d">Expr</text>
+      <circle cx="130" cy="88" r="13" fill="#0e0e18" stroke="#4ecb8d"/><text x="130" y="92" text-anchor="middle" fill="#4ecb8d">Expr</text>
+      <circle cx="225" cy="88" r="10" fill="#0e0e18" stroke="#f5a623"/><text x="225" y="92" text-anchor="middle" fill="#f5a623">+</text>
+      <circle cx="320" cy="88" r="13" fill="#0e0e18" stroke="#4ecb8d"/><text x="320" y="92" text-anchor="middle" fill="#4ecb8d">Term</text>
+      <circle cx="130" cy="134" r="13" fill="#0e0e18" stroke="#4ecb8d"/><text x="130" y="138" text-anchor="middle" fill="#4ecb8d">Term</text>
+      <circle cx="270" cy="134" r="13" fill="#0e0e18" stroke="#4ecb8d"/><text x="270" y="138" text-anchor="middle" fill="#4ecb8d">Term</text>
+      <circle cx="320" cy="134" r="10" fill="#0e0e18" stroke="#f5a623"/><text x="320" y="138" text-anchor="middle" fill="#f5a623">*</text>
+      <circle cx="372" cy="134" r="13" fill="#0e0e18" stroke="#4ecb8d"/><text x="372" y="138" text-anchor="middle" fill="#4ecb8d" font-size="7.5">Fact</text>
+      <circle cx="130" cy="180" r="13" fill="#0e0e18" stroke="#4ecb8d"/><text x="130" y="184" text-anchor="middle" fill="#4ecb8d" font-size="7.5">Fact</text>
+      <circle cx="270" cy="180" r="13" fill="#0e0e18" stroke="#4ecb8d"/><text x="270" y="184" text-anchor="middle" fill="#4ecb8d" font-size="7.5">Fact</text>
+      <circle cx="130" cy="222" r="11" fill="#0e0e18" stroke="#60a5fa"/><text x="130" y="226" text-anchor="middle" fill="#60a5fa">a</text>
+      <circle cx="270" cy="222" r="11" fill="#0e0e18" stroke="#60a5fa"/><text x="270" y="226" text-anchor="middle" fill="#60a5fa">b</text>
+      <circle cx="372" cy="180" r="11" fill="#0e0e18" stroke="#60a5fa"/><text x="372" y="184" text-anchor="middle" fill="#60a5fa">c</text>
+    </g>
+    <g stroke="#8888a8" stroke-width="0.9">
+      <line x1="215" y1="52" x2="138" y2="80"/><line x1="225" y1="55" x2="225" y2="78"/><line x1="235" y1="52" x2="312" y2="80"/>
+      <line x1="130" y1="101" x2="130" y2="121"/>
+      <line x1="312" y1="98" x2="278" y2="123"/><line x1="320" y1="98" x2="320" y2="124"/><line x1="328" y1="98" x2="365" y2="123"/>
+      <line x1="130" y1="147" x2="130" y2="167"/><line x1="270" y1="147" x2="270" y2="167"/>
+      <line x1="130" y1="193" x2="130" y2="211"/><line x1="270" y1="193" x2="270" y2="211"/><line x1="372" y1="147" x2="372" y2="169"/>
+    </g>
+    <!-- AST -->
+    <g font-family="JetBrains Mono" font-size="10">
+      <circle cx="685" cy="60" r="14" fill="#0e0e18" stroke="#f5a623"/><text x="685" y="64" text-anchor="middle" fill="#f5a623">+</text>
+      <circle cx="615" cy="130" r="13" fill="#0e0e18" stroke="#60a5fa"/><text x="615" y="134" text-anchor="middle" fill="#60a5fa">a</text>
+      <circle cx="760" cy="130" r="14" fill="#0e0e18" stroke="#f5a623"/><text x="760" y="134" text-anchor="middle" fill="#f5a623">*</text>
+      <circle cx="715" cy="195" r="13" fill="#0e0e18" stroke="#60a5fa"/><text x="715" y="199" text-anchor="middle" fill="#60a5fa">b</text>
+      <circle cx="805" cy="195" r="13" fill="#0e0e18" stroke="#60a5fa"/><text x="805" y="199" text-anchor="middle" fill="#60a5fa">c</text>
+    </g>
+    <g stroke="#8888a8" stroke-width="1">
+      <line x1="675" y1="72" x2="623" y2="119"/><line x1="695" y1="72" x2="751" y2="118"/>
+      <line x1="750" y1="142" x2="722" y2="183"/><line x1="770" y1="142" x2="798" y2="183"/>
+    </g>
+  </svg>
+  <p style="margin-top:.2em; text-align:center; color:var(--muted); font-size:.5em;">Eleven nodes collapse to five. The AST drops single-child chains and punctuation; <code>*</code> sits below <code>+</code>, so precedence survives as <em>shape</em>.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 07 — AMBIGUITY ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">06</span>
+    <h2>Ambiguity</h2>
+  </div>
+  <p>A grammar is <span class="r">ambiguous</span> if some sentence has more than one parse tree (equivalently, more than one leftmost derivation). Ambiguity means the structure &mdash; and therefore the <em>meaning</em> &mdash; is undefined.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card red">
+        <h3 class="r">The Classic Expression Grammar</h3>
+        <pre style="margin-top:.2em;"><code class="language-ebnf">E → E "+" E
+  | E "*" E
+  | number</code></pre>
+        <p style="margin-top:.2em;">For <code>1 + 2 * 3</code> this allows two trees: <code>(1+2)*3</code> and <code>1+(2*3)</code>. The grammar never says which &mdash; it has no built-in precedence.</p>
+      </div>
+      <div class="card amber" style="margin-top:.4em;">
+        <h3 class="a">Why It Matters</h3>
+        <p>An ambiguous grammar can't drive a deterministic parser without a tie-breaking rule. Most generators <em>report</em> the ambiguity as a conflict.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">The Dangling Else</h3>
+        <pre style="margin-top:.2em;"><code class="language-ebnf">S → "if" E "then" S "else" S
+  | "if" E "then" S
+  | other</code></pre>
+        <p style="margin-top:.2em;">In <code>if a then if b then s1 else s2</code>, does <code>else</code> bind to the inner or outer <code>if</code>? Two trees.</p>
+      </div>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">Fixes</h3>
+        <ul>
+          <li>Rewrite to an unambiguous grammar (stratify by precedence)</li>
+          <li>Add a disambiguating rule: &ldquo;<code>else</code> matches the <em>nearest</em> <code>if</code>&rdquo;</li>
+          <li>Use precedence/associativity declarations in the generator</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <p style="margin-top:.3em; color:var(--muted); font-size:.5em;">Some ambiguity is <em>inherent</em> &mdash; no equivalent unambiguous grammar exists &mdash; but the cases compilers meet are almost always fixable.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 08 — PRECEDENCE & ASSOCIATIVITY ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">07</span>
+    <h2>Encoding Precedence &amp; Associativity</h2>
+  </div>
+  <p>The cure for the ambiguous expression grammar is to <span class="a">stratify</span> it into one non-terminal per precedence level. Higher precedence sits <em>lower</em> in the grammar (closer to the leaves), so it binds tighter.</p>
+  <div class="cols cols-2">
+    <div>
+      <pre><code class="language-ebnf">Expr   → Expr "+" Term  | Term      // + is left-assoc,
+Term   → Term "*" Factor | Factor   //   lowest precedence
+Factor → "-" Factor                  // unary minus
+       | Power
+Power  → Atom "^" Power | Atom       // ^ is RIGHT-assoc
+Atom   → number | "(" Expr ")"</code></pre>
+      <div class="card green" style="margin-top:.3em;">
+        <h3 class="g">Associativity from Recursion</h3>
+        <p><span class="a">Left</span>-recursion (<code>Expr→Expr+Term</code>) &rarr; <em>left</em>-associative. <span class="a">Right</span>-recursion (<code>Power→Atom^Power</code>) &rarr; <em>right</em>-associative.</p>
+      </div>
+    </div>
+    <div>
+      <table>
+        <thead><tr><th>Level</th><th>Operators</th><th>Assoc.</th></tr></thead>
+        <tbody>
+          <tr><td>lowest</td><td><code>+ -</code></td><td>left</td></tr>
+          <tr><td>&darr;</td><td><code>* / %</code></td><td>left</td></tr>
+          <tr><td>&darr;</td><td>unary <code>-</code> <code>!</code></td><td>right</td></tr>
+          <tr><td>highest</td><td><code>^</code> (power)</td><td>right</td></tr>
+        </tbody>
+      </table>
+      <div class="card amber" style="margin-top:.4em;">
+        <h3 class="a">Two Routes to the Same End</h3>
+        <p>You can either bake precedence into the grammar's <em>shape</em> (as above) or keep a flat grammar and supply <span class="p">precedence declarations</span> to the generator (bison's <code>%left</code> / <code>%right</code>), or climb it numerically (Pratt &mdash; slide 13).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 09 — GRAMMAR-CLASS HIERARCHY SVG ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">08</span>
+    <h2>The Grammar-Class Hierarchy</h2>
+  </div>
+  <p>Not every CFG can be parsed deterministically with bounded lookahead. The parsing classes form a <span class="a">containment hierarchy</span> &mdash; each is the set of <em>grammars</em> a given method can handle. Bigger means more grammars accepted.</p>
+  <svg class="diagram" viewBox="0 0 900 270" width="900" height="270">
+    <!-- nested ellipses -->
+    <ellipse cx="370" cy="140" rx="355" ry="125" fill="#120f1a" stroke="#f87171" stroke-width="1.6"/>
+    <text x="370" y="35" text-anchor="middle" fill="#f87171" font-family="Playfair Display" font-size="13" font-weight="700">Unambiguous CFGs  ⊊  all CFGs (GLR)</text>
+    <ellipse cx="330" cy="150" rx="280" ry="100" fill="#161226" fill-opacity="0.7" stroke="#a78bfa" stroke-width="1.6"/>
+    <text x="330" y="72" text-anchor="middle" fill="#a78bfa" font-family="Playfair Display" font-size="12" font-weight="700">LR(1)</text>
+    <ellipse cx="300" cy="158" rx="205" ry="74" fill="#101826" fill-opacity="0.7" stroke="#60a5fa" stroke-width="1.5"/>
+    <text x="300" y="103" text-anchor="middle" fill="#60a5fa" font-family="Playfair Display" font-size="11" font-weight="700">LALR(1)</text>
+    <ellipse cx="280" cy="163" rx="135" ry="50" fill="#0e1a14" fill-opacity="0.7" stroke="#4ecb8d" stroke-width="1.5"/>
+    <text x="280" y="135" text-anchor="middle" fill="#4ecb8d" font-family="Playfair Display" font-size="11" font-weight="700">SLR(1)</text>
+    <ellipse cx="265" cy="170" rx="78" ry="30" fill="#1a160e" stroke="#f5a623" stroke-width="1.5"/>
+    <text x="265" y="174" text-anchor="middle" fill="#f5a623" font-family="Playfair Display" font-size="11" font-weight="700">LL(1)</text>
+    <!-- side notes -->
+    <g font-family="JetBrains Mono" font-size="8.5" fill="#8888a8">
+      <text x="745" y="120">PEG / packrat:</text>
+      <text x="745" y="134">ordered choice,</text>
+      <text x="745" y="148">no ambiguity,</text>
+      <text x="745" y="162">linear time, but</text>
+      <text x="745" y="176">a different class</text>
+    </g>
+    <text x="265" y="200" text-anchor="middle" fill="#f5a623" font-family="JetBrains Mono" font-size="8">recursive descent</text>
+    <text x="640" y="245" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8.5">LL(1) ⊊ SLR(1) ⊊ LALR(1) ⊊ LR(1) ⊊ unambiguous-CFG (GLR handles all CFGs)</text>
+  </svg>
+  <p style="margin-top:.2em; color:var(--muted); font-size:.5em;">Note: LL and LR are <em>incomparable in general</em> for arbitrary <em>k</em> &mdash; the clean chain above is the practical <em>k</em>=1 picture. ANTLR's ALL(*) and GLR sit outside it, trading determinism for power.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 10 — CLASS TABLE ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">09</span>
+    <h2>Who Can Parse What — a Map</h2>
+  </div>
+  <p>Each class trades <span class="a">grammar generality</span> against <span class="g">implementation simplicity</span> and <span class="b">error quality</span>. The dominant production choice is hand-written recursive descent (an LL flavour) or LALR(1) via a generator.</p>
+  <table>
+    <thead>
+      <tr><th>Class</th><th>Direction</th><th>Derivation</th><th>Lookahead</th><th>Typical use</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><span class="a">LL(k)</span></td><td>top-down</td><td>leftmost</td><td><em>k</em> tokens, predictive</td><td>recursive descent; hand-written</td></tr>
+      <tr><td><span class="a">LL(*) / ALL(*)</span></td><td>top-down</td><td>leftmost</td><td>adaptive, unbounded</td><td>ANTLR 4</td></tr>
+      <tr><td><span class="g">SLR(1)</span></td><td>bottom-up</td><td>rightmost (rev.)</td><td>FOLLOW-based</td><td>teaching; small tables</td></tr>
+      <tr><td><span class="b">LALR(1)</span></td><td>bottom-up</td><td>rightmost (rev.)</td><td>merged LR(1) states</td><td>yacc, bison, menhir</td></tr>
+      <tr><td><span class="p">LR(1)</span></td><td>bottom-up</td><td>rightmost (rev.)</td><td>full 1-token contexts</td><td>menhir (<code>--canonical</code>)</td></tr>
+      <tr><td><span class="r">GLR</span></td><td>bottom-up</td><td>all parses</td><td>forks on conflict</td><td>tree-sitter, Bison <code>%glr</code>, Elkhound</td></tr>
+      <tr><td><span class="g">PEG / packrat</span></td><td>top-down</td><td>ordered choice</td><td>unbounded, memoised</td><td>parser combinators, packrat</td></tr>
+    </tbody>
+  </table>
+  <div class="cols cols-2" style="margin-top:.35em;">
+    <div class="card amber">
+      <h3 class="a">Rule of Thumb</h3>
+      <p>Want the <em>best diagnostics</em> and full control &rarr; hand-written recursive descent. Want a grammar that's a near-direct transcription of the spec &rarr; an LALR(1)/LR generator. Need to parse a fuzzy or ambiguous real-world language (editors) &rarr; GLR (tree-sitter).</p>
+    </div>
+    <div class="card green">
+      <h3 class="g">Power vs Cost</h3>
+      <p>Moving down the list, you accept more grammars but pay in table size, build complexity, or error-message quality. GLR can be <span class="r">O(n³)</span> worst case; LL/LR are linear <span class="a">O(n)</span>; PEG is linear but memo-hungry.</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 11 — RECURSIVE DESCENT ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">10</span>
+    <h2>Top-Down: Recursive Descent</h2>
+  </div>
+  <p>The most direct parser: <span class="a">one function per non-terminal</span>. The call stack <em>is</em> the parse stack; the grammar reads straight off the code. This is how GCC, Clang and most hand-written parsers work.</p>
+  <div class="cols cols-6040">
+    <div>
+      <pre><code class="language-c">// Expr → Term (('+'|'-') Term)*
+Node *parse_expr(Parser *p) {
+    Node *lhs = parse_term(p);
+    while (peek(p) == '+' || peek(p) == '-') {
+        Tok op = advance(p);          // consume operator
+        Node *rhs = parse_term(p);
+        lhs = mk_binary(op, lhs, rhs); // build AST node
+    }
+    return lhs;
+}
+
+// Factor → number | '(' Expr ')'
+Node *parse_factor(Parser *p) {
+    if (peek(p) == '(') {
+        expect(p, '(');
+        Node *e = parse_expr(p);
+        expect(p, ')');               // error if missing
+        return e;
+    }
+    return mk_num(expect(p, NUMBER));
+}</code></pre>
+    </div>
+    <div>
+      <div class="card green">
+        <h3 class="g">Why It's Loved</h3>
+        <ul>
+          <li>Reads like the grammar &mdash; trivial to follow &amp; debug</li>
+          <li>Arbitrary code at any point &rarr; superb error messages</li>
+          <li>Easy to add lookahead, backtracking, error recovery</li>
+        </ul>
+      </div>
+      <div class="card red" style="margin-top:.4em;">
+        <h3 class="r">The One Trap</h3>
+        <p>Direct <em>left-recursion</em> (<code>Expr→Expr+Term</code>) makes <code>parse_expr</code> call itself forever. We rewrite left-recursion into the iterative loop shown &mdash; slide 14.</p>
+      </div>
+      <div class="card amber" style="margin-top:.4em;">
+        <h3 class="a">Predictive</h3>
+        <p>When one lookahead token uniquely picks the production, no backtracking is needed &mdash; that's <span class="b">LL(1)</span>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 12 — FIRST / FOLLOW ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">11</span>
+    <h2>FIRST, FOLLOW &amp; the LL(1) Table</h2>
+  </div>
+  <p>To decide which production to take from one lookahead, a predictive parser precomputes two sets. <span class="a">FIRST(&alpha;)</span> = terminals that can <em>begin</em> a string derived from <code>&alpha;</code>. <span class="g">FOLLOW(A)</span> = terminals that can appear <em>immediately after</em> <code>A</code>.</p>
+  <div class="cols cols-2">
+    <div>
+      <pre><code class="language-ebnf">E  → T E'
+E' → "+" T E' | ε
+T  → F T'
+T' → "*" F T' | ε
+F  → "(" E ")" | id</code></pre>
+      <table style="margin-top:.3em;">
+        <thead><tr><th>X</th><th>FIRST</th><th>FOLLOW</th></tr></thead>
+        <tbody>
+          <tr><td>E</td><td>( id</td><td>$ )</td></tr>
+          <tr><td>E'</td><td>+ ε</td><td>$ )</td></tr>
+          <tr><td>T</td><td>( id</td><td>+ $ )</td></tr>
+          <tr><td>T'</td><td>* ε</td><td>+ $ )</td></tr>
+          <tr><td>F</td><td>( id</td><td>* + $ )</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <div class="card amber">
+        <h3 class="a">FIRST rules</h3>
+        <ul>
+          <li>Terminal <code>a</code>: FIRST = {<code>a</code>}</li>
+          <li><code>A→X₁X₂…</code>: add FIRST(X₁); if X₁ ⇒* ε, also FIRST(X₂)…</li>
+          <li>If all can vanish, add ε</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:.35em;">
+        <h3 class="g">FOLLOW rules</h3>
+        <ul>
+          <li>Put <code>$</code> in FOLLOW(start)</li>
+          <li><code>A→&alpha;B&beta;</code>: add FIRST(&beta;)\{ε} to FOLLOW(B)</li>
+          <li>If &beta; ⇒* ε (or empty): add FOLLOW(A) to FOLLOW(B)</li>
+        </ul>
+      </div>
+      <div class="card blue" style="margin-top:.35em;">
+        <h3 class="b">Building the LL(1) Table</h3>
+        <p>For each <code>A→&alpha;</code>: put it under <code>M[A,t]</code> for every <code>t&isin;FIRST(&alpha;)</code>; if ε&isin;FIRST(&alpha;), also for every <code>t&isin;FOLLOW(A)</code>. <span class="r">Two entries in one cell = not LL(1).</span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 13 — PRATT PARSING ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">12</span>
+    <h2>Pratt Parsing / Precedence Climbing</h2>
+  </div>
+  <p>For expressions, recursive descent needs a function per precedence level. <span class="a">Pratt parsing</span> (Vaughan Pratt, 1973) collapses them into one loop driven by <span class="g">binding powers</span> &mdash; the technique behind many real parsers (Go, Clang's expressions, rustc, Crafting Interpreters).</p>
+  <div class="cols cols-6040">
+    <div>
+      <pre><code class="language-python"># binding power table: (left_bp, right_bp)
+BP = {'+':(10,11), '-':(10,11),    # left-assoc
+      '*':(20,21), '/':(20,21),
+      '^':(31,30)}                  # right-assoc
+
+def expr(p, min_bp=0):
+    lhs = atom(p)                   # number / (expr) / unary
+    while True:
+        op = p.peek()
+        if op not in BP: break
+        lbp, rbp = BP[op]
+        if lbp &lt; min_bp: break      # stop: weaker than caller
+        p.next()                    # consume operator
+        rhs = expr(p, rbp)          # recurse with op's right bp
+        lhs = ('binary', op, lhs, rhs)
+    return lhs</code></pre>
+    </div>
+    <div>
+      <div class="card green">
+        <h3 class="g">The Trick</h3>
+        <p>Each operator carries a <em>left</em> and <em>right</em> binding power. Asymmetry encodes associativity: <code>(31,30)</code> for <code>^</code> lets a later <code>^</code> bind, giving <em>right</em>-association.</p>
+      </div>
+      <div class="card amber" style="margin-top:.4em;">
+        <h3 class="a">Why Real Parsers Use It</h3>
+        <ul>
+          <li>One small function for <em>all</em> operators</li>
+          <li>Add an operator = add a table row</li>
+          <li>Linear time, no grammar stratification, easy unary/postfix/ternary</li>
+        </ul>
+      </div>
+      <div class="card blue" style="margin-top:.4em;">
+        <h3 class="b">Same Idea, Two Names</h3>
+        <p>&ldquo;Precedence climbing&rdquo; (Clarke) and &ldquo;Pratt parsing&rdquo; are essentially the same algorithm framed differently.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 14 — LEFT RECURSION & FACTORING ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">13</span>
+    <h2>Left-Recursion &amp; Left-Factoring</h2>
+  </div>
+  <p>Top-down parsers can't handle <span class="r">left-recursion</span> (infinite loop) or <span class="r">common prefixes</span> (can't choose with one token). Two mechanical transforms make a grammar LL-friendly while preserving the language.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card red"><h3 class="r">Eliminate Left-Recursion</h3></div>
+      <pre style="margin-top:.2em;"><code class="language-ebnf">// before  (left-recursive)
+A → A α | β
+
+// after   (right-recursive + ε)
+A  → β A'
+A' → α A' | ε</code></pre>
+      <pre style="margin-top:.2em;"><code class="language-ebnf">// concretely
+Expr → Expr "+" Term | Term
+   ⇓
+Expr  → Term Expr'
+Expr' → "+" Term Expr' | ε</code></pre>
+    </div>
+    <div>
+      <div class="card amber"><h3 class="a">Left-Factoring</h3></div>
+      <pre style="margin-top:.2em;"><code class="language-ebnf">// before  (common prefix — can't pick)
+S → "if" E "then" S "else" S
+  | "if" E "then" S
+
+// after   (factor the shared prefix)
+S  → "if" E "then" S S'
+S' → "else" S | ε</code></pre>
+      <div class="card green" style="margin-top:.35em;">
+        <h3 class="g">In Practice</h3>
+        <p>Hand-written recursive descent rarely applies these literally &mdash; it just writes the <em>loop</em> from slide 11, which <em>is</em> the eliminated form. The transforms matter most when feeding an LL generator.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 15 — SHIFT-REDUCE ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">14</span>
+    <h2>Bottom-Up: Shift-Reduce Parsing</h2>
+  </div>
+  <p>Bottom-up parsers build the tree from the <em>leaves up</em>, tracing a rightmost derivation in reverse. They keep a <span class="a">stack</span> and repeatedly choose between two moves: <span class="g">shift</span> the next token onto the stack, or <span class="p">reduce</span> a stack suffix matching a production's RHS back to its LHS.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card green">
+        <h3 class="g">Shift</h3>
+        <p>Push the next input token onto the stack.</p>
+      </div>
+      <div class="card purple" style="margin-top:.35em;">
+        <h3 class="p">Reduce</h3>
+        <p>The stack top matches a production RHS (a <span class="a">handle</span>); pop it, push the LHS non-terminal. This builds one AST node.</p>
+      </div>
+      <div class="card amber" style="margin-top:.35em;">
+        <h3 class="a">Handle</h3>
+        <p>A <em>handle</em> is the substring whose reduction is the correct next step in the reverse rightmost derivation. The whole problem is: <em>find the handle</em>. The LR automaton answers it.</p>
+      </div>
+      <div class="card blue" style="margin-top:.35em;">
+        <h3 class="b">Accept / Error</h3>
+        <p>Accept when the stack is just <code>S</code> and input is <code>$</code>. Error when no shift or reduce is legal.</p>
+      </div>
+    </div>
+    <div>
+      <p style="margin-bottom:.1em;">Trace for <code>id * id</code> with the slide-12 grammar:</p>
+      <table>
+        <thead><tr><th>Stack</th><th>Input</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr><td>$</td><td>id * id $</td><td>shift</td></tr>
+          <tr><td>$ id</td><td>* id $</td><td>reduce F→id</td></tr>
+          <tr><td>$ F</td><td>* id $</td><td>reduce T→F</td></tr>
+          <tr><td>$ T</td><td>* id $</td><td>shift</td></tr>
+          <tr><td>$ T *</td><td>id $</td><td>shift</td></tr>
+          <tr><td>$ T * id</td><td>$</td><td>reduce F→id</td></tr>
+          <tr><td>$ T * F</td><td>$</td><td>reduce T→T*F</td></tr>
+          <tr><td>$ T</td><td>$</td><td>reduce E→T</td></tr>
+          <tr><td>$ E</td><td>$</td><td><span class="g">accept</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 16 — LR(0) ITEMS & AUTOMATON ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">15</span>
+    <h2>LR(0) Items &amp; the Canonical Automaton</h2>
+  </div>
+  <p>How does the parser know when a handle is on the stack? It runs a DFA over <em>grammar symbols</em>. Each state is a set of <span class="a">LR(0) items</span> &mdash; productions with a dot <code>&bull;</code> marking how much has been seen. The dot at the end means &ldquo;handle complete &rarr; reduce&rdquo;.</p>
+  <div class="cols cols-6040">
+    <div>
+      <svg class="diagram" viewBox="0 0 540 250" width="540" height="250">
+        <!-- I0 -->
+        <rect x="10" y="20" width="170" height="70" rx="6" fill="#1a160e" stroke="#f5a623" stroke-width="1.5"/>
+        <text x="20" y="38" fill="#f5a623" font-family="JetBrains Mono" font-size="9">I0</text>
+        <text x="20" y="52" fill="#8888a8" font-family="JetBrains Mono" font-size="8">E'→ • E</text>
+        <text x="20" y="64" fill="#8888a8" font-family="JetBrains Mono" font-size="8">E → • E + T</text>
+        <text x="20" y="76" fill="#8888a8" font-family="JetBrains Mono" font-size="8">E → • T   …</text>
+        <!-- I1 -->
+        <rect x="230" y="20" width="170" height="56" rx="6" fill="#0e1a14" stroke="#4ecb8d" stroke-width="1.5"/>
+        <text x="240" y="38" fill="#4ecb8d" font-family="JetBrains Mono" font-size="9">I1</text>
+        <text x="240" y="52" fill="#8888a8" font-family="JetBrains Mono" font-size="8">E'→ E •</text>
+        <text x="240" y="64" fill="#8888a8" font-family="JetBrains Mono" font-size="8">E → E • + T</text>
+        <!-- I2 -->
+        <rect x="230" y="105" width="170" height="44" rx="6" fill="#101826" stroke="#60a5fa" stroke-width="1.5"/>
+        <text x="240" y="123" fill="#60a5fa" font-family="JetBrains Mono" font-size="9">I2</text>
+        <text x="240" y="137" fill="#8888a8" font-family="JetBrains Mono" font-size="8">E → T •   (reduce)</text>
+        <!-- I5 -->
+        <rect x="230" y="178" width="200" height="56" rx="6" fill="#161226" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="240" y="196" fill="#a78bfa" font-family="JetBrains Mono" font-size="9">I5</text>
+        <text x="240" y="210" fill="#8888a8" font-family="JetBrains Mono" font-size="8">E → E + • T</text>
+        <text x="240" y="222" fill="#8888a8" font-family="JetBrains Mono" font-size="8">T → • F  …</text>
+        <!-- edges -->
+        <line x1="180" y1="42" x2="228" y2="42" stroke="#f5a623" stroke-width="1.3" marker-end="url(#aLR)"/>
+        <text x="204" y="36" text-anchor="middle" fill="#f5a623" font-family="JetBrains Mono" font-size="8">E</text>
+        <line x1="100" y1="90" x2="270" y2="103" stroke="#60a5fa" stroke-width="1.3" marker-end="url(#aLRb)"/>
+        <text x="180" y="104" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="8">T</text>
+        <line x1="315" y1="76" x2="315" y2="176" stroke="#a78bfa" stroke-width="1.3" marker-end="url(#aLRp)"/>
+        <text x="325" y="130" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono" font-size="8">+</text>
+        <defs>
+          <marker id="aLR" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#f5a623"/></marker>
+          <marker id="aLRb" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#60a5fa"/></marker>
+          <marker id="aLRp" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#a78bfa"/></marker>
+        </defs>
+      </svg>
+    </div>
+    <div>
+      <div class="card amber">
+        <h3 class="a">Closure &amp; Goto</h3>
+        <ul>
+          <li><span class="g">closure</span>: if the dot precedes <code>A</code>, add all <code>A→•&hellip;</code> items</li>
+          <li><span class="b">goto(I, X)</span>: advance the dot over <code>X</code>, take closure &rarr; next state</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">The Canonical Collection</h3>
+        <p>Start from <code>closure({S'→•S})</code> and apply <code>goto</code> until no new item sets appear. That set of states <em>is</em> the LR(0) automaton driving the parse stack.</p>
+      </div>
+      <div class="card purple" style="margin-top:.4em;">
+        <h3 class="p">Stack = State Path</h3>
+        <p>The parser stack actually holds <em>states</em>, not symbols. The current state's items tell it whether to shift or which rule to reduce.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 17 — SLR / LR(1) / LALR ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">16</span>
+    <h2>SLR vs LR(1) vs LALR(1)</h2>
+  </div>
+  <p>LR(0) alone often hits states with both a shift and a reduce item and no way to choose. The three flavours differ in <span class="a">how much lookahead context</span> they attach to reduce decisions.</p>
+  <div class="cols cols-3">
+    <div class="card green">
+      <h3 class="g">SLR(1)</h3>
+      <p>Reduce <code>A→&alpha;</code> only when the next token is in <span class="a">FOLLOW(A)</span>. Cheapest, but FOLLOW is too coarse &mdash; rejects many real grammars.</p>
+    </div>
+    <div class="card purple">
+      <h3 class="p">LR(1)</h3>
+      <p>Each item carries an <em>exact</em> lookahead token: items are <code>[A→&alpha;•&beta;, a]</code>. Most powerful deterministic LR, but state counts explode (thousands &rarr; tens of thousands).</p>
+    </div>
+    <div class="card blue">
+      <h3 class="b">LALR(1)</h3>
+      <p>Build LR(1), then <em>merge</em> states with identical cores (same items, different lookaheads). Nearly LR(1) power at LR(0) table size &mdash; the sweet spot.</p>
+    </div>
+  </div>
+  <div class="cols cols-2" style="margin-top:.45em;">
+    <div class="card amber">
+      <h3 class="a">Why LALR(1) Won</h3>
+      <p>DeRemer's 1969 LALR construction gives compact tables that handle almost every practical programming-language grammar. <span class="g">yacc</span> (Johnson, 1975) made it the industry default; <span class="g">bison</span> and <span class="g">menhir</span> continue it.</p>
+    </div>
+    <div class="card red">
+      <h3 class="r">The LALR Catch</h3>
+      <p>State merging can introduce <em>new</em> reduce/reduce conflicts that pure LR(1) wouldn't have. Rare in practice, but it's why menhir offers a <code>--canonical</code> (full LR(1)) mode.</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 18 — ACTION / GOTO ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">17</span>
+    <h2>The ACTION / GOTO Tables</h2>
+  </div>
+  <p>The automaton is compiled into two tables. <span class="a">ACTION[state, terminal]</span> &rarr; shift <em>s</em>, reduce <em>r</em>, accept, or error. <span class="g">GOTO[state, non-terminal]</span> &rarr; the state to enter after a reduction. The driver is a tiny, fixed loop.</p>
+  <div class="cols cols-2">
+    <div>
+      <pre><code class="language-c">// Table-driven LR driver (the heart of yacc output)
+for (;;) {
+  State s = top(stack);
+  Token a = peek();
+  Action act = ACTION[s][a];
+  switch (act.kind) {
+    case SHIFT:                 // sN
+      push(act.state);
+      advance();
+      break;
+    case REDUCE:                // rN: A → β
+      pop(|β| states);
+      State t = top(stack);
+      push(GOTO[t][A]);
+      emit_ast_node(A);         // semantic action
+      break;
+    case ACCEPT: return root;
+    case ERROR:  recover();     // see slide 21
+  }
+}</code></pre>
+    </div>
+    <div>
+      <p style="margin-bottom:.1em;">A fragment of the table for the expression grammar:</p>
+      <table>
+        <thead><tr><th>State</th><th>id</th><th>+</th><th>*</th><th>$</th><th>E</th><th>T</th></tr></thead>
+        <tbody>
+          <tr><td>0</td><td>s5</td><td></td><td></td><td></td><td>1</td><td>2</td></tr>
+          <tr><td>1</td><td></td><td>s6</td><td></td><td>acc</td><td></td><td></td></tr>
+          <tr><td>2</td><td></td><td>r2</td><td>s7</td><td>r2</td><td></td><td></td></tr>
+          <tr><td>5</td><td></td><td>r6</td><td>r6</td><td>r6</td><td></td><td></td></tr>
+          <tr><td>6</td><td>s5</td><td></td><td></td><td></td><td></td><td>9</td></tr>
+        </tbody>
+      </table>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">Linear &amp; Fast</h3>
+        <p>Each token causes a bounded number of moves &rarr; <span class="a">O(n)</span> total. The tables are generated <em>once</em> at build time; parsing is just array lookups and a stack.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 19 — CONFLICTS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">18</span>
+    <h2>Conflicts: Shift/Reduce &amp; Reduce/Reduce</h2>
+  </div>
+  <p>A conflict is a table cell with two actions &mdash; the grammar isn't in the class the generator targets. Every yacc/bison user meets these; resolving them is a craft.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">Shift/Reduce</h3>
+        <p>The state could shift <em>or</em> reduce. The canonical case is the <span class="p">dangling else</span>: after <code>if E then S</code>, on seeing <code>else</code>, shift (bind inner) or reduce (bind outer)?</p>
+        <pre style="margin-top:.2em;"><code class="language-plaintext">state: S → if E then S • [• else …]
+on 'else':  shift  → inner if   (usual)
+            reduce → outer if</code></pre>
+        <p style="margin-top:.2em;">Generators default to <span class="g">shift</span>, which happens to give the desired &ldquo;nearest <code>if</code>&rdquo; rule &mdash; benign, but warned about.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card red">
+        <h3 class="r">Reduce/Reduce</h3>
+        <p>Two different productions could both reduce the same handle. Almost always a real grammar bug &mdash; never resolve it by ignoring; fix the grammar.</p>
+        <pre style="margin-top:.2em;"><code class="language-plaintext">A → x •     (reduce A→x)
+B → x •     (reduce B→x)   ← which?</code></pre>
+      </div>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">Precedence Declarations</h3>
+        <p>bison's <code>%left '+'</code>, <code>%left '*'</code>, <code>%right '^'</code>, <code>%nonassoc</code> assign precedence &amp; associativity to tokens, automatically resolving operator shift/reduce conflicts <em>without</em> rewriting the grammar.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 20 — PARSER GENERATORS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">19</span>
+    <h2>Parser Generators &amp; Toolkits</h2>
+  </div>
+  <p>You rarely write LR tables by hand. A generator reads a grammar with embedded <span class="a">semantic actions</span> and emits the parser. The choice of tool fixes the grammar class, the error story, and the workflow.</p>
+  <table>
+    <thead>
+      <tr><th>Tool</th><th>Algorithm</th><th>Language</th><th>Notable for</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><span class="a">yacc / bison</span></td><td>LALR(1) (bison: GLR opt.)</td><td>C/C++</td><td>the classic; powers many real compilers &amp; tools</td></tr>
+      <tr><td><span class="g">menhir</span></td><td>LALR(1) &amp; full LR(1)</td><td>OCaml</td><td>excellent conflict explanations, modular grammars</td></tr>
+      <tr><td><span class="b">ANTLR 4</span></td><td>ALL(*) adaptive LL</td><td>Java/many targets</td><td>readable LL grammars, great tooling &amp; IDE support</td></tr>
+      <tr><td><span class="p">tree-sitter</span></td><td>GLR (incremental)</td><td>C / many</td><td>editor parsing: incremental, error-tolerant</td></tr>
+      <tr><td><span class="r">PEG / packrat</span></td><td>ordered-choice PEG</td><td>many</td><td>combined lex+parse, linear w/ memoisation</td></tr>
+      <tr><td><span class="g">parser combinators</span></td><td>recursive descent (lib)</td><td>Haskell, Rust&hellip;</td><td>parsers as composable values (parsec, nom)</td></tr>
+    </tbody>
+  </table>
+  <div class="cols cols-2" style="margin-top:.35em;">
+    <div class="card amber">
+      <h3 class="a">PEG &amp; Packrat</h3>
+      <p>A <span class="p">Parsing Expression Grammar</span> replaces ambiguous <code>|</code> with <em>ordered choice</em> <code>/</code> &mdash; the first alternative that matches wins, so PEGs are unambiguous by construction. <span class="g">Packrat</span> parsing memoises every (rule, position) result &rarr; guaranteed linear time at the cost of memory. Downside: ordered choice can silently mask alternatives, and error reporting is weaker.</p>
+    </div>
+    <div class="card green">
+      <h3 class="g">Combinators</h3>
+      <p>In functional languages, parsers are first-class functions combined with <code>&lt;|&gt;</code>, <code>many</code>, <code>seq</code>. They <em>are</em> recursive descent expressed compositionally &mdash; great ergonomics, but watch backtracking cost and left-recursion (still forbidden).</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 21 — ERROR RECOVERY ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">20</span>
+    <h2>Error Recovery &amp; Diagnostics</h2>
+  </div>
+  <p>A compiler that stops at the first error is useless. Good parsers <span class="a">recover</span> &mdash; report the error, then resynchronise to keep finding more &mdash; without an avalanche of bogus follow-on errors.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">Panic-Mode</h3>
+        <p>On error, discard tokens until a <em>synchronising</em> token (<code>;</code>, <code>}</code>, <code>end</code>) appears, then resume. Simple, robust, the workhorse of recursive descent.</p>
+      </div>
+      <div class="card green" style="margin-top:.35em;">
+        <h3 class="g">Phrase-Level</h3>
+        <p>Locally repair: insert a missing <code>;</code>, delete a stray token, swap two. Lets the parser limp on as if the input were correct.</p>
+      </div>
+      <div class="card purple" style="margin-top:.35em;">
+        <h3 class="p">Error Productions</h3>
+        <p>Add grammar rules for <em>common mistakes</em> (bison's <code>error</code> token) so the parser recognises and reports them precisely.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card blue">
+        <h3 class="b">Why Hand-Written Wins on Errors</h3>
+        <ul>
+          <li>Full context at the failure point &rarr; specific, actionable messages</li>
+          <li>Custom recovery per construct (e.g. unclosed brace)</li>
+          <li>&ldquo;Did you mean&hellip;&rdquo;, fix-its, ranges &mdash; hard to retrofit onto table-driven parsers</li>
+        </ul>
+      </div>
+      <div class="card red" style="margin-top:.4em;">
+        <h3 class="r">Production Reality</h3>
+        <p><span class="a">GCC</span> moved from a bison grammar to a <em>hand-written</em> recursive-descent C/C++ parser (2004) chiefly for diagnostics. <span class="a">Clang</span> and <span class="a">Roslyn</span> (C#/VB) are hand-written recursive descent for the same reason &mdash; and to support IDEs with incremental, error-tolerant parsing.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 22 — AST DESIGN ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">21</span>
+    <h2>AST Design &amp; Construction</h2>
+  </div>
+  <p>The parser's real product is the <span class="a">AST</span>. It's built on the fly by <span class="g">semantic actions</span> &mdash; code attached to productions (or written inline in recursive descent) that constructs a node as each rule completes.</p>
+  <div class="cols cols-2">
+    <div>
+      <pre><code class="language-rust">// A typical AST as a Rust enum (sum type)
+enum Expr {
+    Num(f64),
+    Var(String),
+    Unary  { op: UnOp,  rhs: Box&lt;Expr&gt; },
+    Binary { op: BinOp, lhs: Box&lt;Expr&gt;, rhs: Box&lt;Expr&gt; },
+    Call   { callee: String, args: Vec&lt;Expr&gt; },
+}
+enum Stmt {
+    Let   { name: String, init: Expr },
+    If    { cond: Expr, then: Box&lt;Stmt&gt;, els: Option&lt;Box&lt;Stmt&gt;&gt; },
+    Block(Vec&lt;Stmt&gt;),
+    Expr(Expr),
+}</code></pre>
+      <pre style="margin-top:.2em;"><code class="language-plaintext"># bison semantic action ($$ = result, $1.. = children)
+expr : expr '+' term  { $$ = mk_bin(ADD, $1, $3); }
+     | term           { $$ = $1; }</code></pre>
+    </div>
+    <div>
+      <div class="card green">
+        <h3 class="g">What Goes In a Node</h3>
+        <ul>
+          <li>Its kind &amp; children (the structure)</li>
+          <li><span class="a">Source spans</span> (line/col) for diagnostics &amp; tooling</li>
+          <li>Slots for later phases: resolved type, symbol, constant value</li>
+        </ul>
+      </div>
+      <div class="card amber" style="margin-top:.4em;">
+        <h3 class="a">Concrete vs Abstract</h3>
+        <p>Keep the AST <em>abstract</em>: drop parentheses, semicolons, single-child chains. Some tools (rust-analyzer, tree-sitter) keep a <span class="p">lossless</span> CST for refactoring/formatting and derive an AST view from it.</p>
+      </div>
+      <div class="card blue" style="margin-top:.4em;">
+        <h3 class="b">Hand-Off</h3>
+        <p>This tree is exactly what <span class="g">Part 05</span> walks to resolve names and check types &mdash; the bridge from syntax to meaning.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 23 — TOP-DOWN vs BOTTOM-UP ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">22</span>
+    <h2>Top-Down vs Bottom-Up — Choosing</h2>
+  </div>
+  <p>Both produce the same AST; they differ in <em>how</em> they find it and in their engineering trade-offs. The industry has largely converged on <span class="a">hand-written recursive descent + Pratt</span> for serious compilers, generators for everything else.</p>
+  <table>
+    <thead><tr><th></th><th>Top-Down (LL / recursive descent)</th><th>Bottom-Up (LR / LALR)</th></tr></thead>
+    <tbody>
+      <tr><td>Derivation</td><td>leftmost, predict from the top</td><td>rightmost-reverse, recognise from leaves</td></tr>
+      <tr><td>Grammar power</td><td>smaller class; no left-recursion</td><td>larger class; left-recursion is natural</td></tr>
+      <tr><td>Readability</td><td>code mirrors grammar &mdash; very readable</td><td>opaque tables; debug via the generator</td></tr>
+      <tr><td>Error messages</td><td>excellent, full context</td><td>harder; improving (menhir, ANTLR)</td></tr>
+      <tr><td>Who uses it</td><td>GCC, Clang, Roslyn, V8, Go, rustc</td><td>Ruby (parse.y), PHP, Bash, many DSLs</td></tr>
+    </tbody>
+  </table>
+  <div class="cols cols-2" style="margin-top:.4em;">
+    <div class="card green">
+      <h3 class="g">Pick Recursive Descent When</h3>
+      <p>Diagnostics &amp; IDE support matter, the language is stable, you want full control, and the grammar fits LL with a Pratt expression sub-parser. (Almost every modern production compiler.)</p>
+    </div>
+    <div class="card purple">
+      <h3 class="p">Pick a Generator When</h3>
+      <p>The grammar is large/evolving, you want the spec to <em>be</em> the parser, left-recursion abounds, or you're prototyping a DSL. menhir &amp; ANTLR give the best modern experience.</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 24 — SUMMARY ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">23</span>
+    <h2>Summary &amp; Further Reading</h2>
+  </div>
+  <div class="cols cols-2">
+    <div>
+      <div class="card green">
+        <h3 class="g">Key Takeaways</h3>
+        <ul>
+          <li>The parser turns tokens into a tree, driven by a context-free grammar</li>
+          <li>Parse tree = concrete; AST = abstract; precedence lives in the tree's <em>shape</em></li>
+          <li>Ambiguity (expr grammar, dangling-else) is fixed by stratifying or by precedence rules</li>
+          <li>Classes nest: LL(1) ⊊ SLR ⊊ LALR(1) ⊊ LR(1) ⊊ GLR; PEG sits apart</li>
+          <li>Top-down: recursive descent + FIRST/FOLLOW; Pratt parsing for expressions</li>
+          <li>Bottom-up: shift-reduce, LR(0) items, ACTION/GOTO tables, LALR(1) tooling</li>
+          <li>Conflicts = grammar out of class; precedence decls resolve operator ones</li>
+          <li>Hand-written recursive descent wins on diagnostics &mdash; GCC, Clang, Roslyn</li>
+        </ul>
+      </div>
+      <div class="card amber" style="margin-top:.4em;">
+        <h3 class="a">Hands-On Exercise</h3>
+        <ul>
+          <li>Write a recursive-descent + Pratt parser for arithmetic with <code>+ - * / ^ ()</code></li>
+          <li>Add unary minus and verify <code>^</code> right-associates</li>
+          <li>Compute FIRST/FOLLOW for the grammar and build its LL(1) table</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card blue">
+        <h3 class="b">Further Reading</h3>
+        <ul>
+          <li>Aho, Lam, Sethi &amp; Ullman &mdash; <em>Compilers</em> (Dragon Book), ch. 4</li>
+          <li>Cooper &amp; Torczon &mdash; <em>Engineering a Compiler</em>, ch. 3</li>
+          <li>Grune &amp; Jacobs &mdash; <em>Parsing Techniques</em> (the encyclopaedia)</li>
+          <li>Vaughan Pratt &mdash; <em>Top Down Operator Precedence</em> (1973)</li>
+          <li>Bryan Ford &mdash; <em>Parsing Expression Grammars</em> (2004)</li>
+          <li>Parr &amp; Fisher &mdash; <em>ALL(*) Parsing</em> (the ANTLR 4 paper, 2014)</li>
+          <li>Nystrom &mdash; <em>Crafting Interpreters</em> (Pratt parsing chapter)</li>
+        </ul>
+      </div>
+      <div class="card amber" style="margin-top:.4em;">
+        <h3 class="a">Mental Model to Keep</h3>
+        <p>Two ways to find the same tree: predict it from the top (LL) or recognise it from the leaves (LR). The grammar decides which is possible; engineering decides which you pick.</p>
+      </div>
+      <div class="ss-row" style="margin-top:.45em; justify-content:center;">
+        <span class="ss-node done">Part 04 ✓</span>
+        <span class="ss-arrow">&rarr;</span>
+        <span class="ss-node active">Part 05: Semantic Analysis &amp; Types</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+</div><!-- /slides -->
+</div><!-- /reveal -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/highlight/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/highlight/monokai.min.css">
+<script>
+Reveal.initialize({
+  hash: true,
+  slideNumber: 'c/t',
+  transition: 'fade',
+  transitionSpeed: 'fast',
+  controls: true,
+  progress: true,
+  center: false,
+  width: 1100,
+  height: 900,
+  margin: 0.01,
+  plugins: [RevealHighlight],
+  highlight: { theme: 'monokai' }
+});
+</script>
+<script>
+(function(){
+  var h = Reveal.getConfig().height || 900;
+  var m = Reveal.getConfig().margin || 0.02;
+  var maxH = Math.floor(h * (1 - 2 * m)) + 'px';
+  function fixSlides(){
+    document.querySelectorAll('.reveal .slides>section,.reveal .slides>section>section').forEach(function(s){
+      s.style.display = 'block';
+      s.style.maxHeight = maxH;
+    });
+  }
+  Reveal.on('ready', fixSlides);
+  Reveal.on('slidechanged', fixSlides);
+})();
+</script>
+</body>
+</html>

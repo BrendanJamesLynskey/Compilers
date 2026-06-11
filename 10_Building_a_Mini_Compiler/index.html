@@ -1,0 +1,1363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compilers — Part 10: Building a Mini-Compiler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/theme/black.min.css">
+<style>
+  :root {
+    --amber:  #f5a623;
+    --green:  #4ecb8d;
+    --purple: #a78bfa;
+    --blue:   #60a5fa;
+    --red:    #f87171;
+    --bg:     #0a0a0f;
+    --bg2:    #10101a;
+    --bg3:    #181824;
+    --border: #2a2a3a;
+    --text:   #e8e8f0;
+    --muted:  #8888a8;
+  }
+
+  .reveal-viewport { background: var(--bg); }
+  .reveal .slides section { background: transparent; }
+
+  .reveal { font-family: 'DM Sans', sans-serif; color: var(--text); }
+  .reveal h1, .reveal h2, .reveal h3 { font-family: 'Playfair Display', serif; font-weight: 700; }
+  .reveal h1 { font-size: 1.6em; color: var(--amber); line-height: 1.1; }
+  .reveal h2 { font-size: 1.1em; color: var(--amber); margin-bottom: .2em; }
+  .reveal h3 { font-size: .78em; color: var(--green); margin-bottom: .15em; }
+  .reveal p  { font-size: .56em; line-height: 1.45; color: var(--text); }
+  .reveal li { font-size: .54em; line-height: 1.45; margin-bottom: .1em; }
+  .reveal code { font-family: 'JetBrains Mono', monospace; font-size: .72em; }
+  .reveal pre  { box-shadow: none; background: var(--bg3); border: 1px solid var(--border);
+                 border-radius: 6px; padding: .3em .5em; margin: .25em 0; }
+  .reveal pre code { font-size: .52em; line-height: 1.35; background: transparent; color: #cdd6f4; }
+
+  /* ── slide chrome ── */
+  .slide-hdr {
+    display: flex; align-items: center; gap: .4em;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: .2em; margin-bottom: .3em;
+  }
+  .slide-hdr .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .42em; font-weight: 500;
+    color: var(--bg); background: var(--amber);
+    padding: .1em .4em; border-radius: 3px;
+    letter-spacing: .04em;
+  }
+  .slide-hdr h2 { margin: 0; font-size: .95em; }
+
+  /* ── two-column ── */
+  .cols   { display: grid; gap: .5em; }
+  .cols-2 { grid-template-columns: 1fr 1fr; }
+  .cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .cols-6040 { grid-template-columns: 6fr 4fr; }
+  .cols-4060 { grid-template-columns: 4fr 6fr; }
+
+  /* ── cards ── */
+  .card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 6px; padding: .35em .6em;
+  }
+  .card.amber { border-left: 3px solid var(--amber); }
+  .card.green { border-left: 3px solid var(--green); }
+  .card.purple{ border-left: 3px solid var(--purple); }
+  .card.blue  { border-left: 3px solid var(--blue); }
+  .card.red   { border-left: 3px solid var(--red); }
+  .card h3 { font-size: .64em; margin: 0 0 .12em; }
+  .card p  { font-size: .52em; margin: 0; color: #b8b8d0; }
+  .card ul { margin: 0; padding-left: 1em; }
+  .card li { font-size: .52em; color: #b8b8d0; margin-bottom: .02em; }
+
+  /* ── table ── */
+  .reveal table { width: 100%; border-collapse: collapse; font-size: .5em; }
+  .reveal table th { background: var(--bg3); color: var(--amber); font-weight: 600;
+                     padding: .2em .4em; border: 1px solid var(--border); text-align: left; }
+  .reveal table td { padding: .18em .4em; border: 1px solid var(--border); color: #ccc; }
+  .reveal table tr:nth-child(even) td { background: #0e0e18; }
+
+  /* ── accent spans ── */
+  .a  { color: var(--amber); font-weight: 600; }
+  .g  { color: var(--green); font-weight: 600; }
+  .p  { color: var(--purple); font-weight: 600; }
+  .b  { color: var(--blue); font-weight: 600; }
+  .r  { color: var(--red); font-weight: 600; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* ── SVG graph diagrams ── */
+  svg.diagram { display: block; margin: 0 auto; overflow: visible; }
+
+  /* ── pill badges ── */
+  .pill {
+    display: inline-block; font-family: 'JetBrains Mono', monospace;
+    font-size: .44em; padding: .08em .4em; border-radius: 99px;
+    border: 1px solid; margin: 0 .08em;
+  }
+  .pill.amber { color: var(--amber); border-color: var(--amber); }
+  .pill.green { color: var(--green); border-color: var(--green); }
+  .pill.purple{ color: var(--purple); border-color: var(--purple); }
+  .pill.blue  { color: var(--blue); border-color: var(--blue); }
+
+  /* ── footer — hidden; was overlapping scrollable content ── */
+  .reveal .slide-footer { display: none; }
+  /* title slide special */
+  .title-slide h1 { font-size: 1.8em; }
+  .title-slide .subtitle {
+    font-size: .7em; color: var(--green); font-family: 'DM Sans', sans-serif;
+    font-weight: 300; letter-spacing: .04em; margin: .3em 0 .6em;
+  }
+  .title-slide .meta { font-size: .48em; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+
+  /* ── super-step animator ── */
+  .ss-row {
+    display: flex; gap: .25em; align-items: center;
+    margin: .1em 0; font-size: .55em; font-family: 'JetBrains Mono', monospace;
+  }
+  .ss-node {
+    padding: .2em .55em; border-radius: 5px; font-size: .9em;
+    background: var(--bg3); border: 1px solid var(--border); color: var(--text);
+  }
+  .ss-node.active { background: #1a2a1a; border-color: var(--green); color: var(--green); }
+  .ss-node.done   { background: #1a1a2a; border-color: var(--purple); color: var(--purple); }
+  .ss-arrow { color: var(--amber); }
+  .ss-label { font-size: .8em; color: var(--muted); margin-left: .3em; }
+
+  /* reduce default margins */
+  .reveal ul, .reveal ol { margin: .15em 0 .15em 1em; }
+.reveal .slides > section { display: flex !important; flex-direction: column !important; overflow-y: auto !important; align-items: stretch !important; justify-content: flex-start !important; }
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+
+<!-- ═══════════════════════════════ SLIDE 01 — TITLE ═══════════════════════════════ -->
+<section class="title-slide" data-background-color="#0a0a0f">
+  <div style="text-align:left; max-width:840px; margin:0 auto; padding: 1em 0;">
+    <div style="font-family:'JetBrains Mono',monospace; font-size:.5em; color:var(--muted); margin-bottom:.4em; letter-spacing:.1em;">
+      COMPILERS SERIES &middot; PART 10 OF 10 &middot; THE CAPSTONE
+    </div>
+    <h1>Building a<br>Mini-Compiler</h1>
+    <div class="subtitle">Part 10 &mdash; One Program, End to End: <span class="mono">source &rarr; tokens &rarr; AST &rarr; IR &rarr; bytecode &rarr; result</span></div>
+    <div style="width:60px; height:3px; background:var(--amber); margin-bottom:1.4em;"></div>
+    <div style="display:flex; gap:1.2em; flex-wrap:wrap; margin-bottom:1em;">
+      <span class="pill amber">MiniLang</span>
+      <span class="pill green">Recursive Descent + Pratt</span>
+      <span class="pill purple">SSA-ish IR</span>
+      <span class="pill blue">Stack VM</span>
+    </div>
+    <div class="ss-row" style="margin-top:0.6em;">
+      <span class="ss-node active">Lex</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node active">Parse</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node active">Check</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node active">Lower</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node active">Optimise</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node active">Emit</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node done">Run</span>
+    </div>
+    <p style="max-width:680px; color:#a0a0c0; font-size:.56em; line-height:1.5; margin-top:1em;">
+      The whole series in one sitting. We design a tiny language &mdash; <span class="a">MiniLang</span> &mdash; and build a complete compiler for it in ~400 lines of Python: a hand-written lexer, a recursive-descent + Pratt parser, a type checker, a three-address SSA-ish IR, two optimisations, a bytecode emitter and a stack VM. One running example &mdash; an iterative <span class="g">factorial</span> &mdash; threads through <em>every</em> slide so you watch the same program transform, stage by stage, until it prints <span class="a">120</span>.
+    </p>
+    <div class="meta" style="margin-top:1.4em;">
+      Lexer &nbsp;&middot;&nbsp; Parser &nbsp;&middot;&nbsp; Semantics &nbsp;&middot;&nbsp; IR &nbsp;&middot;&nbsp; Optimiser &nbsp;&middot;&nbsp; Codegen &nbsp;&middot;&nbsp; VM
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 02 — AGENDA ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">01</span>
+    <h2>Topics</h2>
+  </div>
+  <p>A capstone, not a lecture. Every slide carries the <em>same</em> program forward one phase. By the end you have seen a real compiler &mdash; small, but complete and internally consistent &mdash; from source text to a printed result.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">Front End</h3>
+        <ul>
+          <li>MiniLang design &amp; the running example</li>
+          <li>The grammar in EBNF</li>
+          <li>Lexer &mdash; a hand-written scanner</li>
+          <li>Parser &mdash; recursive descent + Pratt</li>
+          <li>AST node definitions &amp; the tree</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">Middle End</h3>
+        <ul>
+          <li>Semantic pass &mdash; symbols, scopes, types</li>
+          <li>Lowering the AST to three-address IR</li>
+          <li>Basic blocks &amp; the CFG</li>
+          <li>Constant folding &amp; dead-code elimination</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">Back End &amp; Runtime</h3>
+        <ul>
+          <li>A stack VM &mdash; ~14 opcodes</li>
+          <li>Code generation &amp; disassembly</li>
+          <li>The interpreter loop &mdash; running it</li>
+          <li>(Aside) sketching LLVM IR instead</li>
+        </ul>
+      </div>
+      <div class="card blue" style="margin-top:.4em;">
+        <h3 class="b">Engineering &amp; Closing</h3>
+        <ul>
+          <li>Testing each stage; golden tests</li>
+          <li>Good error messages with source spans</li>
+          <li>Where to go next &mdash; books &amp; projects</li>
+          <li>Recap of the whole 10-part series</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 03 — WHAT WE'LL BUILD ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">02</span>
+    <h2>What We'll Build &mdash; The Toolchain at a Glance</h2>
+  </div>
+  <p>Seven passes, each a small function over the previous pass's output. Nothing here is toy in <em>shape</em> &mdash; this is exactly the skeleton of a real compiler, just scaled down. Same example all the way through.</p>
+  <svg class="diagram" viewBox="0 0 900 230" width="900" height="230">
+    <defs>
+      <marker id="aMain" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="#f5a623"/></marker>
+    </defs>
+    <g font-family="JetBrains Mono">
+      <!-- source -->
+      <rect x="10" y="20" width="120" height="50" rx="6" fill="#181824" stroke="#f5a623" stroke-width="1.4"/>
+      <text x="70" y="42" text-anchor="middle" fill="#f5a623" font-size="10" font-weight="700">Source</text>
+      <text x="70" y="58" text-anchor="middle" fill="#8888a8" font-size="8">fact.ml</text>
+      <!-- lexer -->
+      <rect x="160" y="20" width="120" height="50" rx="6" fill="#1a2a1a" stroke="#4ecb8d" stroke-width="1.4"/>
+      <text x="220" y="42" text-anchor="middle" fill="#4ecb8d" font-size="10" font-weight="700">Lexer</text>
+      <text x="220" y="58" text-anchor="middle" fill="#8888a8" font-size="8">tokens</text>
+      <!-- parser -->
+      <rect x="310" y="20" width="120" height="50" rx="6" fill="#1a2a1a" stroke="#4ecb8d" stroke-width="1.4"/>
+      <text x="370" y="42" text-anchor="middle" fill="#4ecb8d" font-size="10" font-weight="700">Parser</text>
+      <text x="370" y="58" text-anchor="middle" fill="#8888a8" font-size="8">AST</text>
+      <!-- checker -->
+      <rect x="460" y="20" width="120" height="50" rx="6" fill="#1a1a2a" stroke="#a78bfa" stroke-width="1.4"/>
+      <text x="520" y="42" text-anchor="middle" fill="#a78bfa" font-size="10" font-weight="700">Checker</text>
+      <text x="520" y="58" text-anchor="middle" fill="#8888a8" font-size="8">typed AST</text>
+
+      <!-- arrows row 1 -->
+      <line x1="130" y1="45" x2="158" y2="45" stroke="#f5a623" stroke-width="1.5" marker-end="url(#aMain)"/>
+      <line x1="280" y1="45" x2="308" y2="45" stroke="#f5a623" stroke-width="1.5" marker-end="url(#aMain)"/>
+      <line x1="430" y1="45" x2="458" y2="45" stroke="#f5a623" stroke-width="1.5" marker-end="url(#aMain)"/>
+      <!-- elbow down to row 2 -->
+      <line x1="580" y1="45" x2="640" y2="45" stroke="#f5a623" stroke-width="1.5"/>
+      <line x1="640" y1="45" x2="640" y2="150" stroke="#f5a623" stroke-width="1.5" marker-end="url(#aMain)"/>
+
+      <!-- row 2 -->
+      <rect x="580" y="135" width="120" height="50" rx="6" fill="#1a1a2a" stroke="#a78bfa" stroke-width="1.4"/>
+      <text x="640" y="157" text-anchor="middle" fill="#a78bfa" font-size="10" font-weight="700">Lower</text>
+      <text x="640" y="173" text-anchor="middle" fill="#8888a8" font-size="8">IR + CFG</text>
+      <rect x="430" y="135" width="120" height="50" rx="6" fill="#1a1a2a" stroke="#a78bfa" stroke-width="1.4"/>
+      <text x="490" y="157" text-anchor="middle" fill="#a78bfa" font-size="10" font-weight="700">Optimise</text>
+      <text x="490" y="173" text-anchor="middle" fill="#8888a8" font-size="8">fold + DCE</text>
+      <rect x="280" y="135" width="120" height="50" rx="6" fill="#101820" stroke="#60a5fa" stroke-width="1.4"/>
+      <text x="340" y="157" text-anchor="middle" fill="#60a5fa" font-size="10" font-weight="700">Emit</text>
+      <text x="340" y="173" text-anchor="middle" fill="#8888a8" font-size="8">bytecode</text>
+      <rect x="130" y="135" width="120" height="50" rx="6" fill="#101820" stroke="#60a5fa" stroke-width="1.4"/>
+      <text x="190" y="157" text-anchor="middle" fill="#60a5fa" font-size="10" font-weight="700">Stack VM</text>
+      <text x="190" y="173" text-anchor="middle" fill="#8888a8" font-size="8">execute</text>
+
+      <line x1="578" y1="160" x2="552" y2="160" stroke="#f5a623" stroke-width="1.5" marker-end="url(#aMain)"/>
+      <line x1="428" y1="160" x2="402" y2="160" stroke="#f5a623" stroke-width="1.5" marker-end="url(#aMain)"/>
+      <line x1="278" y1="160" x2="252" y2="160" stroke="#f5a623" stroke-width="1.5" marker-end="url(#aMain)"/>
+
+      <!-- output -->
+      <rect x="10" y="135" width="100" height="50" rx="6" fill="#181824" stroke="#f5a623" stroke-width="1.4"/>
+      <text x="60" y="157" text-anchor="middle" fill="#f5a623" font-size="10" font-weight="700">Output</text>
+      <text x="60" y="173" text-anchor="middle" fill="#4ecb8d" font-size="11">120</text>
+      <line x1="128" y1="160" x2="112" y2="160" stroke="#f5a623" stroke-width="1.5" marker-end="url(#aMain)"/>
+
+      <text x="450" y="215" text-anchor="middle" fill="#8888a8" font-size="9">~400 lines of Python &mdash; front end (green) &middot; middle end (purple) &middot; back end (blue)</text>
+    </g>
+  </svg>
+  <div class="cols cols-2" style="margin-top:.2em;">
+    <div class="card green">
+      <h3 class="g">Decks 02&ndash;09, Made Concrete</h3>
+      <p>Each pass is something you already met: lexing (03), parsing (04), type checking (05), IR (06), optimisation (07), codegen (08), and a runtime (09). Here they fit together on one desk.</p>
+    </div>
+    <div class="card amber">
+      <h3 class="a">One Language for the Whole Build</h3>
+      <p>We implement in <span class="mono">Python</span> throughout &mdash; readable, no build step, and the dataclasses map cleanly onto AST/IR nodes. The <em>compiled</em> language is MiniLang; the <em>host</em> language is Python.</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 04 — LANGUAGE DESIGN ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">03</span>
+    <h2>MiniLang &mdash; Design Choices (Small on Purpose)</h2>
+  </div>
+  <p>Every feature we add is a feature we must lex, parse, check, lower, optimise and codegen. So we keep MiniLang <span class="a">deliberately tiny</span> &mdash; just enough to be Turing-complete and recognisably a real language.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card green">
+        <h3 class="g">In Scope</h3>
+        <ul>
+          <li>Two value types: <code>int</code> and <code>bool</code></li>
+          <li>Variables via <code>let</code>; assignment</li>
+          <li>Arithmetic <code>+ - * /</code>; comparison <code>&lt; &gt; == !=</code></li>
+          <li><code>if</code>/<code>else</code> and <code>while</code></li>
+          <li>First-order functions <code>fn</code> with <code>return</code></li>
+          <li><code>print</code> as a built-in statement</li>
+        </ul>
+      </div>
+      <div class="card red" style="margin-top:.4em;">
+        <h3 class="r">Out of Scope (On Purpose)</h3>
+        <ul>
+          <li>No strings, floats, arrays, structs</li>
+          <li>No closures, generics, or modules</li>
+          <li>No garbage collector (values are unboxed ints)</li>
+          <li>No overloading &mdash; one numeric type</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card amber">
+        <h3 class="a">The Running Example &mdash; <code>fact.ml</code></h3>
+        <pre><code class="language-rust">fn fact(n) {
+  let acc = 1;
+  while (n &gt; 1) {
+    acc = acc * n;
+    n = n - 1;
+  }
+  return acc;
+}
+print(fact(5));</code></pre>
+      </div>
+      <div class="card blue" style="margin-top:.4em;">
+        <h3 class="b">Why Iterative Factorial?</h3>
+        <p>It exercises nearly every feature in one screen: a function, a <code>let</code>, a <code>while</code> loop with a comparison, mutation of two variables, a call, and a <code>print</code>. Its result &mdash; <span class="a">120</span> &mdash; is easy to check by hand. We will see this exact program at every stage.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 05 — GRAMMAR (EBNF) ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">04</span>
+    <h2>The Grammar &mdash; EBNF</h2>
+  </div>
+  <p>A compact grammar drives the parser's structure. Statements are <span class="g">LL(1)</span> &mdash; one token of lookahead picks the rule. Expressions use a precedence-driven sub-grammar (the Pratt parser, slide 08) rather than the layered rules shown here.</p>
+  <div class="cols cols-2">
+    <div>
+      <pre><code class="language-ebnf">program   = { decl } ;
+decl      = fnDecl | statement ;
+fnDecl    = "fn" IDENT "(" params? ")" block ;
+params    = IDENT { "," IDENT } ;
+block     = "{" { statement } "}" ;
+
+statement = letStmt | assign | ifStmt
+          | whileStmt | returnStmt
+          | printStmt | exprStmt ;
+
+letStmt    = "let" IDENT "=" expr ";" ;
+assign     = IDENT "=" expr ";" ;
+ifStmt     = "if" "(" expr ")" block
+             [ "else" block ] ;
+whileStmt  = "while" "(" expr ")" block ;
+returnStmt = "return" expr ";" ;
+printStmt  = "print" "(" expr ")" ";" ;
+exprStmt   = expr ";" ;</code></pre>
+    </div>
+    <div>
+      <pre><code class="language-ebnf">(* expression grammar — by precedence,
+   lowest to highest                    *)
+expr     = equality ;
+equality = compare  { ("==" | "!=") compare } ;
+compare  = term     { ("&lt;"  | "&gt;" ) term    } ;
+term     = factor   { ("+"  | "-" ) factor  } ;
+factor   = unary    { ("*"  | "/" ) unary   } ;
+unary    = [ "-" | "!" ] unary | call ;
+call     = primary  { "(" args? ")" } ;
+args     = expr { "," expr } ;
+primary  = NUMBER | "true" | "false"
+         | IDENT | "(" expr ")" ;</code></pre>
+      <div class="card amber" style="margin-top:.4em;">
+        <h3 class="a">Reading the Notation</h3>
+        <ul>
+          <li><code>{ x }</code> &mdash; zero or more (left-associative loop)</li>
+          <li><code>[ x ]</code> &mdash; optional</li>
+          <li>Lower rules bind <em>tighter</em>: <code>factor</code> (<code>*</code>) before <code>term</code> (<code>+</code>)</li>
+          <li><code>UPPERCASE</code> = terminal token classes from the lexer</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 06 — LEXER (CODE) ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">05</span>
+    <h2>Lexer &mdash; A Hand-Written Scanner</h2>
+  </div>
+  <p>The lexer turns the character stream into a <span class="a">token stream</span>, tracking line/column for error messages. It is a single pass with a few <code>if</code>-ladders &mdash; no regex engine, no table generator. (Deck 03 covered the theory; this is the practice.)</p>
+  <div class="cols cols-2">
+    <div>
+      <pre><code class="language-python">KEYWORDS = {"fn","let","if","else","while",
+            "return","print","true","false"}
+
+class Tok:
+    def __init__(s, kind, val, line, col):
+        s.kind, s.val = kind, val
+        s.line, s.col = line, col
+    def __repr__(s):
+        return f"{s.kind}:{s.val!r}@{s.line}:{s.col}"
+
+def lex(src):
+    toks, i, line, col = [], 0, 1, 1
+    def adv(n=1):
+        nonlocal i, col
+        i += n; col += n
+    while i &lt; len(src):
+        c = src[i]
+        if c in " \t":      adv()
+        elif c == "\n":     i+=1; line+=1; col=1</code></pre>
+    </div>
+    <div>
+      <pre><code class="language-python">        elif c.isdigit():
+            j = i
+            while i&lt;len(src) and src[i].isdigit(): adv()
+            toks.append(Tok("NUM", int(src[j:i]), line, col))
+        elif c.isalpha() or c=="_":
+            j = i
+            while i&lt;len(src) and (src[i].isalnum() or src[i]=="_"):
+                adv()
+            w = src[j:i]
+            kind = w if w in KEYWORDS else "IDENT"
+            toks.append(Tok(kind, w, line, col))
+        else:
+            two = src[i:i+2]
+            if two in ("==","!=","&lt;=","&gt;="):
+                toks.append(Tok(two, two, line, col)); adv(2)
+            elif c in "+-*/()&lt;&gt;{},;=!":
+                toks.append(Tok(c, c, line, col)); adv()
+            else:
+                raise LexError(line, col, f"bad char {c!r}")
+    toks.append(Tok("EOF", None, line, col))
+    return toks</code></pre>
+    </div>
+  </div>
+  <p style="margin-top:.2em;">Two-character operators (<code>==</code>, <code>!=</code>) are matched <em>before</em> single characters &mdash; <span class="g">maximal munch</span>. Keywords are just identifiers looked up in a set, so adding one is a one-line change.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 07 — LEXER (TOKENS) ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">06</span>
+    <h2>Lexer &mdash; The Token Stream for <code>fact.ml</code></h2>
+  </div>
+  <p>Running <code>lex(open("fact.ml").read())</code> on our example yields this stream (whitespace and newlines dropped, line:col elided for brevity). This is the <em>only</em> thing the parser ever sees &mdash; the source text is gone.</p>
+  <div class="cols cols-2">
+    <div>
+      <pre><code class="language-plaintext">fn        IDENT:fact  (    IDENT:n   )    {
+let       IDENT:acc   =    NUM:1     ;
+while     (           IDENT:n  &gt;  NUM:1  )  {
+IDENT:acc =  IDENT:acc  *  IDENT:n   ;
+IDENT:n   =  IDENT:n    -  NUM:1     ;
+}
+return    IDENT:acc   ;
+}
+print     (   IDENT:fact ( NUM:5 ) )  ;
+EOF</code></pre>
+    </div>
+    <div>
+      <div class="card green">
+        <h3 class="g">What the Lexer Decided</h3>
+        <ul>
+          <li><code>fact</code>, <code>n</code>, <code>acc</code> &rarr; <code>IDENT</code> (not keywords)</li>
+          <li><code>fn</code>, <code>let</code>, <code>while</code>, <code>return</code>, <code>print</code> &rarr; keyword kinds</li>
+          <li><code>1</code> and <code>5</code> &rarr; <code>NUM</code> with an <em>integer</em> value, already parsed</li>
+          <li><code>&gt;</code>, <code>*</code>, <code>-</code>, <code>=</code> &rarr; single-char operator tokens</li>
+          <li>A synthetic <code>EOF</code> token terminates the stream</li>
+        </ul>
+      </div>
+      <div class="card amber" style="margin-top:.4em;">
+        <h3 class="a">Note the Two Faces of <code>=</code></h3>
+        <p>The lexer emits a single <code>=</code> token in both <code>let acc = 1</code> and <code>acc = acc * n</code>. Disambiguating <em>declaration</em> from <em>assignment</em> is the parser's job, not the lexer's &mdash; lexing is context-free.</p>
+      </div>
+      <div class="card blue" style="margin-top:.4em;">
+        <h3 class="b">Token Count</h3>
+        <p>The 9-line program becomes <span class="a">43</span> tokens. Each carries a source position, so any later phase can point back at the exact character that caused a problem.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 08 — AST NODES ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">07</span>
+    <h2>Parser &mdash; The AST Node Definitions</h2>
+  </div>
+  <p>Before parsing, define the tree. Python <code>@dataclass</code>es give us cheap, typed, comparable nodes &mdash; ideal for golden tests. Statements and expressions are two small families.</p>
+  <div class="cols cols-2">
+    <div>
+      <pre><code class="language-python">from dataclasses import dataclass, field
+
+# ─── expressions ───
+@dataclass
+class Num:   value: int
+@dataclass
+class Bool:  value: bool
+@dataclass
+class Var:   name: str
+@dataclass
+class Unary: op: str;  operand: object
+@dataclass
+class Bin:   op: str;  lhs: object;  rhs: object
+@dataclass
+class Call:  fn: str;   args: list</code></pre>
+    </div>
+    <div>
+      <pre><code class="language-python"># ─── statements ───
+@dataclass
+class Let:    name: str;  init: object
+@dataclass
+class Assign: name: str;  value: object
+@dataclass
+class If:     cond: object; then: list; els: list
+@dataclass
+class While:  cond: object; body: list
+@dataclass
+class Return: value: object
+@dataclass
+class Print:  value: object
+@dataclass
+class ExprStmt: expr: object
+
+@dataclass
+class Fn:  name: str; params: list; body: list
+@dataclass
+class Program: decls: list</code></pre>
+    </div>
+  </div>
+  <p style="margin-top:.2em;">Each node also carries a <code>line</code> field (omitted above for space) copied from its first token &mdash; the thread that lets a type error on slide 10 say <em>"line 4, column 9"</em>. Nodes are pure data: no methods, no behaviour. Passes are functions <em>over</em> nodes.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 09 — PARSER (CODE) ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">08</span>
+    <h2>Parser &mdash; Recursive Descent + a Pratt Core</h2>
+  </div>
+  <p>Statements use <span class="g">recursive descent</span> &mdash; one method per grammar rule. Expressions use a <span class="p">Pratt</span> (precedence-climbing) parser: one loop driven by a binding-power table, far terser than the layered EBNF rules.</p>
+  <div class="cols cols-2">
+    <div>
+      <pre><code class="language-python">class Parser:
+    def __init__(s, toks): s.toks, s.i = toks, 0
+    def peek(s):  return s.toks[s.i]
+    def next(s):  t = s.toks[s.i]; s.i += 1; return t
+    def eat(s, k):
+        t = s.next()
+        if t.kind != k:
+            raise ParseError(t, f"expected {k}, got {t.kind}")
+        return t
+
+    def statement(s):
+        k = s.peek().kind
+        if k == "let":    return s.let_stmt()
+        if k == "if":     return s.if_stmt()
+        if k == "while":  return s.while_stmt()
+        if k == "return": return s.return_stmt()
+        if k == "print":  return s.print_stmt()
+        return s.assign_or_expr()</code></pre>
+    </div>
+    <div>
+      <pre><code class="language-python">    # Pratt: left binding powers per operator
+    LBP = {"==":1,"!=":1,"&lt;":2,"&gt;":2,
+           "+":3,"-":3,"*":4,"/":4}
+
+    def expr(s, min_bp=0):
+        left = s.unary()                 # nud
+        while s.peek().kind in s.LBP and \
+              s.LBP[s.peek().kind] &gt; min_bp:
+            op = s.next().kind           # led
+            right = s.expr(s.LBP[op])    # climb
+            left = Bin(op, left, right)
+        return left
+
+    def unary(s):
+        if s.peek().kind in ("-","!"):
+            op = s.next().kind
+            return Unary(op, s.unary())
+        return s.call()                  # then primary</code></pre>
+    </div>
+  </div>
+  <p style="margin-top:.2em;">Because <code>*</code> has a higher binding power (4) than <code>+</code> (3), <code>acc * n</code> binds before any surrounding <code>+</code> automatically &mdash; precedence falls out of the <code>min_bp</code> comparison, no grammar layering needed.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 10 — AST SVG ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">09</span>
+    <h2>The AST of <code>fact.ml</code></h2>
+  </div>
+  <p>Parsing the token stream produces this tree. The <span class="g">Fn</span> node roots the function; the body is a list of statements; the <code>while</code>'s condition and the multiply nest as <span class="p">Bin</span> nodes. Top level holds the <code>Fn</code> and the <code>print(fact(5))</code>.</p>
+  <svg class="diagram" viewBox="0 0 900 380" width="900" height="380">
+    <defs>
+      <marker id="aAst" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6" fill="#8888a8"/></marker>
+    </defs>
+    <g font-family="JetBrains Mono" font-size="9.5">
+      <!-- Program root -->
+      <rect x="370" y="10" width="160" height="30" rx="5" fill="#181824" stroke="#f5a623" stroke-width="1.4"/>
+      <text x="450" y="29" text-anchor="middle" fill="#f5a623">Program</text>
+      <!-- Fn -->
+      <rect x="170" y="70" width="190" height="34" rx="5" fill="#1a2a1a" stroke="#4ecb8d" stroke-width="1.4"/>
+      <text x="265" y="85" text-anchor="middle" fill="#4ecb8d">Fn  name="fact"</text>
+      <text x="265" y="98" text-anchor="middle" fill="#8888a8" font-size="8">params=[n]</text>
+      <!-- Print -->
+      <rect x="560" y="70" width="190" height="34" rx="5" fill="#1a1a2a" stroke="#a78bfa" stroke-width="1.4"/>
+      <text x="655" y="85" text-anchor="middle" fill="#a78bfa">Print</text>
+      <text x="655" y="98" text-anchor="middle" fill="#8888a8" font-size="8">Call fact (Num 5)</text>
+      <line x1="430" y1="40" x2="290" y2="68" stroke="#8888a8" marker-end="url(#aAst)"/>
+      <line x1="478" y1="40" x2="635" y2="68" stroke="#8888a8" marker-end="url(#aAst)"/>
+
+      <!-- body children of Fn -->
+      <rect x="20" y="140" width="150" height="30" rx="5" fill="#101820" stroke="#60a5fa" stroke-width="1.2"/>
+      <text x="95" y="159" text-anchor="middle" fill="#60a5fa">Let acc = Num 1</text>
+      <rect x="190" y="140" width="120" height="30" rx="5" fill="#101820" stroke="#60a5fa" stroke-width="1.2"/>
+      <text x="250" y="159" text-anchor="middle" fill="#60a5fa">While</text>
+      <rect x="330" y="140" width="160" height="30" rx="5" fill="#101820" stroke="#60a5fa" stroke-width="1.2"/>
+      <text x="410" y="159" text-anchor="middle" fill="#60a5fa">Return Var acc</text>
+      <line x1="240" y1="104" x2="110" y2="138" stroke="#8888a8" marker-end="url(#aAst)"/>
+      <line x1="262" y1="104" x2="255" y2="138" stroke="#8888a8" marker-end="url(#aAst)"/>
+      <line x1="288" y1="104" x2="400" y2="138" stroke="#8888a8" marker-end="url(#aAst)"/>
+
+      <!-- While cond -->
+      <rect x="120" y="210" width="180" height="30" rx="5" fill="#181824" stroke="#f5a623" stroke-width="1.2"/>
+      <text x="210" y="229" text-anchor="middle" fill="#f5a623">Bin "&gt;" (Var n)(Num 1)</text>
+      <line x1="245" y1="170" x2="225" y2="208" stroke="#8888a8" marker-end="url(#aAst)"/>
+      <!-- While body -->
+      <rect x="330" y="210" width="220" height="30" rx="5" fill="#181824" stroke="#f5a623" stroke-width="1.2"/>
+      <text x="440" y="229" text-anchor="middle" fill="#f5a623">body: [Assign acc, Assign n]</text>
+      <line x1="270" y1="170" x2="400" y2="208" stroke="#8888a8" marker-end="url(#aAst)"/>
+
+      <!-- assign acc = acc * n -->
+      <rect x="300" y="285" width="150" height="30" rx="5" fill="#1a2a1a" stroke="#4ecb8d" stroke-width="1.2"/>
+      <text x="375" y="304" text-anchor="middle" fill="#4ecb8d">Assign acc =</text>
+      <rect x="300" y="335" width="200" height="30" rx="5" fill="#1a1a2a" stroke="#a78bfa" stroke-width="1.2"/>
+      <text x="400" y="354" text-anchor="middle" fill="#a78bfa">Bin "*" (Var acc)(Var n)</text>
+      <line x1="420" y1="240" x2="390" y2="283" stroke="#8888a8" marker-end="url(#aAst)"/>
+      <line x1="375" y1="315" x2="385" y2="333" stroke="#8888a8" marker-end="url(#aAst)"/>
+
+      <!-- assign n = n - 1 -->
+      <rect x="540" y="285" width="150" height="30" rx="5" fill="#1a2a1a" stroke="#4ecb8d" stroke-width="1.2"/>
+      <text x="615" y="304" text-anchor="middle" fill="#4ecb8d">Assign n =</text>
+      <rect x="540" y="335" width="200" height="30" rx="5" fill="#1a1a2a" stroke="#a78bfa" stroke-width="1.2"/>
+      <text x="640" y="354" text-anchor="middle" fill="#a78bfa">Bin "-" (Var n)(Num 1)</text>
+      <line x1="460" y1="240" x2="600" y2="283" stroke="#8888a8" marker-end="url(#aAst)"/>
+      <line x1="615" y1="315" x2="625" y2="333" stroke="#8888a8" marker-end="url(#aAst)"/>
+    </g>
+  </svg>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 11 — SEMANTIC PASS (CODE) ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">10</span>
+    <h2>Semantic Pass &mdash; Symbol Table &amp; Type Checker</h2>
+  </div>
+  <p>One walk of the AST builds a <span class="a">scoped symbol table</span> and checks types. MiniLang has just two types, <code>int</code> and <code>bool</code>, so the checker is a small recursive function that returns a type or raises with a source span.</p>
+  <div class="cols cols-2">
+    <div>
+      <pre><code class="language-python">class Scope:
+    def __init__(s, parent=None):
+        s.vars, s.parent = {}, parent
+    def define(s, name, ty): s.vars[name] = ty
+    def lookup(s, name):
+        sc = s
+        while sc:
+            if name in sc.vars: return sc.vars[name]
+            sc = sc.parent
+        return None
+
+INT, BOOL = "int", "bool"
+ARITH = {"+","-","*","/"}
+CMP   = {"&lt;","&gt;","==","!="}</code></pre>
+    </div>
+    <div>
+      <pre><code class="language-python">def check_expr(e, scope):
+    if isinstance(e, Num):  return INT
+    if isinstance(e, Bool): return BOOL
+    if isinstance(e, Var):
+        ty = scope.lookup(e.name)
+        if ty is None:
+            err(e.line, f"undefined variable {e.name!r}")
+        return ty
+    if isinstance(e, Bin):
+        lt, rt = check_expr(e.lhs, scope), check_expr(e.rhs, scope)
+        if lt != INT or rt != INT:
+            err(e.line, f"operator {e.op!r} needs int operands")
+        return INT if e.op in ARITH else BOOL   # cmp → bool</code></pre>
+    </div>
+  </div>
+  <p style="margin-top:.2em;">Statements thread the scope: <code>Let</code> calls <code>scope.define(name, check_expr(init))</code>; entering a <code>block</code> pushes a child <code>Scope</code>; <code>if</code>/<code>while</code> require their condition to be <span class="g">bool</span>. Shadowing is resolved by the <code>lookup</code> chain &mdash; innermost scope wins.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 12 — SEMANTIC ERROR ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">11</span>
+    <h2>Semantic Pass &mdash; An Error It Catches</h2>
+  </div>
+  <p>Our <code>fact.ml</code> passes cleanly. To see the checker bite, break it: use a <span class="b">bool</span> where an <span class="r">int</span> is required. The checker reports the exact line, caught <em>before</em> any code is generated.</p>
+  <div class="cols cols-2">
+    <div>
+      <h3 class="r">Broken input</h3>
+      <pre><code class="language-rust">fn fact(n) {
+  let acc = 1;
+  while (n &gt; 1) {
+    acc = acc * (n &gt; 0);  // ← bool * int
+    n = n - 1;
+  }
+  return acc;
+}</code></pre>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">Other Errors the Pass Catches</h3>
+        <ul>
+          <li>Using an undefined variable (<code>lookup</code> returns <code>None</code>)</li>
+          <li>A non-<code>bool</code> condition in <code>if</code>/<code>while</code></li>
+          <li>Calling an undeclared function / wrong arity</li>
+          <li><code>return</code> outside a function body</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <h3 class="a">Diagnostic produced</h3>
+      <pre><code class="language-plaintext">error: operator '*' needs int operands
+ --&gt; fact.ml:4:11
+  |
+4 |     acc = acc * (n &gt; 0);
+  |           ^^^^^^^^^^^^^  rhs has type bool
+  |
+note: comparison '&gt;' yields bool, not int</code></pre>
+      <div class="card amber" style="margin-top:.4em;">
+        <h3 class="a">Why Check Before Lowering?</h3>
+        <p>The IR and VM assume well-typed input &mdash; the multiply opcode just pops two ints. Catching type errors in the front end keeps every later phase simple: by the time we lower, "it type-checks" is an invariant we can rely on.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 13 — IR LOWERING (CODE) ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">12</span>
+    <h2>IR Lowering &mdash; To Three-Address Code</h2>
+  </div>
+  <p>We lower the typed AST to a linear <span class="a">three-address IR</span> over <span class="g">basic blocks</span>. Every instruction has at most one operator and writes one temporary. Control flow becomes explicit <code>br</code> / <code>cbr</code> between blocks &mdash; the <code>while</code> loop unfolds into a header, body and exit block.</p>
+  <div class="cols cols-2">
+    <div>
+      <pre><code class="language-python">@dataclass
+class Instr: op: str; args: tuple; dst: str = None
+@dataclass
+class Block: label: str; instrs: list; term: object
+
+class Lower:
+    def __init__(s): s.n = 0; s.blocks = []
+    def temp(s): s.n += 1; return f"t{s.n}"
+
+    def expr(s, e, blk):
+        if isinstance(e, Num):
+            t = s.temp(); blk.append(Instr("const",(e.value,),t)); return t
+        if isinstance(e, Var):  return e.name
+        if isinstance(e, Bin):
+            a = s.expr(e.lhs, blk); b = s.expr(e.rhs, blk)
+            t = s.temp(); blk.append(Instr(e.op,(a,b),t)); return t</code></pre>
+    </div>
+    <div>
+      <pre><code class="language-python">    def while_(s, node):
+        head, body, end = s.new_blocks(3)
+        s.emit_br(head)
+        # header: test, then conditional branch
+        c = s.expr(node.cond, head.instrs)
+        head.term = Cbr(c, body.label, end.label)
+        # body: statements, then back-edge to header
+        for st in node.body: s.stmt(st, body.instrs)
+        body.term = Br(head.label)
+        s.cur = end           # fall through to exit block</code></pre>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">SSA-ish</h3>
+        <p>Each temporary <code>t1, t2, &hellip;</code> is assigned <em>once</em> &mdash; the defining property of SSA. Named locals (<code>acc</code>, <code>n</code>) are still reassigned here; a full SSA pass (deck 06) would rename them and insert <span class="p">&phi;</span>-nodes at the loop header.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 14 — IR + CFG SVG ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">13</span>
+    <h2>The IR &amp; Control-Flow Graph</h2>
+  </div>
+  <p>Here is <code>fact</code> lowered to four basic blocks. The <span class="p">&phi;</span>-nodes at the loop header pick the value from the entry edge or the back-edge &mdash; this is the SSA form (deck 06) the optimiser actually rewrites.</p>
+  <div class="cols cols-6040">
+    <div>
+      <pre><code class="language-llvm">fn fact(n):
+entry:
+  acc.0 = const 1
+  br header
+
+header:                       ; loop test
+  n.1   = phi [n.0, entry], [n.2, body]
+  acc.1 = phi [acc.0, entry], [acc.2, body]
+  t1    = gt n.1, 1
+  cbr t1, body, exit
+
+body:
+  acc.2 = mul acc.1, n.1
+  n.2   = sub n.1, 1
+  br header
+
+exit:
+  ret acc.1</code></pre>
+    </div>
+    <div>
+      <svg class="diagram" viewBox="0 0 300 330" width="300" height="330">
+        <defs>
+          <marker id="aCfg" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6" fill="#f5a623"/></marker>
+          <marker id="aBack" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6" fill="#a78bfa"/></marker>
+        </defs>
+        <g font-family="JetBrains Mono" font-size="10">
+          <rect x="95" y="10" width="110" height="34" rx="6" fill="#1a2a1a" stroke="#4ecb8d" stroke-width="1.4"/>
+          <text x="150" y="31" text-anchor="middle" fill="#4ecb8d">entry</text>
+          <rect x="85" y="95" width="130" height="40" rx="6" fill="#1a1a2a" stroke="#a78bfa" stroke-width="1.6"/>
+          <text x="150" y="112" text-anchor="middle" fill="#a78bfa">header</text>
+          <text x="150" y="126" text-anchor="middle" fill="#8888a8" font-size="8">φ · gt · cbr</text>
+          <rect x="20" y="195" width="110" height="34" rx="6" fill="#181824" stroke="#f5a623" stroke-width="1.4"/>
+          <text x="75" y="216" text-anchor="middle" fill="#f5a623">body</text>
+          <rect x="180" y="195" width="100" height="34" rx="6" fill="#101820" stroke="#60a5fa" stroke-width="1.4"/>
+          <text x="230" y="216" text-anchor="middle" fill="#60a5fa">exit</text>
+          <rect x="180" y="280" width="100" height="34" rx="6" fill="#101820" stroke="#60a5fa" stroke-width="1.2"/>
+          <text x="230" y="301" text-anchor="middle" fill="#60a5fa">ret acc</text>
+
+          <line x1="150" y1="44" x2="150" y2="93" stroke="#f5a623" stroke-width="1.4" marker-end="url(#aCfg)"/>
+          <line x1="120" y1="135" x2="80" y2="193" stroke="#f5a623" stroke-width="1.4" marker-end="url(#aCfg)"/>
+          <text x="92" y="170" fill="#8888a8" font-size="8">true</text>
+          <line x1="185" y1="135" x2="222" y2="193" stroke="#f5a623" stroke-width="1.4" marker-end="url(#aCfg)"/>
+          <text x="212" y="170" fill="#8888a8" font-size="8">false</text>
+          <line x1="230" y1="229" x2="230" y2="278" stroke="#60a5fa" stroke-width="1.4" marker-end="url(#aCfg)"/>
+          <!-- back edge -->
+          <path d="M 35 195 Q -5 130 90 110" fill="none" stroke="#a78bfa" stroke-width="1.4" stroke-dasharray="4" marker-end="url(#aBack)"/>
+          <text x="8" y="155" fill="#a78bfa" font-size="8">back-edge</text>
+        </g>
+      </svg>
+      <div class="card purple" style="margin-top:.2em;">
+        <h3 class="p">The Loop Is a Cycle</h3>
+        <p>The dashed <span class="p">back-edge</span> body&rarr;header is what makes this a loop. The φ at the header is the only place two definitions of <code>n</code> / <code>acc</code> meet.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 15 — OPTIMISATIONS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">14</span>
+    <h2>Two Optimisations &mdash; Constant Folding &amp; DCE</h2>
+  </div>
+  <p>SSA makes peephole optimisations almost trivial. We add two passes (deck 07): <span class="a">constant folding</span> evaluates compile-time-constant instructions, and <span class="g">dead-code elimination</span> deletes instructions whose result is never used.</p>
+  <div class="cols cols-2">
+    <div>
+      <pre><code class="language-python"># Constant folding: fold ops on literal args
+FOLD = {"add":lambda a,b:a+b, "sub":lambda a,b:a-b,
+        "mul":lambda a,b:a*b, "gt":lambda a,b:int(a&gt;b)}
+
+def fold(blocks, consts):
+    for blk in blocks:
+        for ins in blk.instrs:
+            a = [consts.get(x, x) for x in ins.args]
+            if ins.op in FOLD and all(isinstance(x,int) for x in a):
+                v = FOLD[ins.op](*a)        # evaluate now
+                ins.op, ins.args = "const", (v,)
+                consts[ins.dst] = v         # propagate
+
+def dce(blocks):
+    used = {x for b in blocks for i in b.instrs
+              for x in i.args} | live_in_terms(blocks)
+    for b in blocks:
+        b.instrs = [i for i in b.instrs
+                    if i.dst in used or i.op=="call"]</code></pre>
+    </div>
+    <div>
+      <h3 class="r">Before (a constant sub-expression + a dead let)</h3>
+      <pre><code class="language-llvm">  t1 = const 2
+  t2 = const 3
+  t3 = mul t1, t2     ; 2 * 3
+  r  = add t3, n      ; r = 6 + n
+  u  = const 99       ; let unused = 99
+  ret r</code></pre>
+      <h3 class="g" style="margin-top:.3em;">After fold + DCE</h3>
+      <pre><code class="language-llvm">  t3 = const 6        ; 2*3 folded
+  r  = add t3, n
+  ret r               ; 'u' deleted — never used</code></pre>
+      <div class="card amber" style="margin-top:.3em;">
+        <h3 class="a">Order Matters</h3>
+        <p>Fold first (it creates new constants and may make values dead), then DCE sweeps them up. Real compilers iterate the two to a fixpoint.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 16 — OPCODES ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">15</span>
+    <h2>Code Generation &mdash; A Tiny Stack-VM ISA</h2>
+  </div>
+  <p>The back end targets a <span class="a">stack machine</span> (like JVM / CPython bytecode, deck 09). Values live on an operand stack; locals live in numbered slots per call frame. Fourteen opcodes are enough for all of MiniLang.</p>
+  <div class="cols cols-6040">
+    <div>
+      <table>
+        <thead><tr><th>Opcode</th><th>Stack effect</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><code>CONST k</code></td><td>&rarr; k</td><td>push literal k</td></tr>
+          <tr><td><code>LOAD s</code></td><td>&rarr; locals[s]</td><td>push local slot s</td></tr>
+          <tr><td><code>STORE s</code></td><td>v &rarr;</td><td>pop into slot s</td></tr>
+          <tr><td><code>ADD/SUB/MUL/DIV</code></td><td>a b &rarr; r</td><td>integer arithmetic</td></tr>
+          <tr><td><code>LT / GT / EQ</code></td><td>a b &rarr; 0|1</td><td>comparison</td></tr>
+          <tr><td><code>JMP t</code></td><td>&mdash;</td><td>jump to offset t</td></tr>
+          <tr><td><code>JZ t</code></td><td>v &rarr;</td><td>jump if popped == 0</td></tr>
+          <tr><td><code>CALL f n</code></td><td>args &rarr; r</td><td>call f with n args</td></tr>
+          <tr><td><code>RET</code></td><td>v &rarr;</td><td>return top of stack</td></tr>
+          <tr><td><code>PRINT</code></td><td>v &rarr;</td><td>pop &amp; print</td></tr>
+          <tr><td><code>HALT</code></td><td>&mdash;</td><td>stop the VM</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <div class="card green">
+        <h3 class="g">Lowering IR &rarr; Bytecode</h3>
+        <p>Each three-address instruction expands to a short opcode sequence: <code>t = mul a, b</code> becomes <code>LOAD a; LOAD b; MUL; STORE t</code>. A <code>cbr</code> becomes the condition followed by <code>JZ exit</code>. Block labels resolve to integer offsets in a second pass (back-patching).</p>
+      </div>
+      <div class="card blue" style="margin-top:.4em;">
+        <h3 class="b">Aside: Emitting LLVM IR Instead</h3>
+        <pre><code class="language-llvm">define i64 @fact(i64 %n) {
+  ; our three-address IR maps almost
+  ; 1:1 onto LLVM's SSA form —
+  ; mul → mul i64, cbr → br i1,
+  ; phi → phi. Then llc does regalloc
+  ; &amp; instruction selection for you.
+}</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 17 — DISASSEMBLY ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">16</span>
+    <h2>Code Generation &mdash; Disassembly of <code>fact</code></h2>
+  </div>
+  <p>Here is the emitted bytecode for the <code>fact</code> function after labels are back-patched to offsets. Locals: slot <span class="g">0 = n</span> (the argument), slot <span class="g">1 = acc</span>. Compare it instruction-by-instruction with the IR on slide 13.</p>
+  <div class="cols cols-2">
+    <div>
+      <pre><code class="language-plaintext">fn fact/1:            ; arity 1
+ 0   CONST   1        ; acc = 1
+ 1   STORE   1
+                      ; --- header (offset 2) ---
+ 2   LOAD    0        ; n
+ 3   CONST   1
+ 4   GT               ; n &gt; 1
+ 5   JZ      15       ; if !cond → exit
+ 6   LOAD    1        ; acc
+ 7   LOAD    0        ; n
+ 8   MUL              ; acc * n
+ 9   STORE   1        ; acc = ...
+10   LOAD    0        ; n
+11   CONST   1
+12   SUB              ; n - 1
+13   STORE   0        ; n = ...
+14   JMP     2        ; back to header
+15   LOAD    1        ; exit: acc
+16   RET</code></pre>
+    </div>
+    <div>
+      <div class="card amber">
+        <h3 class="a">Reading It</h3>
+        <ul>
+          <li>Offsets 0&ndash;1 are the loop pre-header (<code>acc = 1</code>)</li>
+          <li>Offset 5's <code>JZ 15</code> is the <code>cbr</code> &mdash; exit when <code>n &gt; 1</code> is false</li>
+          <li>Offset 14's <code>JMP 2</code> is the loop back-edge</li>
+          <li>Stack discipline: each <code>LOAD</code>/<code>CONST</code> pushes, each binary op pops two and pushes one</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">Top-Level Code</h3>
+        <pre><code class="language-plaintext"> 0  CONST 5
+ 1  CALL  fact 1   ; fact(5) → 120
+ 2  PRINT
+ 3  HALT</code></pre>
+      </div>
+      <div class="card purple" style="margin-top:.4em;">
+        <h3 class="p">17 Instructions</h3>
+        <p>The whole function is 17 bytecodes. No registers to allocate &mdash; the stack <em>is</em> the calling convention. That simplicity is why bytecode VMs are easy to write and port.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 18 — THE VM (CODE) ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">17</span>
+    <h2>The VM &mdash; The Interpreter Loop</h2>
+  </div>
+  <p>A stack VM is a <code>while</code> loop with a dispatch on the opcode. Each frame holds an instruction pointer, a local array and shares the operand stack. This loop executes the bytecode above and prints the result.</p>
+  <div class="cols cols-2">
+    <div>
+      <pre><code class="language-python">class Frame:
+    def __init__(s, code, locals_):
+        s.code, s.ip, s.locals = code, 0, locals_
+
+def run(program, entry):
+    stack, frames = [], [Frame(entry, [])]
+    while frames:
+        f = frames[-1]
+        op, *a = f.code[f.ip]; f.ip += 1
+        if   op == "CONST": stack.append(a[0])
+        elif op == "LOAD":  stack.append(f.locals[a[0]])
+        elif op == "STORE":
+            v = stack.pop()
+            while len(f.locals) &lt;= a[0]: f.locals.append(0)
+            f.locals[a[0]] = v
+        elif op == "ADD": b=stack.pop(); stack.append(stack.pop()+b)
+        elif op == "SUB": b=stack.pop(); stack.append(stack.pop()-b)
+        elif op == "MUL": b=stack.pop(); stack.append(stack.pop()*b)</code></pre>
+    </div>
+    <div>
+      <pre><code class="language-python">        elif op == "GT":
+            b=stack.pop(); stack.append(int(stack.pop() &gt; b))
+        elif op == "JMP": f.ip = a[0]
+        elif op == "JZ":
+            if stack.pop() == 0: f.ip = a[0]
+        elif op == "CALL":
+            fn, n = program[a[0]], a[1]
+            args = [stack.pop() for _ in range(n)][::-1]
+            frames.append(Frame(fn.code, args))
+        elif op == "RET":
+            frames.pop()                  # back to caller
+        elif op == "PRINT": print(stack.pop())
+        elif op == "HALT":  return
+    # RET leaves the return value on the shared stack</code></pre>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">Why So Short?</h3>
+        <p>No registers, no addressing modes, no calling-convention bookkeeping. The operand stack carries arguments and results; <code>RET</code> just pops the frame and leaves the value behind for the caller. ~25 lines runs the language.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 19 — RUNNING IT ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">18</span>
+    <h2>Running It &mdash; The Whole Pipeline</h2>
+  </div>
+  <p>The driver wires every pass together. From source file to printed answer is six function calls &mdash; and out comes <span class="a">120</span>, matching <code>5! = 5&times;4&times;3&times;2&times;1</code>.</p>
+  <div class="cols cols-2">
+    <div>
+      <pre><code class="language-python">def compile_and_run(path):
+    src    = open(path).read()
+    toks   = lex(src)                 # 03 — lexer
+    ast    = Parser(toks).program()   # 04 — parser
+    check(ast)                        # 05 — semantics
+    ir     = Lower().run(ast)         # 06 — lowering
+    fold(ir.blocks, {}); dce(ir.blocks)  # 07 — optimise
+    program = emit(ir)                # 08 — codegen
+    run(program, program["__main__"]) # 09 — VM
+
+if __name__ == "__main__":
+    compile_and_run("fact.ml")</code></pre>
+      <h3 class="g" style="margin-top:.3em;">Terminal</h3>
+      <pre><code class="language-plaintext">$ python minilang.py fact.ml
+120</code></pre>
+    </div>
+    <div>
+      <div class="card amber">
+        <h3 class="a">Trace of the Loop (slot values)</h3>
+        <table>
+          <thead><tr><th>iter</th><th>n</th><th>acc</th><th>n&gt;1?</th></tr></thead>
+          <tbody>
+            <tr><td>start</td><td>5</td><td>1</td><td>true</td></tr>
+            <tr><td>1</td><td>4</td><td>5</td><td>true</td></tr>
+            <tr><td>2</td><td>3</td><td>20</td><td>true</td></tr>
+            <tr><td>3</td><td>2</td><td>60</td><td>true</td></tr>
+            <tr><td>4</td><td>1</td><td>120</td><td>false</td></tr>
+            <tr><td>exit</td><td>1</td><td><span class="a">120</span></td><td>&mdash;</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">End-to-End Consistency</h3>
+        <p>The same program produced the tokens (06), AST (09), IR (13), bytecode (16), and now the answer &mdash; every artefact in this deck describes <em>this one execution</em>. That consistency is the whole point of the capstone.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 20 — TESTING & ERRORS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">19</span>
+    <h2>Testing &amp; Error Messages</h2>
+  </div>
+  <p>A compiler is a function; test it like one. Each stage takes a value and returns a value, so each is testable in isolation &mdash; and the whole pipeline is testable with <span class="a">golden files</span>.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card green">
+        <h3 class="g">Per-Stage Tests</h3>
+        <ul>
+          <li><span class="a">Lexer</span>: assert the token list for a snippet</li>
+          <li><span class="a">Parser</span>: <code>repr(ast)</code> equality &mdash; dataclasses compare structurally</li>
+          <li><span class="a">Checker</span>: assert that bad inputs raise with the right line</li>
+          <li><span class="a">Optimiser</span>: assert IR-before &rarr; IR-after</li>
+          <li><span class="a">VM</span>: feed hand-written bytecode, check the result</li>
+        </ul>
+      </div>
+      <div class="card purple" style="margin-top:.4em;">
+        <h3 class="p">Golden / Snapshot Tests</h3>
+        <p>Keep <code>tests/*.ml</code> beside <code>*.expected</code>. Run each through the full pipeline and diff stdout. A failing diff is a regression &mdash; cheap, high-coverage, and they double as documentation.</p>
+      </div>
+    </div>
+    <div>
+      <pre><code class="language-python">import subprocess, glob
+
+def test_golden():
+    for ml in glob.glob("tests/*.ml"):
+        expected = open(ml.replace(".ml",".expected")).read()
+        out = subprocess.run(
+            ["python","minilang.py",ml],
+            capture_output=True, text=True).stdout
+        assert out == expected, ml
+
+# tests/fact.ml  +  tests/fact.expected ("120\n")
+# tests/fib.ml   +  tests/fib.expected  ("55\n")</code></pre>
+      <div class="card amber" style="margin-top:.4em;">
+        <h3 class="a">Good Errors = Source Spans</h3>
+        <p>Every token carries <code>line</code>/<code>col</code>; every AST and IR node copies it. So a message can always point at the offending source &mdash; <code>fact.ml:4:11</code> &mdash; with a caret and a note. Carry positions <em>everywhere</em>; never throw them away.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 21 — WHERE TO GO NEXT ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">20</span>
+    <h2>Where to Go Next</h2>
+  </div>
+  <p>MiniLang is a skeleton. Every shortcut we took is a door to a deeper topic. Here is the path from this toy to a real front end &mdash; and the canonical books and projects to take you there.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card green">
+        <h3 class="g">Extend MiniLang</h3>
+        <ul>
+          <li>Add <code>float</code>, then strings &amp; a heap (now you need a <span class="a">GC</span> &mdash; deck 09)</li>
+          <li>Real SSA with φ-insertion &amp; proper liveness</li>
+          <li>A register VM, or emit LLVM IR and let <code>llc</code> finish</li>
+          <li>Closures &rarr; you'll meet upvalues &amp; capture</li>
+          <li>Better diagnostics: error recovery, multiple errors per run</li>
+        </ul>
+      </div>
+      <div class="card amber" style="margin-top:.4em;">
+        <h3 class="a">Build a Real Front End</h3>
+        <p>Try parsing a non-trivial subset of C or Python; wire your IR into <span class="b">LLVM</span> via its C API or <code>llvmlite</code>; or target <span class="b">WebAssembly</span> and run in a browser.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card blue">
+        <h3 class="b">Canonical Reading</h3>
+        <ul>
+          <li><span class="a">Crafting Interpreters</span> &mdash; Nystrom. Build <em>two</em> Lox implementations, tree-walking then a bytecode VM. The best place to start.</li>
+          <li><span class="a">LLVM Kaleidoscope Tutorial</span> &mdash; a JIT-compiled language on LLVM, front to back.</li>
+          <li><span class="a">Modern Compiler Implementation</span> &mdash; Appel (ML / Java / C editions). The classic course text.</li>
+          <li><span class="a">The Dragon Book</span> &mdash; Aho, Lam, Sethi, Ullman. The reference.</li>
+          <li><span class="a">Nand2Tetris</span> &mdash; build the whole stack, gates to compiler.</li>
+          <li><span class="a">Engineering a Compiler</span> &mdash; Cooper &amp; Torczon, strong on optimisation &amp; SSA.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 22 — SERIES RECAP ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">21</span>
+    <h2>The Whole Series, In One Picture</h2>
+  </div>
+  <p>Ten decks, one journey: from the history of the idea to a working compiler you built yourself. Each phase we coded today was a deck of its own &mdash; here they are, in order, threaded by the same arrow you saw on slide 1.</p>
+  <svg class="diagram" viewBox="0 0 900 215" width="900" height="215">
+    <g font-family="JetBrains Mono" font-size="8.5">
+      <rect x="10"  y="20" width="120" height="40" rx="5" fill="#181824" stroke="#f5a623"/><text x="70" y="38" text-anchor="middle" fill="#f5a623" font-size="9">01 History</text><text x="70" y="51" text-anchor="middle" fill="#8888a8">Hopper→LLVM</text>
+      <rect x="145" y="20" width="120" height="40" rx="5" fill="#181824" stroke="#f5a623"/><text x="205" y="38" text-anchor="middle" fill="#f5a623" font-size="9">02 Pipeline</text><text x="205" y="51" text-anchor="middle" fill="#8888a8">the phases</text>
+      <rect x="280" y="20" width="120" height="40" rx="5" fill="#1a2a1a" stroke="#4ecb8d"/><text x="340" y="38" text-anchor="middle" fill="#4ecb8d" font-size="9">03 Lexing</text><text x="340" y="51" text-anchor="middle" fill="#8888a8">DFA / tokens</text>
+      <rect x="415" y="20" width="120" height="40" rx="5" fill="#1a2a1a" stroke="#4ecb8d"/><text x="475" y="38" text-anchor="middle" fill="#4ecb8d" font-size="9">04 Parsing</text><text x="475" y="51" text-anchor="middle" fill="#8888a8">LL / LR / AST</text>
+      <rect x="550" y="20" width="120" height="40" rx="5" fill="#1a2a1a" stroke="#4ecb8d"/><text x="610" y="38" text-anchor="middle" fill="#4ecb8d" font-size="9">05 Semantics</text><text x="610" y="51" text-anchor="middle" fill="#8888a8">types / scopes</text>
+      <rect x="685" y="20" width="120" height="40" rx="5" fill="#1a1a2a" stroke="#a78bfa"/><text x="745" y="38" text-anchor="middle" fill="#a78bfa" font-size="9">06 IR</text><text x="745" y="51" text-anchor="middle" fill="#8888a8">CFG / SSA</text>
+
+      <rect x="685" y="100" width="120" height="40" rx="5" fill="#1a1a2a" stroke="#a78bfa"/><text x="745" y="118" text-anchor="middle" fill="#a78bfa" font-size="9">07 Optimise</text><text x="745" y="131" text-anchor="middle" fill="#8888a8">fold / DCE / LICM</text>
+      <rect x="550" y="100" width="120" height="40" rx="5" fill="#101820" stroke="#60a5fa"/><text x="610" y="118" text-anchor="middle" fill="#60a5fa" font-size="9">08 Codegen</text><text x="610" y="131" text-anchor="middle" fill="#8888a8">regalloc / ISel</text>
+      <rect x="415" y="100" width="120" height="40" rx="5" fill="#101820" stroke="#60a5fa"/><text x="475" y="118" text-anchor="middle" fill="#60a5fa" font-size="9">09 Runtime</text><text x="475" y="131" text-anchor="middle" fill="#8888a8">JIT / GC / VM</text>
+      <rect x="280" y="95" width="120" height="50" rx="6" fill="#1a1a2a" stroke="#f5a623" stroke-width="2"/><text x="340" y="116" text-anchor="middle" fill="#f5a623" font-size="9" font-weight="700">10 Mini-Compiler</text><text x="340" y="131" text-anchor="middle" fill="#8888a8">you are here</text>
+
+      <g stroke="#f5a623" stroke-width="1.3">
+        <defs><marker id="aRecap" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6" fill="#f5a623"/></marker></defs>
+        <line x1="130" y1="40" x2="143" y2="40" marker-end="url(#aRecap)"/>
+        <line x1="265" y1="40" x2="278" y2="40" marker-end="url(#aRecap)"/>
+        <line x1="400" y1="40" x2="413" y2="40" marker-end="url(#aRecap)"/>
+        <line x1="535" y1="40" x2="548" y2="40" marker-end="url(#aRecap)"/>
+        <line x1="670" y1="40" x2="683" y2="40" marker-end="url(#aRecap)"/>
+        <line x1="745" y1="60" x2="745" y2="98" marker-end="url(#aRecap)"/>
+        <line x1="685" y1="120" x2="672" y2="120" marker-end="url(#aRecap)"/>
+        <line x1="550" y1="120" x2="537" y2="120" marker-end="url(#aRecap)"/>
+        <line x1="415" y1="120" x2="402" y2="120" marker-end="url(#aRecap)"/>
+      </g>
+      <text x="450" y="185" text-anchor="middle" fill="#8888a8" font-size="9">front end (green) · middle end (purple) · back end (blue) · framing (amber)</text>
+    </g>
+  </svg>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 23 — SUMMARY ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">22</span>
+    <h2>Summary &mdash; The Series, Closed</h2>
+  </div>
+  <div class="cols cols-2">
+    <div>
+      <div class="card green">
+        <h3 class="g">Key Takeaways</h3>
+        <ul>
+          <li>A compiler is a <em>pipeline of functions</em>: each pass maps one representation to the next</li>
+          <li>The front end (lex, parse, check) turns text into a typed AST</li>
+          <li>The middle end lowers to an <span class="p">IR</span> over basic blocks and optimises it &mdash; SSA makes that easy</li>
+          <li>The back end emits code &mdash; bytecode for a VM, or machine code via LLVM</li>
+          <li>Carry <span class="a">source positions everywhere</span> for good diagnostics</li>
+          <li>Test each stage in isolation; golden-test the whole</li>
+          <li>~400 lines of Python is enough for a complete, real-shaped compiler</li>
+        </ul>
+      </div>
+      <div class="card amber" style="margin-top:.4em;">
+        <h3 class="a">One Program, Seven Forms</h3>
+        <p><code>fact(5)</code> &rarr; 43 tokens &rarr; an AST &rarr; 4 basic blocks of SSA-ish IR &rarr; folded IR &rarr; 17 bytecodes &rarr; <span class="a">120</span>. Same program, every slide.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card blue">
+        <h3 class="b">Further Reading</h3>
+        <ul>
+          <li><span class="mono">Crafting Interpreters</span> &mdash; Nystrom (free online)</li>
+          <li><span class="mono">LLVM Kaleidoscope</span> &mdash; llvm.org tutorial</li>
+          <li><span class="mono">Modern Compiler Implementation</span> &mdash; Appel</li>
+          <li><span class="mono">Engineering a Compiler</span> &mdash; Cooper &amp; Torczon</li>
+          <li><span class="mono">Nand2Tetris</span> &mdash; nand2tetris.org</li>
+          <li><span class="mono">The Dragon Book</span> &mdash; Aho/Lam/Sethi/Ullman</li>
+        </ul>
+      </div>
+      <div class="card purple" style="margin-top:.4em;">
+        <h3 class="p">Thank You</h3>
+        <p>From Grace Hopper's A-0 (deck 01) to your own working VM (deck 10) &mdash; you've now seen, and built, the whole arc from source text to running code.</p>
+      </div>
+      <div class="ss-row" style="margin-top:.4em; justify-content:center;">
+        <span class="ss-node done">Part 10 ✓</span>
+        <span class="ss-arrow">&rarr;</span>
+        <span class="ss-node done">Series Complete</span>
+        <span class="ss-arrow">&rarr;</span>
+        <span class="ss-node active">Back to the Hub</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+</div><!-- /slides -->
+</div><!-- /reveal -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/highlight/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/highlight/monokai.min.css">
+<script>
+Reveal.initialize({
+  hash: true,
+  slideNumber: 'c/t',
+  transition: 'fade',
+  transitionSpeed: 'fast',
+  controls: true,
+  progress: true,
+  center: false,
+  width: 1100,
+  height: 900,
+  margin: 0.01,
+  plugins: [RevealHighlight],
+  highlight: { theme: 'monokai' }
+});
+</script>
+<script>
+(function(){
+  var h = Reveal.getConfig().height || 900;
+  var m = Reveal.getConfig().margin || 0.02;
+  var maxH = Math.floor(h * (1 - 2 * m)) + 'px';
+  function fixSlides(){
+    document.querySelectorAll('.reveal .slides>section,.reveal .slides>section>section').forEach(function(s){
+      s.style.display = 'block';
+      s.style.maxHeight = maxH;
+    });
+  }
+  Reveal.on('ready', fixSlides);
+  Reveal.on('slidechanged', fixSlides);
+})();
+</script>
+</body>
+</html>

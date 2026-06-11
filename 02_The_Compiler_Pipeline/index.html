@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compilers — Part 02: The Compiler Pipeline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/theme/black.min.css">
+<style>
+  :root {
+    --amber:  #f5a623;
+    --green:  #4ecb8d;
+    --purple: #a78bfa;
+    --blue:   #60a5fa;
+    --red:    #f87171;
+    --bg:     #0a0a0f;
+    --bg2:    #10101a;
+    --bg3:    #181824;
+    --border: #2a2a3a;
+    --text:   #e8e8f0;
+    --muted:  #8888a8;
+  }
+
+  .reveal-viewport { background: var(--bg); }
+  .reveal .slides section { background: transparent; }
+
+  .reveal { font-family: 'DM Sans', sans-serif; color: var(--text); }
+  .reveal h1, .reveal h2, .reveal h3 { font-family: 'Playfair Display', serif; font-weight: 700; }
+  .reveal h1 { font-size: 1.6em; color: var(--amber); line-height: 1.1; }
+  .reveal h2 { font-size: 1.1em; color: var(--amber); margin-bottom: .2em; }
+  .reveal h3 { font-size: .78em; color: var(--green); margin-bottom: .15em; }
+  .reveal p  { font-size: .56em; line-height: 1.45; color: var(--text); }
+  .reveal li { font-size: .54em; line-height: 1.45; margin-bottom: .1em; }
+  .reveal code { font-family: 'JetBrains Mono', monospace; font-size: .72em; }
+  .reveal pre  { box-shadow: none; background: var(--bg3); border: 1px solid var(--border);
+                 border-radius: 6px; padding: .3em .5em; margin: .25em 0; }
+  .reveal pre code { font-size: .52em; line-height: 1.35; background: transparent; color: #cdd6f4; }
+
+  /* ── slide chrome ── */
+  .slide-hdr {
+    display: flex; align-items: center; gap: .4em;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: .2em; margin-bottom: .3em;
+  }
+  .slide-hdr .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .42em; font-weight: 500;
+    color: var(--bg); background: var(--amber);
+    padding: .1em .4em; border-radius: 3px;
+    letter-spacing: .04em;
+  }
+  .slide-hdr h2 { margin: 0; font-size: .95em; }
+
+  /* ── two-column ── */
+  .cols   { display: grid; gap: .5em; }
+  .cols-2 { grid-template-columns: 1fr 1fr; }
+  .cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .cols-6040 { grid-template-columns: 6fr 4fr; }
+  .cols-4060 { grid-template-columns: 4fr 6fr; }
+
+  /* ── cards ── */
+  .card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 6px; padding: .35em .6em;
+  }
+  .card.amber { border-left: 3px solid var(--amber); }
+  .card.green { border-left: 3px solid var(--green); }
+  .card.purple{ border-left: 3px solid var(--purple); }
+  .card.blue  { border-left: 3px solid var(--blue); }
+  .card.red   { border-left: 3px solid var(--red); }
+  .card h3 { font-size: .64em; margin: 0 0 .12em; }
+  .card p  { font-size: .52em; margin: 0; color: #b8b8d0; }
+  .card ul { margin: 0; padding-left: 1em; }
+  .card li { font-size: .52em; color: #b8b8d0; margin-bottom: .02em; }
+
+  /* ── table ── */
+  .reveal table { width: 100%; border-collapse: collapse; font-size: .5em; }
+  .reveal table th { background: var(--bg3); color: var(--amber); font-weight: 600;
+                     padding: .2em .4em; border: 1px solid var(--border); text-align: left; }
+  .reveal table td { padding: .18em .4em; border: 1px solid var(--border); color: #ccc; }
+  .reveal table tr:nth-child(even) td { background: #0e0e18; }
+
+  /* ── accent spans ── */
+  .a  { color: var(--amber); font-weight: 600; }
+  .g  { color: var(--green); font-weight: 600; }
+  .p  { color: var(--purple); font-weight: 600; }
+  .b  { color: var(--blue); font-weight: 600; }
+  .r  { color: var(--red); font-weight: 600; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* ── SVG graph diagrams ── */
+  svg.diagram { display: block; margin: 0 auto; overflow: visible; }
+
+  /* ── pill badges ── */
+  .pill {
+    display: inline-block; font-family: 'JetBrains Mono', monospace;
+    font-size: .44em; padding: .08em .4em; border-radius: 99px;
+    border: 1px solid; margin: 0 .08em;
+  }
+  .pill.amber { color: var(--amber); border-color: var(--amber); }
+  .pill.green { color: var(--green); border-color: var(--green); }
+  .pill.purple{ color: var(--purple); border-color: var(--purple); }
+  .pill.blue  { color: var(--blue); border-color: var(--blue); }
+
+  /* ── footer — hidden; was overlapping scrollable content ── */
+  .reveal .slide-footer { display: none; }
+  /* title slide special */
+  .title-slide h1 { font-size: 1.8em; }
+  .title-slide .subtitle {
+    font-size: .7em; color: var(--green); font-family: 'DM Sans', sans-serif;
+    font-weight: 300; letter-spacing: .04em; margin: .3em 0 .6em;
+  }
+  .title-slide .meta { font-size: .48em; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+
+  /* ── super-step animator ── */
+  .ss-row {
+    display: flex; gap: .25em; align-items: center;
+    margin: .1em 0; font-size: .55em; font-family: 'JetBrains Mono', monospace;
+  }
+  .ss-node {
+    padding: .2em .55em; border-radius: 5px; font-size: .9em;
+    background: var(--bg3); border: 1px solid var(--border); color: var(--text);
+  }
+  .ss-node.active { background: #1a2a1a; border-color: var(--green); color: var(--green); }
+  .ss-node.done   { background: #1a1a2a; border-color: var(--purple); color: var(--purple); }
+  .ss-arrow { color: var(--amber); }
+  .ss-label { font-size: .8em; color: var(--muted); margin-left: .3em; }
+
+  /* reduce default margins */
+  .reveal ul, .reveal ol { margin: .15em 0 .15em 1em; }
+.reveal .slides > section { display: flex !important; flex-direction: column !important; overflow-y: auto !important; align-items: stretch !important; justify-content: flex-start !important; }
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+
+<!-- ═══════════════════════════════ SLIDE 01 — TITLE ═══════════════════════════════ -->
+<section class="title-slide" data-background-color="#0a0a0f">
+  <div style="text-align:left; max-width:820px; margin:0 auto; padding: 1em 0;">
+    <div style="font-family:'JetBrains Mono',monospace; font-size:.5em; color:var(--muted); margin-bottom:.4em; letter-spacing:.1em;">
+      COMPILERS SERIES &middot; PART 02 OF 10
+    </div>
+    <h1>The Compiler<br>Pipeline</h1>
+    <div class="subtitle">Part 02 &mdash; From Source Text to Running Code: the Architecture</div>
+    <div style="width:60px; height:3px; background:var(--amber); margin-bottom:1.4em;"></div>
+    <div style="display:flex; gap:1.2em; flex-wrap:wrap; margin-bottom:1em;">
+      <span class="pill amber">Front / Middle / Back</span>
+      <span class="pill green">Phases</span>
+      <span class="pill purple">IR</span>
+      <span class="pill blue">Toolchain</span>
+    </div>
+    <div class="ss-row" style="margin-top:0.6em;">
+      <span class="ss-node active">Lex</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node active">Parse</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node active">Sema</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node active">IR</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node active">Opt</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node done">Codegen</span>
+    </div>
+    <p style="max-width:640px; color:#a0a0c0; font-size:.56em; line-height:1.5; margin-top:1em;">
+      A map of the whole journey a program takes &mdash; the analysis/synthesis split, the seven classic phases, the intermediate representations that flow between them, and the wider toolchain of driver, assembler, linker and loader that turns text into a process
+    </p>
+    <div class="meta" style="margin-top:1.4em;">
+      Analysis &nbsp;&middot;&nbsp; Synthesis &nbsp;&middot;&nbsp; Narrow Waist &nbsp;&middot;&nbsp; Toolchain
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 02 — AGENDA ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">01</span>
+    <h2>Topics</h2>
+  </div>
+  <p>This deck <span class="a">frames the whole series</span>. Every later part zooms into one box on the pipeline; here we lay out the map &mdash; the phases, the representations between them, and the tools around the compiler proper.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">What a Compiler Is</h3>
+        <ul>
+          <li>The translation problem &amp; the classic definition</li>
+          <li>Compiler vs interpreter vs transpiler</li>
+          <li>AOT, JIT and hybrid bytecode + VM</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:.45em;">
+        <h3 class="g">The Two Halves</h3>
+        <ul>
+          <li>Analysis (front end) vs synthesis (back end)</li>
+          <li>The middle end in between</li>
+          <li>The seven classic phases, in order</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">Representations &amp; Trace</h3>
+        <ul>
+          <li>Tokens &rarr; AST &rarr; IR &rarr; optimised IR &rarr; asm</li>
+          <li>A worked trace of <code>int x = a + b * 2;</code></li>
+          <li>The N&times;M &ldquo;narrow waist&rdquo; argument</li>
+        </ul>
+      </div>
+      <div class="card blue" style="margin-top:.45em;">
+        <h3 class="b">Toolchain &amp; Beyond</h3>
+        <ul>
+          <li>Driver, preprocessor, assembler, linker, loader</li>
+          <li>Single- vs multi-pass; bootstrapping; cross-compilation</li>
+          <li>Phase ordering &amp; error-handling philosophy</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 03 — WHAT IS A COMPILER ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">02</span>
+    <h2>What Is a Compiler?</h2>
+  </div>
+  <p>A <span class="a">compiler</span> is a program that reads a program in one language &mdash; the <span class="g">source</span> &mdash; and translates it into an equivalent program in another language &mdash; the <span class="b">target</span> &mdash; reporting any errors it finds along the way. <em>Equivalent</em> means same observable behaviour, not same text.</p>
+  <div class="cols cols-6040">
+    <div>
+      <svg class="diagram" viewBox="0 0 520 160" width="520" height="160">
+        <rect x="10" y="55" width="120" height="50" rx="5" fill="#181824" stroke="#4ecb8d" stroke-width="1.4"/>
+        <text x="70" y="78" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="11">Source</text>
+        <text x="70" y="94" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">e.g. C, Rust</text>
+        <line x1="132" y1="80" x2="185" y2="80" stroke="#f5a623" stroke-width="1.5" marker-end="url(#aA)"/>
+        <rect x="188" y="45" width="140" height="70" rx="6" fill="#1a1a2a" stroke="#f5a623" stroke-width="1.6"/>
+        <text x="258" y="75" text-anchor="middle" fill="#f5a623" font-family="Playfair Display" font-size="13" font-weight="700">Compiler</text>
+        <text x="258" y="93" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">analyse + synthesise</text>
+        <line x1="330" y1="80" x2="383" y2="80" stroke="#f5a623" stroke-width="1.5" marker-end="url(#aA)"/>
+        <rect x="386" y="55" width="124" height="50" rx="5" fill="#181824" stroke="#60a5fa" stroke-width="1.4"/>
+        <text x="448" y="78" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="11">Target</text>
+        <text x="448" y="94" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">e.g. x86-64 asm</text>
+        <line x1="258" y1="115" x2="258" y2="148" stroke="#f87171" stroke-width="1.3" marker-end="url(#aR)"/>
+        <text x="258" y="158" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono" font-size="8">error reports</text>
+        <defs>
+          <marker id="aA" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#f5a623"/></marker>
+          <marker id="aR" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#f87171"/></marker>
+        </defs>
+      </svg>
+    </div>
+    <div>
+      <div class="card amber">
+        <h3 class="a">Two Obligations</h3>
+        <ul>
+          <li><span class="g">Correctness</span> &mdash; preserve the meaning of the source</li>
+          <li><span class="b">Efficiency</span> &mdash; make the target fast &amp; small</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">Why &ldquo;Compile&rdquo;?</h3>
+        <p>Grace Hopper's <span class="a">A-0</span> (1952) <em>compiled</em> &mdash; assembled &mdash; subroutines from a library. The name stuck even as the job grew into full translation.</p>
+      </div>
+    </div>
+  </div>
+  <p style="margin-top:.3em;">The target need not be machine code: a compiler may emit assembly, bytecode, or another high-level language. The defining act is <span class="a">meaning-preserving translation across a language gap</span>.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 04 — TRANSLATORS COMPARED ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">03</span>
+    <h2>Compiler vs Interpreter vs &hellip;</h2>
+  </div>
+  <p>&ldquo;Compiler&rdquo; is one point in a family of <span class="a">language processors</span>. The axes that distinguish them: <em>when</em> translation happens, and <em>what</em> the target is.</p>
+  <table>
+    <thead>
+      <tr><th>Kind</th><th>What it does</th><th>When</th><th>Example</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><span class="a">Compiler (AOT)</span></td><td>Source &rarr; machine code, ahead of execution</td><td>Build time</td><td>GCC, Clang, rustc, Go</td></tr>
+      <tr><td><span class="g">Interpreter</span></td><td>Executes source / AST directly, no separate target</td><td>Run time</td><td>CPython (tree-walk-ish), Ruby MRI</td></tr>
+      <tr><td><span class="b">Transpiler</span></td><td>Source &rarr; another <em>high-level</em> language (source-to-source)</td><td>Build time</td><td>TypeScript&rarr;JS, Babel, f2c</td></tr>
+      <tr><td><span class="p">Bytecode + VM</span></td><td>Source &rarr; bytecode, then a VM interprets it</td><td>Build + run</td><td>javac &rarr; JVM, CPython &rarr; CPython VM</td></tr>
+      <tr><td><span class="r">JIT</span></td><td>Compiles hot bytecode to machine code <em>during</em> execution</td><td>Run time</td><td>HotSpot C2, V8 TurboFan, PyPy</td></tr>
+      <tr><td><span class="a">Hybrid</span></td><td>AOT to bytecode + JIT/interpret tiers at run time</td><td>Both</td><td>.NET CLR, modern JVMs, JS engines</td></tr>
+    </tbody>
+  </table>
+  <div class="cols cols-2" style="margin-top:.35em;">
+    <div class="card amber">
+      <h3 class="a">Compile vs Interpret — a Spectrum</h3>
+      <p>The line is blurry. CPython <em>compiles</em> to <code>.pyc</code> bytecode then interprets it; a JIT <em>interprets</em> first then compiles hot paths. The question is really &ldquo;how much work happens before the first instruction runs?&rdquo;</p>
+    </div>
+    <div class="card green">
+      <h3 class="g">Trade-offs</h3>
+      <ul>
+        <li><span class="a">AOT</span>: fast steady-state, no warm-up, but no run-time knowledge</li>
+        <li><span class="r">JIT</span>: adapts to profiles &amp; the host CPU, but pays warm-up &amp; memory</li>
+        <li><span class="g">Interpret</span>: instant start, portable, but slow per-op</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 05 — ANALYSIS VS SYNTHESIS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">04</span>
+    <h2>Two Halves: Analysis &amp; Synthesis</h2>
+  </div>
+  <p>The Dragon Book splits a compiler into an <span class="g">analysis</span> half (the <em>front end</em>) that breaks the source apart and an <span class="b">synthesis</span> half (the <em>back end</em>) that builds the target up. A <span class="p">middle end</span> sits between, working on a language- and target-neutral IR.</p>
+  <svg class="diagram" viewBox="0 0 900 150" width="900" height="150">
+    <rect x="10" y="40" width="270" height="80" rx="6" fill="#1a2a1a" stroke="#4ecb8d" stroke-width="1.6"/>
+    <text x="145" y="64" text-anchor="middle" fill="#4ecb8d" font-family="Playfair Display" font-size="14" font-weight="700">Analysis · Front End</text>
+    <text x="145" y="84" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8.5">lex · parse · semantic checks</text>
+    <text x="145" y="100" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8.5">"understand the source"</text>
+    <text x="145" y="114" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="8.5">depends on the language</text>
+    <line x1="282" y1="80" x2="318" y2="80" stroke="#f5a623" stroke-width="1.6" marker-end="url(#aB)"/>
+    <rect x="320" y="40" width="260" height="80" rx="6" fill="#1a1a2a" stroke="#a78bfa" stroke-width="1.6"/>
+    <text x="450" y="64" text-anchor="middle" fill="#a78bfa" font-family="Playfair Display" font-size="14" font-weight="700">Middle End</text>
+    <text x="450" y="84" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8.5">IR-level optimisation</text>
+    <text x="450" y="100" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8.5">"improve the program"</text>
+    <text x="450" y="114" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono" font-size="8.5">language- &amp; target-neutral</text>
+    <line x1="582" y1="80" x2="618" y2="80" stroke="#f5a623" stroke-width="1.6" marker-end="url(#aB)"/>
+    <rect x="620" y="40" width="270" height="80" rx="6" fill="#101820" stroke="#60a5fa" stroke-width="1.6"/>
+    <text x="755" y="64" text-anchor="middle" fill="#60a5fa" font-family="Playfair Display" font-size="14" font-weight="700">Synthesis · Back End</text>
+    <text x="755" y="84" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8.5">instr. select · alloc · sched</text>
+    <text x="755" y="100" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8.5">"emit good machine code"</text>
+    <text x="755" y="114" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="8.5">depends on the target</text>
+    <defs>
+      <marker id="aB" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#f5a623"/></marker>
+    </defs>
+  </svg>
+  <div class="cols cols-3" style="margin-top:.3em;">
+    <div class="card green"><h3 class="g">Front End Outputs</h3><p>A checked AST or IR plus a populated symbol table. It has decided the program is <em>well-formed</em>.</p></div>
+    <div class="card purple"><h3 class="p">Middle End</h3><p>Rewrites the IR into a faster, smaller, equivalent IR. Knows neither syntax nor registers.</p></div>
+    <div class="card blue"><h3 class="b">Back End Outputs</h3><p>Target assembly or object code, tuned to one ISA's registers, addressing modes and pipeline.</p></div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 06 — THE SEVEN PHASES ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">05</span>
+    <h2>The Classic Phases, in Order</h2>
+  </div>
+  <p>Conventionally seven phases. The first three are the front end (analysis); IR generation bridges; the last three are the middle/back end (synthesis). Each consumes the previous phase's output and produces a richer representation.</p>
+  <div class="ss-row" style="flex-wrap:wrap; justify-content:center; margin:.3em 0;">
+    <span class="ss-node active">Lexical</span><span class="ss-arrow">&rarr;</span>
+    <span class="ss-node active">Syntax</span><span class="ss-arrow">&rarr;</span>
+    <span class="ss-node active">Semantic</span><span class="ss-arrow">&rarr;</span>
+    <span class="ss-node done">IR Gen</span><span class="ss-arrow">&rarr;</span>
+    <span class="ss-node done">MI Optimise</span><span class="ss-arrow">&rarr;</span>
+    <span class="ss-node done">Code Gen</span><span class="ss-arrow">&rarr;</span>
+    <span class="ss-node done">Target Opt</span>
+  </div>
+  <div class="cols cols-2" style="margin-top:.2em;">
+    <div>
+      <table>
+        <thead><tr><th>Phase</th><th>In &rarr; Out</th></tr></thead>
+        <tbody>
+          <tr><td><span class="g">1. Lexical analysis</span></td><td>chars &rarr; token stream</td></tr>
+          <tr><td><span class="g">2. Syntax analysis</span></td><td>tokens &rarr; parse tree / AST</td></tr>
+          <tr><td><span class="g">3. Semantic analysis</span></td><td>AST &rarr; annotated (typed) AST</td></tr>
+          <tr><td><span class="p">4. IR generation</span></td><td>AST &rarr; intermediate code</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <table>
+        <thead><tr><th>Phase</th><th>In &rarr; Out</th></tr></thead>
+        <tbody>
+          <tr><td><span class="p">5. M/I optimisation</span></td><td>IR &rarr; better IR</td></tr>
+          <tr><td><span class="b">6. Code generation</span></td><td>IR &rarr; target asm</td></tr>
+          <tr><td><span class="b">7. Target optimisation</span></td><td>asm &rarr; tuned asm</td></tr>
+        </tbody>
+      </table>
+      <div class="card amber" style="margin-top:.3em;">
+        <h3 class="a">Cross-Cutting</h3>
+        <p>Two services thread through <em>every</em> phase: the <span class="a">symbol table</span> (names &rarr; attributes) and the <span class="r">error handler</span> (diagnostics &amp; recovery).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 07 — PHASE CARDS A ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">06</span>
+    <h2>Front-End Phases — One Card Each</h2>
+  </div>
+  <div class="cols cols-3">
+    <div class="card green">
+      <h3 class="g">1 · Lexical Analysis</h3>
+      <p><span class="b">In:</span> raw characters.<br><span class="b">Out:</span> a stream of <em>tokens</em> (lexeme + class).</p>
+      <p style="margin-top:.2em;">Strips whitespace/comments; groups <code>int</code>, <code>x</code>, <code>=</code> into kinds. Driven by regular expressions &rarr; a DFA scanner. <em>(Part 03.)</em></p>
+    </div>
+    <div class="card green">
+      <h3 class="g">2 · Syntax Analysis</h3>
+      <p><span class="b">In:</span> token stream.<br><span class="b">Out:</span> a parse tree / AST.</p>
+      <p style="margin-top:.2em;">Checks the tokens form a valid sentence of the grammar (CFG). LL/LR parsing builds the tree that captures structure. <em>(Part 04.)</em></p>
+    </div>
+    <div class="card green">
+      <h3 class="g">3 · Semantic Analysis</h3>
+      <p><span class="b">In:</span> AST.<br><span class="b">Out:</span> annotated AST + symbol table.</p>
+      <p style="margin-top:.2em;">Resolves names, checks types, scopes, declarations. Adds the meaning the grammar alone can't enforce. <em>(Part 05.)</em></p>
+    </div>
+  </div>
+  <div class="card amber" style="margin-top:.5em;">
+    <h3 class="a">Why the Order?</h3>
+    <p>Each phase needs its predecessor's <em>guarantee</em>: you can't parse without tokens, can't type-check without structure, can't generate code without a meaning. The split also localises errors &mdash; a lexer error is a stray character, a parser error a malformed phrase, a semantic error a type mismatch.</p>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 08 — PHASE CARDS B ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">07</span>
+    <h2>Middle / Back-End Phases — One Card Each</h2>
+  </div>
+  <div class="cols cols-2">
+    <div class="card purple">
+      <h3 class="p">4 · IR Generation</h3>
+      <p><span class="b">In:</span> typed AST. <span class="b">Out:</span> intermediate code (e.g. <em>three-address code</em>, SSA).</p>
+      <p style="margin-top:.2em;">Lowers tree-shaped meaning into a linear, machine-independent form &mdash; explicit temporaries, one operation per instruction. <em>(Part 06.)</em></p>
+    </div>
+    <div class="card purple">
+      <h3 class="p">5 · Machine-Independent Optimisation</h3>
+      <p><span class="b">In:</span> IR. <span class="b">Out:</span> better IR.</p>
+      <p style="margin-top:.2em;">Constant folding, common-subexpression elimination, dead-code elimination, loop-invariant code motion &mdash; all on the neutral IR. <em>(Part 07.)</em></p>
+    </div>
+    <div class="card blue">
+      <h3 class="b">6 · Code Generation</h3>
+      <p><span class="b">In:</span> optimised IR. <span class="b">Out:</span> target asm / object code.</p>
+      <p style="margin-top:.2em;">Instruction selection (tree-tiling/BURS), register allocation (graph-colouring or linear-scan), instruction scheduling. <em>(Part 08.)</em></p>
+    </div>
+    <div class="card blue">
+      <h3 class="b">7 · Target-Specific Optimisation</h3>
+      <p><span class="b">In:</span> asm. <span class="b">Out:</span> tuned asm.</p>
+      <p style="margin-top:.2em;">Peephole rewrites, addressing-mode tricks, branch alignment, micro-arch scheduling &mdash; things that only make sense once the ISA is fixed.</p>
+    </div>
+  </div>
+  <p style="margin-top:.35em;">Phases 4&ndash;5 belong to the <span class="p">middle end</span>; 6&ndash;7 to the <span class="b">back end</span>. The boundary is exactly where target details enter the picture.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 09 — BIG PIPELINE SVG ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">08</span>
+    <h2>The Pipeline — Representations Flowing Through</h2>
+  </div>
+  <p>What actually <em>moves</em> between phases is a sequence of representations. The <span class="a">symbol table</span> and <span class="r">error handler</span> are cross-cutting &mdash; every phase reads and writes them.</p>
+  <svg class="diagram" viewBox="0 0 900 300" width="900" height="300">
+    <!-- cross-cutting boxes -->
+    <rect x="20" y="15" width="860" height="34" rx="5" fill="#1a1a12" stroke="#f5a623" stroke-width="1.3"/>
+    <text x="450" y="37" text-anchor="middle" fill="#f5a623" font-family="JetBrains Mono" font-size="10">Symbol Table  (names → type · scope · location · storage)</text>
+    <rect x="20" y="251" width="860" height="34" rx="5" fill="#1a1212" stroke="#f87171" stroke-width="1.3"/>
+    <text x="450" y="273" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono" font-size="10">Error Handler  (detect · report · recover — across all phases)</text>
+    <!-- pipeline boxes -->
+    <g font-family="JetBrains Mono" font-size="9">
+      <rect x="20"  y="110" width="92" height="80" rx="5" fill="#181824" stroke="#4ecb8d" stroke-width="1.4"/>
+      <text x="66"  y="135" text-anchor="middle" fill="#4ecb8d" font-size="9.5">Lexer</text>
+      <text x="66"  y="172" text-anchor="middle" fill="#8888a8">chars</text>
+      <rect x="148" y="110" width="92" height="80" rx="5" fill="#181824" stroke="#4ecb8d" stroke-width="1.4"/>
+      <text x="194" y="135" text-anchor="middle" fill="#4ecb8d" font-size="9.5">Parser</text>
+      <text x="194" y="172" text-anchor="middle" fill="#8888a8">tokens</text>
+      <rect x="276" y="110" width="92" height="80" rx="5" fill="#181824" stroke="#4ecb8d" stroke-width="1.4"/>
+      <text x="322" y="129" text-anchor="middle" fill="#4ecb8d" font-size="9.5">Semantic</text>
+      <text x="322" y="172" text-anchor="middle" fill="#8888a8">AST</text>
+      <rect x="404" y="110" width="92" height="80" rx="5" fill="#181824" stroke="#a78bfa" stroke-width="1.4"/>
+      <text x="450" y="129" text-anchor="middle" fill="#a78bfa" font-size="9.5">IR Gen</text>
+      <text x="450" y="165" text-anchor="middle" fill="#8888a8">ann.</text>
+      <text x="450" y="177" text-anchor="middle" fill="#8888a8">AST</text>
+      <rect x="532" y="110" width="92" height="80" rx="5" fill="#181824" stroke="#a78bfa" stroke-width="1.4"/>
+      <text x="578" y="129" text-anchor="middle" fill="#a78bfa" font-size="9.5">Optimiser</text>
+      <text x="578" y="172" text-anchor="middle" fill="#8888a8">IR</text>
+      <rect x="660" y="110" width="92" height="80" rx="5" fill="#181824" stroke="#60a5fa" stroke-width="1.4"/>
+      <text x="706" y="129" text-anchor="middle" fill="#60a5fa" font-size="9.5">Codegen</text>
+      <text x="706" y="165" text-anchor="middle" fill="#8888a8">opt.</text>
+      <text x="706" y="177" text-anchor="middle" fill="#8888a8">IR</text>
+      <rect x="788" y="110" width="92" height="80" rx="5" fill="#101820" stroke="#60a5fa" stroke-width="1.4"/>
+      <text x="834" y="135" text-anchor="middle" fill="#60a5fa" font-size="9.5">asm</text>
+      <text x="834" y="172" text-anchor="middle" fill="#8888a8">out</text>
+    </g>
+    <!-- flow arrows between boxes -->
+    <g stroke="#f5a623" stroke-width="1.5">
+      <line x1="112" y1="150" x2="146" y2="150" marker-end="url(#aP)"/>
+      <line x1="240" y1="150" x2="274" y2="150" marker-end="url(#aP)"/>
+      <line x1="368" y1="150" x2="402" y2="150" marker-end="url(#aP)"/>
+      <line x1="496" y1="150" x2="530" y2="150" marker-end="url(#aP)"/>
+      <line x1="624" y1="150" x2="658" y2="150" marker-end="url(#aP)"/>
+      <line x1="752" y1="150" x2="786" y2="150" marker-end="url(#aP)"/>
+    </g>
+    <!-- connectors to cross-cutting -->
+    <g stroke="#f5a623" stroke-width="0.8" stroke-dasharray="3" opacity="0.6">
+      <line x1="194" y1="110" x2="194" y2="49"/>
+      <line x1="450" y1="110" x2="450" y2="49"/>
+      <line x1="706" y1="110" x2="706" y2="49"/>
+    </g>
+    <g stroke="#f87171" stroke-width="0.8" stroke-dasharray="3" opacity="0.6">
+      <line x1="194" y1="190" x2="194" y2="251"/>
+      <line x1="450" y1="190" x2="450" y2="251"/>
+      <line x1="706" y1="190" x2="706" y2="251"/>
+    </g>
+    <text x="200" y="206" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="8.5">— front end —</text>
+    <text x="514" y="206" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono" font-size="8.5">— middle end —</text>
+    <text x="770" y="206" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="8.5">— back end —</text>
+    <defs>
+      <marker id="aP" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#f5a623"/></marker>
+    </defs>
+  </svg>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 10 — WORKED TRACE INTRO ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">09</span>
+    <h2>Worked Trace — <code>int x = a + b * 2;</code></h2>
+  </div>
+  <p>Let's push one statement through the whole machine and watch its representation change at each stage. Assume <code>a</code>, <code>b</code> are <code>int</code> locals already in scope.</p>
+  <svg class="diagram" viewBox="0 0 900 230" width="900" height="230">
+    <g font-family="JetBrains Mono">
+      <rect x="10"  y="20" width="150" height="190" rx="6" fill="#181824" stroke="#4ecb8d" stroke-width="1.4"/>
+      <text x="85" y="40" text-anchor="middle" fill="#4ecb8d" font-size="10">① Tokens</text>
+      <text x="85" y="62" text-anchor="middle" fill="#8888a8" font-size="7.5">KW(int) ID(x)</text>
+      <text x="85" y="76" text-anchor="middle" fill="#8888a8" font-size="7.5">OP(=) ID(a)</text>
+      <text x="85" y="90" text-anchor="middle" fill="#8888a8" font-size="7.5">OP(+) ID(b)</text>
+      <text x="85" y="104" text-anchor="middle" fill="#8888a8" font-size="7.5">OP(*) NUM(2)</text>
+      <text x="85" y="118" text-anchor="middle" fill="#8888a8" font-size="7.5">SEMI(;)</text>
+
+      <rect x="186" y="20" width="170" height="190" rx="6" fill="#181824" stroke="#4ecb8d" stroke-width="1.4"/>
+      <text x="271" y="40" text-anchor="middle" fill="#4ecb8d" font-size="10">② AST</text>
+      <!-- mini tree -->
+      <circle cx="271" cy="62" r="11" fill="#0e0e18" stroke="#4ecb8d"/><text x="271" y="65" text-anchor="middle" fill="#4ecb8d" font-size="8">=</text>
+      <line x1="262" y1="70" x2="232" y2="92" stroke="#8888a8"/><line x1="280" y1="70" x2="310" y2="92" stroke="#8888a8"/>
+      <circle cx="228" cy="100" r="11" fill="#0e0e18" stroke="#60a5fa"/><text x="228" y="103" text-anchor="middle" fill="#60a5fa" font-size="8">x</text>
+      <circle cx="314" cy="100" r="11" fill="#0e0e18" stroke="#4ecb8d"/><text x="314" y="103" text-anchor="middle" fill="#4ecb8d" font-size="8">+</text>
+      <line x1="305" y1="108" x2="285" y2="130" stroke="#8888a8"/><line x1="323" y1="108" x2="343" y2="130" stroke="#8888a8"/>
+      <circle cx="281" cy="138" r="11" fill="#0e0e18" stroke="#60a5fa"/><text x="281" y="141" text-anchor="middle" fill="#60a5fa" font-size="8">a</text>
+      <circle cx="347" cy="138" r="11" fill="#0e0e18" stroke="#4ecb8d"/><text x="347" y="141" text-anchor="middle" fill="#4ecb8d" font-size="8">*</text>
+      <line x1="338" y1="146" x2="320" y2="166" stroke="#8888a8"/><line x1="356" y1="146" x2="374" y2="166" stroke="#8888a8"/>
+      <circle cx="316" cy="174" r="11" fill="#0e0e18" stroke="#60a5fa"/><text x="316" y="177" text-anchor="middle" fill="#60a5fa" font-size="8">b</text>
+      <circle cx="378" cy="174" r="11" fill="#0e0e18" stroke="#a78bfa"/><text x="378" y="177" text-anchor="middle" fill="#a78bfa" font-size="8">2</text>
+
+      <rect x="382" y="20" width="200" height="190" rx="6" fill="#181824" stroke="#a78bfa" stroke-width="1.4"/>
+      <text x="482" y="40" text-anchor="middle" fill="#a78bfa" font-size="10">③ 3-Address Code</text>
+      <text x="482" y="64" text-anchor="middle" fill="#8888a8" font-size="8">t1 = b * 2</text>
+      <text x="482" y="80" text-anchor="middle" fill="#8888a8" font-size="8">t2 = a + t1</text>
+      <text x="482" y="96" text-anchor="middle" fill="#8888a8" font-size="8">x  = t2</text>
+      <text x="482" y="128" text-anchor="middle" fill="#a78bfa" font-size="7.5">all int; types</text>
+      <text x="482" y="140" text-anchor="middle" fill="#a78bfa" font-size="7.5">checked in ②.5</text>
+
+      <rect x="608" y="20" width="200" height="190" rx="6" fill="#101820" stroke="#60a5fa" stroke-width="1.4"/>
+      <text x="708" y="40" text-anchor="middle" fill="#60a5fa" font-size="10">④ x86-64</text>
+      <text x="708" y="64" text-anchor="middle" fill="#8888a8" font-size="8">mov  eax, [b]</text>
+      <text x="708" y="80" text-anchor="middle" fill="#8888a8" font-size="8">add  eax, eax</text>
+      <text x="708" y="96" text-anchor="middle" fill="#8888a8" font-size="8">add  eax, [a]</text>
+      <text x="708" y="112" text-anchor="middle" fill="#8888a8" font-size="8">mov  [x], eax</text>
+      <text x="708" y="140" text-anchor="middle" fill="#60a5fa" font-size="7.5">*2 → add (strength</text>
+      <text x="708" y="152" text-anchor="middle" fill="#60a5fa" font-size="7.5">reduction)</text>
+    </g>
+    <g stroke="#f5a623" stroke-width="1.5">
+      <line x1="160" y1="115" x2="184" y2="115" marker-end="url(#aT)"/>
+      <line x1="356" y1="115" x2="380" y2="115" marker-end="url(#aT)"/>
+      <line x1="582" y1="115" x2="606" y2="115" marker-end="url(#aT)"/>
+    </g>
+    <defs>
+      <marker id="aT" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#f5a623"/></marker>
+    </defs>
+  </svg>
+  <p style="margin-top:.2em; text-align:center; color:var(--muted); font-size:.5em;">Precedence (<code>*</code> binds tighter than <code>+</code>) is captured by the <em>shape</em> of the AST, not the token order.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 11 — WORKED TRACE DETAIL ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">10</span>
+    <h2>Worked Trace — the Code at Each Stage</h2>
+  </div>
+  <div class="cols cols-2">
+    <div>
+      <p><span class="g">① Token stream</span> &mdash; lexemes tagged with a class:</p>
+      <pre><code class="language-plaintext">KW(int) ID(x) OP(=) ID(a) OP(+) ID(b) OP(*) NUM(2) SEMI</code></pre>
+      <p><span class="g">② / ③ AST (semantic-checked)</span> &mdash; precedence in the tree shape; types resolved:</p>
+      <pre><code class="language-plaintext">Decl(int, x)
+└─ Assign
+   └─ Add :int
+      ├─ a :int
+      └─ Mul :int
+         ├─ b :int
+         └─ 2 :int</code></pre>
+    </div>
+    <div>
+      <p><span class="p">④ Three-address code</span> &mdash; linear, one op each:</p>
+      <pre><code class="language-plaintext">t1 = b * 2
+t2 = a + t1
+x  = t2</code></pre>
+      <p><span class="b">⑤ x86-64</span> &mdash; after instruction selection, allocation &amp; <code>*2&rarr;+</code> strength reduction:</p>
+      <pre><code class="language-x86asm">mov   eax, DWORD PTR [rbp-8]   ; load b
+add   eax, eax                 ; b * 2
+add   eax, DWORD PTR [rbp-4]   ; + a
+mov   DWORD PTR [rbp-12], eax  ; store x</code></pre>
+      <div class="card amber" style="margin-top:.3em;">
+        <h3 class="a">Notice</h3>
+        <p>Three temporaries in IR collapsed to <em>one</em> register (<code>eax</code>); the multiply by 2 became an add. That's the back end and optimiser earning their keep.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 12 — N×M NARROW WAIST ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">11</span>
+    <h2>Why the Split? The N&times;M &ldquo;Narrow Waist&rdquo;</h2>
+  </div>
+  <p>The front/middle/back split exists for <span class="a">reuse</span>. With <em>N</em> source languages and <em>M</em> targets, a monolithic design needs <span class="r">N&times;M</span> compilers. Route everything through one shared <span class="p">IR</span> and you need only <span class="g">N + M</span> halves.</p>
+  <svg class="diagram" viewBox="0 0 900 220" width="900" height="220">
+    <!-- N front ends -->
+    <g font-family="JetBrains Mono" font-size="9">
+      <rect x="20" y="20" width="90" height="26" rx="4" fill="#1a2a1a" stroke="#4ecb8d"/><text x="65" y="37" text-anchor="middle" fill="#4ecb8d">C / C++</text>
+      <rect x="20" y="56" width="90" height="26" rx="4" fill="#1a2a1a" stroke="#4ecb8d"/><text x="65" y="73" text-anchor="middle" fill="#4ecb8d">Rust</text>
+      <rect x="20" y="92" width="90" height="26" rx="4" fill="#1a2a1a" stroke="#4ecb8d"/><text x="65" y="109" text-anchor="middle" fill="#4ecb8d">Swift</text>
+      <rect x="20" y="128" width="90" height="26" rx="4" fill="#1a2a1a" stroke="#4ecb8d"/><text x="65" y="145" text-anchor="middle" fill="#4ecb8d">Fortran</text>
+      <rect x="20" y="164" width="90" height="26" rx="4" fill="#1a2a1a" stroke="#4ecb8d"/><text x="65" y="181" text-anchor="middle" fill="#4ecb8d">Julia</text>
+    </g>
+    <!-- waist -->
+    <rect x="380" y="78" width="140" height="60" rx="8" fill="#1a1a2a" stroke="#a78bfa" stroke-width="2"/>
+    <text x="450" y="104" text-anchor="middle" fill="#a78bfa" font-family="Playfair Display" font-size="14" font-weight="700">LLVM IR</text>
+    <text x="450" y="122" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">shared optimiser</text>
+    <!-- M back ends -->
+    <g font-family="JetBrains Mono" font-size="9">
+      <rect x="790" y="20" width="90" height="26" rx="4" fill="#101820" stroke="#60a5fa"/><text x="835" y="37" text-anchor="middle" fill="#60a5fa">x86-64</text>
+      <rect x="790" y="56" width="90" height="26" rx="4" fill="#101820" stroke="#60a5fa"/><text x="835" y="73" text-anchor="middle" fill="#60a5fa">ARM64</text>
+      <rect x="790" y="92" width="90" height="26" rx="4" fill="#101820" stroke="#60a5fa"/><text x="835" y="109" text-anchor="middle" fill="#60a5fa">RISC-V</text>
+      <rect x="790" y="128" width="90" height="26" rx="4" fill="#101820" stroke="#60a5fa"/><text x="835" y="145" text-anchor="middle" fill="#60a5fa">WASM</text>
+      <rect x="790" y="164" width="90" height="26" rx="4" fill="#101820" stroke="#60a5fa"/><text x="835" y="181" text-anchor="middle" fill="#60a5fa">PowerPC</text>
+    </g>
+    <!-- converging lines -->
+    <g stroke="#4ecb8d" stroke-width="1" opacity="0.7">
+      <line x1="110" y1="33"  x2="380" y2="100"/>
+      <line x1="110" y1="69"  x2="380" y2="104"/>
+      <line x1="110" y1="105" x2="380" y2="108"/>
+      <line x1="110" y1="141" x2="380" y2="112"/>
+      <line x1="110" y1="177" x2="380" y2="116"/>
+    </g>
+    <g stroke="#60a5fa" stroke-width="1" opacity="0.7">
+      <line x1="520" y1="100" x2="790" y2="33"/>
+      <line x1="520" y1="104" x2="790" y2="69"/>
+      <line x1="520" y1="108" x2="790" y2="105"/>
+      <line x1="520" y1="112" x2="790" y2="141"/>
+      <line x1="520" y1="116" x2="790" y2="177"/>
+    </g>
+    <text x="200" y="212" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="9">N front ends</text>
+    <text x="700" y="212" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="9">M back ends</text>
+  </svg>
+  <p style="margin-top:.2em;">This is the architecture <span class="b">LLVM</span> (Lattner, 2003) made mainstream: a stable IR as a <em>contract</em> so any front end pairs with any back end. The middle-end optimiser, written <em>once</em>, benefits all N&times;M combinations.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 13 — RESPONSIBILITIES ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">12</span>
+    <h2>Who Owns What</h2>
+  </div>
+  <p>The split is also a <span class="a">contract about knowledge</span>: each part knows exactly enough and no more, which is what lets the pieces be swapped.</p>
+  <div class="cols cols-3">
+    <div class="card green">
+      <h3 class="g">Front End Knows</h3>
+      <ul>
+        <li>The <em>source language</em>: its grammar, type system, scoping rules</li>
+        <li>Nothing about registers or the target ISA</li>
+        <li>Produces a verified IR + symbol table</li>
+      </ul>
+    </div>
+    <div class="card purple">
+      <h3 class="p">Middle End Knows</h3>
+      <ul>
+        <li>Only the <em>IR</em> and its semantics</li>
+        <li>Dataflow, control flow, algebraic identities</li>
+        <li>Neither syntax nor hardware &mdash; fully reusable</li>
+      </ul>
+    </div>
+    <div class="card blue">
+      <h3 class="b">Back End Knows</h3>
+      <ul>
+        <li>The <em>target</em>: registers, addressing modes, calling convention, pipeline</li>
+        <li>Nothing about which source language produced the IR</li>
+        <li>Produces assembly / object code</li>
+      </ul>
+    </div>
+  </div>
+  <div class="card amber" style="margin-top:.5em;">
+    <h3 class="a">The Pay-off</h3>
+    <p>Add a new language &rarr; write one front end, get every target free. Add a new chip &rarr; write one back end, get every language free. Improve the optimiser &rarr; everyone benefits. This is why GCC and LLVM are <em>ecosystems</em>, not single programs.</p>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 14 — SINGLE VS MULTI-PASS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">13</span>
+    <h2>Single-Pass vs Multi-Pass</h2>
+  </div>
+  <p>A <span class="a">pass</span> is one complete traversal of the program. Phases are <em>logical</em>; passes are <em>physical</em>. One pass may run several phases; one phase may span several passes.</p>
+  <div class="cols cols-2">
+    <div class="card green">
+      <h3 class="g">Single-Pass</h3>
+      <ul>
+        <li>Reads the source once, emitting code as it goes</li>
+        <li>Early compilers were single-pass out of <span class="a">necessity</span> &mdash; memory was tiny; you couldn't hold the whole program</li>
+        <li>Forces language design: Pascal/C require <em>declare before use</em> so a name's type is known when first seen</li>
+        <li>Fast, but limited optimisation &amp; no forward references</li>
+      </ul>
+    </div>
+    <div class="card purple">
+      <h3 class="p">Multi-Pass</h3>
+      <ul>
+        <li>Builds an in-memory IR (AST/SSA) and revisits it repeatedly</li>
+        <li>Each optimisation is typically its own pass over the IR</li>
+        <li>Enables whole-function and whole-program analysis</li>
+        <li>The norm today &mdash; memory is cheap; LLVM runs <em>dozens</em> of passes in a configurable pipeline</li>
+      </ul>
+    </div>
+  </div>
+  <p style="margin-top:.35em;">C's header/forward-declaration culture and the <code>;</code>-before-use rules are fossils of the single-pass era. Modern languages (Rust, Go) declare freely because their compilers hold the whole module in memory.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 15 — TOOLCHAIN SVG ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">14</span>
+    <h2>The Wider Toolchain</h2>
+  </div>
+  <p>&ldquo;The compiler&rdquo; in everyday use is really a <span class="a">driver</span> orchestrating several programs. <code>gcc hello.c</code> silently runs a preprocessor, the compiler proper, an assembler and a linker.</p>
+  <svg class="diagram" viewBox="0 0 900 175" width="900" height="175">
+    <g font-family="JetBrains Mono" font-size="9">
+      <rect x="10"  y="55" width="120" height="56" rx="5" fill="#181824" stroke="#4ecb8d" stroke-width="1.4"/>
+      <text x="70" y="79" text-anchor="middle" fill="#4ecb8d" font-size="9.5">Preprocessor</text>
+      <text x="70" y="96" text-anchor="middle" fill="#8888a8" font-size="7.5">.c → .i (cpp)</text>
+      <rect x="170" y="55" width="120" height="56" rx="5" fill="#181824" stroke="#f5a623" stroke-width="1.4"/>
+      <text x="230" y="79" text-anchor="middle" fill="#f5a623" font-size="9.5">Compiler</text>
+      <text x="230" y="96" text-anchor="middle" fill="#8888a8" font-size="7.5">.i → .s (cc1)</text>
+      <rect x="330" y="55" width="120" height="56" rx="5" fill="#181824" stroke="#a78bfa" stroke-width="1.4"/>
+      <text x="390" y="79" text-anchor="middle" fill="#a78bfa" font-size="9.5">Assembler</text>
+      <text x="390" y="96" text-anchor="middle" fill="#8888a8" font-size="7.5">.s → .o (as)</text>
+      <rect x="490" y="55" width="120" height="56" rx="5" fill="#181824" stroke="#60a5fa" stroke-width="1.4"/>
+      <text x="550" y="79" text-anchor="middle" fill="#60a5fa" font-size="9.5">Linker</text>
+      <text x="550" y="96" text-anchor="middle" fill="#8888a8" font-size="7.5">.o+libs → exe (ld)</text>
+      <rect x="650" y="55" width="120" height="56" rx="5" fill="#101820" stroke="#f87171" stroke-width="1.4"/>
+      <text x="710" y="79" text-anchor="middle" fill="#f87171" font-size="9.5">Loader</text>
+      <text x="710" y="96" text-anchor="middle" fill="#8888a8" font-size="7.5">exe → process</text>
+      <rect x="790" y="55" width="100" height="56" rx="5" fill="#1a2a1a" stroke="#4ecb8d" stroke-width="1.4"/>
+      <text x="840" y="79" text-anchor="middle" fill="#4ecb8d" font-size="9.5">Running</text>
+      <text x="840" y="96" text-anchor="middle" fill="#8888a8" font-size="7.5">in memory</text>
+    </g>
+    <g stroke="#f5a623" stroke-width="1.5">
+      <line x1="130" y1="83" x2="168" y2="83" marker-end="url(#aL)"/>
+      <line x1="290" y1="83" x2="328" y2="83" marker-end="url(#aL)"/>
+      <line x1="450" y1="83" x2="488" y2="83" marker-end="url(#aL)"/>
+      <line x1="610" y1="83" x2="648" y2="83" marker-end="url(#aL)"/>
+      <line x1="770" y1="83" x2="788" y2="83" marker-end="url(#aL)"/>
+    </g>
+    <!-- driver bracket -->
+    <rect x="4" y="20" width="612" height="118" rx="8" fill="none" stroke="#f5a623" stroke-width="1" stroke-dasharray="5" opacity="0.7"/>
+    <text x="310" y="34" text-anchor="middle" fill="#f5a623" font-family="Playfair Display" font-size="12" font-weight="700">Driver  (gcc / clang orchestrates these)</text>
+    <text x="710" y="138" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">OS, at exec()</text>
+    <defs>
+      <marker id="aL" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#f5a623"/></marker>
+    </defs>
+  </svg>
+  <div class="cols cols-2" style="margin-top:.25em;">
+    <div class="card amber"><h3 class="a">Object Files</h3><p>The assembler emits <em>relocatable</em> object files (ELF on Linux, Mach-O on macOS, COFF/PE on Windows): machine code plus a symbol table and relocation entries the linker resolves.</p></div>
+    <div class="card blue"><h3 class="b">See It Yourself</h3><pre><code class="language-bash">gcc -E hello.c   # stop after preprocess
+gcc -S hello.c   # stop after compile → .s
+gcc -c hello.c   # stop after assemble → .o
+gcc    hello.c   # all the way to a.out</code></pre></div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 16 — STATIC VS DYNAMIC LINKING ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">15</span>
+    <h2>Linking &amp; Loading</h2>
+  </div>
+  <p>The <span class="a">linker</span> stitches object files and libraries into one image, resolving every cross-reference. The <span class="b">loader</span> (part of the OS) maps that image into a process and starts it.</p>
+  <div class="cols cols-2">
+    <div class="card green">
+      <h3 class="g">Static Linking</h3>
+      <ul>
+        <li>Library code is <em>copied into</em> the executable at link time (<code>.a</code> archives)</li>
+        <li>Self-contained, no runtime deps, larger binary</li>
+        <li>A library fix means relinking everything</li>
+      </ul>
+    </div>
+    <div class="card purple">
+      <h3 class="p">Dynamic Linking</h3>
+      <ul>
+        <li>Only a <em>reference</em> is stored; the shared object (<code>.so</code>/<code>.dll</code>/<code>.dylib</code>) is loaded at run time</li>
+        <li>Smaller binaries, shared in memory across processes, patchable</li>
+        <li>The dynamic loader (<code>ld.so</code>) resolves symbols, often lazily via the PLT/GOT</li>
+      </ul>
+    </div>
+  </div>
+  <div class="card amber" style="margin-top:.4em;">
+    <h3 class="a">The Loader's Job</h3>
+    <p>Read the ELF program headers; <code>mmap</code> the text/data segments; set up the stack, heap, and <code>argv</code>/<code>env</code>; perform relocations and dynamic-symbol binding; transfer control to <code>_start</code> &rarr; <code>main</code>. Only now is your program a <em>running process</em> &mdash; the destination this whole series is heading toward.</p>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 17 — BOOTSTRAPPING / T-DIAGRAM ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">16</span>
+    <h2>Bootstrapping &amp; Self-Hosting</h2>
+  </div>
+  <p>A <span class="a">self-hosting</span> compiler is written in the very language it compiles (GCC in C, rustc in Rust, Go's compiler in Go). The chicken-and-egg of building the first one is <span class="g">bootstrapping</span>.</p>
+  <div class="cols cols-6040">
+    <div>
+      <p>The classic <span class="p">T-diagram</span> records three languages of a compiler: <em>Source</em> (left), <em>Target</em> (right), <em>Implementation</em> (stem). To self-host, compile your compiler with itself.</p>
+      <svg class="diagram" viewBox="0 0 480 200" width="480" height="200">
+        <!-- T diagram 1 -->
+        <path d="M30 30 H170 V70 H120 V150 H80 V70 H30 Z" fill="#181824" stroke="#a78bfa" stroke-width="1.4"/>
+        <text x="60"  y="55" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="11">Rust</text>
+        <text x="140" y="55" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="10">x86</text>
+        <text x="100" y="115" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono" font-size="10">C</text>
+        <text x="100" y="180" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">stage-0: Rust→x86, in C</text>
+        <!-- T diagram 2 -->
+        <path d="M300 30 H440 V70 H390 V150 H350 V70 H300 Z" fill="#181824" stroke="#f5a623" stroke-width="1.4"/>
+        <text x="330" y="55" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="11">Rust</text>
+        <text x="410" y="55" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="10">x86</text>
+        <text x="370" y="115" text-anchor="middle" fill="#f5a623" font-family="JetBrains Mono" font-size="9">Rust</text>
+        <text x="370" y="180" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">stage-1: self-hosted</text>
+      </svg>
+    </div>
+    <div>
+      <div class="card green">
+        <h3 class="g">The Bootstrap Path</h3>
+        <ul>
+          <li>Write the compiler in an <em>existing</em> language (or a subset)</li>
+          <li>Use it to compile a version written in the <em>new</em> language</li>
+          <li>That binary now recompiles itself &mdash; self-hosting achieved</li>
+          <li>Each release is built by the previous release (stage-0 &rarr; stage-1 &rarr; stage-2)</li>
+        </ul>
+      </div>
+      <div class="card red" style="margin-top:.4em;">
+        <h3 class="r">Trusting Trust</h3>
+        <p>Ken Thompson's 1984 Turing lecture, <em>Reflections on Trusting Trust</em>: a compiler binary could inject a backdoor into programs <em>and</em> into future copies of itself &mdash; invisibly, even with clean source. You cannot fully trust code you didn't build from a trusted compiler.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 18 — CROSS COMPILATION ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">17</span>
+    <h2>Cross-Compilation &amp; Target Triples</h2>
+  </div>
+  <p>A <span class="a">cross-compiler</span> runs on one machine but emits code for another &mdash; essential for embedded, mobile and bringing up new hardware. Three machines matter, named by convention.</p>
+  <div class="cols cols-2">
+    <div>
+      <table>
+        <thead><tr><th>Role</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><span class="g">Build</span></td><td>Where the compiler is <em>compiled</em></td></tr>
+          <tr><td><span class="a">Host</span></td><td>Where the compiler <em>runs</em></td></tr>
+          <tr><td><span class="b">Target</span></td><td>What the compiler <em>emits code for</em></td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:.3em;">A native compiler has build = host = target. A cross-compiler has host &ne; target. A <em>Canadian cross</em> has all three different.</p>
+    </div>
+    <div>
+      <div class="card blue">
+        <h3 class="b">The Target Triple</h3>
+        <pre><code class="language-plaintext">x86_64 - unknown - linux  - gnu
+  │         │         │       │
+ arch     vendor     OS      ABI/libc</code></pre>
+        <p style="margin-top:.2em;">Other examples: <code>aarch64-apple-darwin</code>, <code>riscv64gc-unknown-linux-gnu</code>, <code>wasm32-unknown-unknown</code>, <code>thumbv7em-none-eabihf</code> (bare-metal Cortex-M).</p>
+      </div>
+      <div class="card amber" style="margin-top:.4em;">
+        <h3 class="a">In Practice</h3>
+        <pre><code class="language-bash">rustc --target aarch64-unknown-linux-gnu
+clang --target=riscv64-linux-gnu  main.c</code></pre>
+        <p>The triple selects the back end, the ABI, and which sysroot/libc to link against.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 19 — PHASE ORDERING ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">18</span>
+    <h2>The Phase-Ordering Problem</h2>
+  </div>
+  <p>Optimisations are not independent: running one can <em>enable</em> or <em>disable</em> another. There is no universally optimal order &mdash; this is the <span class="a">phase-ordering problem</span>, a teaser for Part 07.</p>
+  <div class="cols cols-2">
+    <div class="card purple">
+      <h3 class="p">Optimisations Interact</h3>
+      <ul>
+        <li><span class="g">Inlining</span> exposes constants &rarr; enables <span class="a">constant folding</span></li>
+        <li>Folding can make a branch dead &rarr; enables <span class="b">dead-code elimination</span></li>
+        <li>DCE shrinks a loop &rarr; may enable <em>further</em> inlining &mdash; a cycle</li>
+        <li>But aggressive inlining can <em>bloat</em> code and hurt the instruction cache</li>
+      </ul>
+    </div>
+    <div class="card amber">
+      <h3 class="a">How Real Compilers Cope</h3>
+      <ul>
+        <li>Fixed, hand-tuned pass pipelines (LLVM's <code>-O2</code> schedule)</li>
+        <li>Running key passes <em>multiple times</em> (e.g. instcombine repeatedly)</li>
+        <li>Fixed-point iteration until no pass changes anything</li>
+        <li>Research: ML-guided &amp; autotuned pass orders</li>
+      </ul>
+    </div>
+  </div>
+  <p style="margin-top:.35em;">The takeaway for this overview: the pipeline is <em>not</em> a clean conveyor belt in the middle end &mdash; it loops, repeats, and is heuristically scheduled. Part 07 dives in.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 20 — ERROR HANDLING ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">19</span>
+    <h2>Error-Handling Philosophy</h2>
+  </div>
+  <p>A compiler that stops at the first error is a poor tool. Good compilers <span class="a">detect many errors per run</span>, locate them precisely, and recover to keep parsing &mdash; errors are categorised by the phase that catches them.</p>
+  <div class="cols cols-3">
+    <div class="card green">
+      <h3 class="g">Lexical Errors</h3>
+      <p>Illegal characters, unterminated strings, malformed numbers. Caught by the scanner. <code>@</code> in C, <code>"abc</code> with no close quote.</p>
+    </div>
+    <div class="card blue">
+      <h3 class="b">Syntactic Errors</h3>
+      <p>Token sequence violates the grammar &mdash; a missing <code>;</code>, unbalanced <code>)</code>. Caught by the parser, which drives most recovery.</p>
+    </div>
+    <div class="card purple">
+      <h3 class="p">Semantic Errors</h3>
+      <p>Grammatically valid but meaningless: undeclared name, type mismatch, wrong arg count. Caught in semantic analysis.</p>
+    </div>
+  </div>
+  <div class="cols cols-2" style="margin-top:.4em;">
+    <div class="card amber">
+      <h3 class="a">Recovery Strategies</h3>
+      <ul>
+        <li><span class="g">Panic-mode</span> &mdash; skip tokens to a synchronising token (<code>;</code>, <code>}</code>)</li>
+        <li><span class="b">Phrase-level</span> &mdash; locally patch (insert a missing <code>;</code>)</li>
+        <li><span class="p">Error productions</span> &mdash; grammar rules for common mistakes</li>
+      </ul>
+    </div>
+    <div class="card red">
+      <h3 class="r">Good Diagnostics Matter</h3>
+      <p>Modern compilers (Clang, Rust) set the bar: precise spans with carets, the <em>actual</em> vs expected type, suggested fixes, and avoiding a cascade of bogus follow-on errors. A diagnostic is a UX surface.</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 21 — REPRESENTATIONS RECAP ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">20</span>
+    <h2>The Representations, End to End</h2>
+  </div>
+  <p>Stepping back, a compiler is a sequence of <span class="a">data structures</span>, each closer to the machine than the last. Knowing which representation you're in tells you what's easy and what's hard.</p>
+  <table>
+    <thead><tr><th>Representation</th><th>Form</th><th>Good for</th><th>Phase</th></tr></thead>
+    <tbody>
+      <tr><td><span class="g">Character stream</span></td><td>bytes / text</td><td>—</td><td>input</td></tr>
+      <tr><td><span class="g">Token stream</span></td><td>flat list of (class, lexeme)</td><td>regular structure</td><td>after lexing</td></tr>
+      <tr><td><span class="b">Parse tree / AST</span></td><td>tree</td><td>nesting, precedence, scope</td><td>after parsing</td></tr>
+      <tr><td><span class="b">Annotated AST</span></td><td>tree + types/symbols</td><td>type rules, name resolution</td><td>after sema</td></tr>
+      <tr><td><span class="p">IR (3-addr / SSA)</span></td><td>linear / CFG of basic blocks</td><td>dataflow, optimisation</td><td>middle end</td></tr>
+      <tr><td><span class="a">Asm / object code</span></td><td>instructions + relocations</td><td>scheduling, allocation</td><td>back end</td></tr>
+      <tr><td><span class="r">Executable / image</span></td><td>linked segments</td><td>loading &amp; running</td><td>linker/loader</td></tr>
+    </tbody>
+  </table>
+  <p style="margin-top:.35em;">Each later part of this series lives in one or two rows of this table. Keep it as your map.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 22 — SERIES ROADMAP ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">21</span>
+    <h2>How the Series Maps onto the Pipeline</h2>
+  </div>
+  <p>Now you have the map, here's the route. Each remaining deck is one box, plus the runtime that all of this ultimately feeds.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card green"><h3 class="g">Front End</h3><ul>
+        <li><span class="a">03</span> Lexical Analysis &mdash; the scanner &amp; DFAs</li>
+        <li><span class="a">04</span> Syntax Analysis &mdash; grammars &amp; parsing</li>
+        <li><span class="a">05</span> Semantic Analysis &amp; Types</li>
+      </ul></div>
+      <div class="card purple" style="margin-top:.4em;"><h3 class="p">Middle End</h3><ul>
+        <li><span class="a">06</span> Intermediate Representations</li>
+        <li><span class="a">07</span> Optimisation (incl. phase ordering)</li>
+      </ul></div>
+    </div>
+    <div>
+      <div class="card blue"><h3 class="b">Back End &amp; Runtime</h3><ul>
+        <li><span class="a">08</span> Code Generation</li>
+        <li><span class="a">09</span> Runtime, JIT &amp; Backends</li>
+      </ul></div>
+      <div class="card amber" style="margin-top:.4em;"><h3 class="a">Capstone</h3><ul>
+        <li><span class="a">10</span> Building a Mini Compiler &mdash; assemble all the pieces end to end</li>
+      </ul></div>
+      <div class="card green" style="margin-top:.4em;"><h3 class="g">Already Behind Us</h3><ul>
+        <li><span class="a">01</span> History of Compilers</li>
+        <li><span class="a">02</span> This deck &mdash; the pipeline &amp; toolchain</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 23 — SUMMARY ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">22</span>
+    <h2>Summary &amp; Further Reading</h2>
+  </div>
+  <div class="cols cols-2">
+    <div>
+      <div class="card green">
+        <h3 class="g">Key Takeaways</h3>
+        <ul>
+          <li>A compiler is meaning-preserving translation across a language gap</li>
+          <li>Compiler/interpreter/transpiler/JIT differ by <em>when</em> &amp; <em>what</em> they translate</li>
+          <li>Analysis (front) + middle + synthesis (back) &mdash; the IR is the boundary</li>
+          <li>Seven phases: lex &rarr; parse &rarr; sema &rarr; IR &rarr; optimise &rarr; codegen &rarr; target-opt</li>
+          <li>Symbol table &amp; error handler cut across every phase</li>
+          <li>The N&times;M narrow waist (LLVM) is why the split exists: N+M, not N&times;M</li>
+          <li>The toolchain extends beyond the compiler: driver, assembler, linker, loader</li>
+          <li>Bootstrapping, cross-compilation, phase ordering &amp; diagnostics frame later decks</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card blue">
+        <h3 class="b">Further Reading</h3>
+        <ul>
+          <li>Aho, Lam, Sethi &amp; Ullman &mdash; <em>Compilers: Principles, Techniques &amp; Tools</em> (the Dragon Book), ch. 1</li>
+          <li>Cooper &amp; Torczon &mdash; <em>Engineering a Compiler</em>, ch. 1</li>
+          <li>Appel &mdash; <em>Modern Compiler Implementation</em></li>
+          <li>Ken Thompson &mdash; <em>Reflections on Trusting Trust</em> (CACM, 1984)</li>
+          <li>The LLVM project docs &mdash; the IR &amp; pass pipeline</li>
+          <li>Levine &mdash; <em>Linkers and Loaders</em></li>
+        </ul>
+      </div>
+      <div class="card amber" style="margin-top:.4em;">
+        <h3 class="a">Mental Model to Keep</h3>
+        <p>Source text becomes a series of ever-lower representations, each enabling work the previous couldn't &mdash; until the loader makes the last one a running process.</p>
+      </div>
+      <div class="ss-row" style="margin-top:.45em; justify-content:center;">
+        <span class="ss-node done">Part 02 ✓</span>
+        <span class="ss-arrow">&rarr;</span>
+        <span class="ss-node active">Part 03: Lexical Analysis</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+</div><!-- /slides -->
+</div><!-- /reveal -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/highlight/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/highlight/monokai.min.css">
+<script>
+Reveal.initialize({
+  hash: true,
+  slideNumber: 'c/t',
+  transition: 'fade',
+  transitionSpeed: 'fast',
+  controls: true,
+  progress: true,
+  center: false,
+  width: 1100,
+  height: 900,
+  margin: 0.01,
+  plugins: [RevealHighlight],
+  highlight: { theme: 'monokai' }
+});
+</script>
+<script>
+(function(){
+  var h = Reveal.getConfig().height || 900;
+  var m = Reveal.getConfig().margin || 0.02;
+  var maxH = Math.floor(h * (1 - 2 * m)) + 'px';
+  function fixSlides(){
+    document.querySelectorAll('.reveal .slides>section,.reveal .slides>section>section').forEach(function(s){
+      s.style.display = 'block';
+      s.style.maxHeight = maxH;
+    });
+  }
+  Reveal.on('ready', fixSlides);
+  Reveal.on('slidechanged', fixSlides);
+})();
+</script>
+</body>
+</html>

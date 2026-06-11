@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compilers — Part 07: Optimization</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/theme/black.min.css">
+<style>
+  :root {
+    --amber:  #f5a623;
+    --green:  #4ecb8d;
+    --purple: #a78bfa;
+    --blue:   #60a5fa;
+    --red:    #f87171;
+    --bg:     #0a0a0f;
+    --bg2:    #10101a;
+    --bg3:    #181824;
+    --border: #2a2a3a;
+    --text:   #e8e8f0;
+    --muted:  #8888a8;
+  }
+
+  .reveal-viewport { background: var(--bg); }
+  .reveal .slides section { background: transparent; }
+
+  .reveal { font-family: 'DM Sans', sans-serif; color: var(--text); }
+  .reveal h1, .reveal h2, .reveal h3 { font-family: 'Playfair Display', serif; font-weight: 700; }
+  .reveal h1 { font-size: 1.6em; color: var(--amber); line-height: 1.1; }
+  .reveal h2 { font-size: 1.1em; color: var(--amber); margin-bottom: .2em; }
+  .reveal h3 { font-size: .78em; color: var(--green); margin-bottom: .15em; }
+  .reveal p  { font-size: .56em; line-height: 1.45; color: var(--text); }
+  .reveal li { font-size: .54em; line-height: 1.45; margin-bottom: .1em; }
+  .reveal code { font-family: 'JetBrains Mono', monospace; font-size: .72em; }
+  .reveal pre  { box-shadow: none; background: var(--bg3); border: 1px solid var(--border);
+                 border-radius: 6px; padding: .3em .5em; margin: .25em 0; }
+  .reveal pre code { font-size: .52em; line-height: 1.35; background: transparent; color: #cdd6f4; }
+
+  /* ── slide chrome ── */
+  .slide-hdr {
+    display: flex; align-items: center; gap: .4em;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: .2em; margin-bottom: .3em;
+  }
+  .slide-hdr .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .42em; font-weight: 500;
+    color: var(--bg); background: var(--amber);
+    padding: .1em .4em; border-radius: 3px;
+    letter-spacing: .04em;
+  }
+  .slide-hdr h2 { margin: 0; font-size: .95em; }
+
+  /* ── two-column ── */
+  .cols   { display: grid; gap: .5em; }
+  .cols-2 { grid-template-columns: 1fr 1fr; }
+  .cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .cols-6040 { grid-template-columns: 6fr 4fr; }
+  .cols-4060 { grid-template-columns: 4fr 6fr; }
+
+  /* ── cards ── */
+  .card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 6px; padding: .35em .6em;
+  }
+  .card.amber { border-left: 3px solid var(--amber); }
+  .card.green { border-left: 3px solid var(--green); }
+  .card.purple{ border-left: 3px solid var(--purple); }
+  .card.blue  { border-left: 3px solid var(--blue); }
+  .card.red   { border-left: 3px solid var(--red); }
+  .card h3 { font-size: .64em; margin: 0 0 .12em; }
+  .card p  { font-size: .52em; margin: 0; color: #b8b8d0; }
+  .card ul { margin: 0; padding-left: 1em; }
+  .card li { font-size: .52em; color: #b8b8d0; margin-bottom: .02em; }
+
+  /* ── table ── */
+  .reveal table { width: 100%; border-collapse: collapse; font-size: .5em; }
+  .reveal table th { background: var(--bg3); color: var(--amber); font-weight: 600;
+                     padding: .2em .4em; border: 1px solid var(--border); text-align: left; }
+  .reveal table td { padding: .18em .4em; border: 1px solid var(--border); color: #ccc; }
+  .reveal table tr:nth-child(even) td { background: #0e0e18; }
+
+  /* ── accent spans ── */
+  .a  { color: var(--amber); font-weight: 600; }
+  .g  { color: var(--green); font-weight: 600; }
+  .p  { color: var(--purple); font-weight: 600; }
+  .b  { color: var(--blue); font-weight: 600; }
+  .r  { color: var(--red); font-weight: 600; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* ── SVG graph diagrams ── */
+  svg.diagram { display: block; margin: 0 auto; overflow: visible; }
+
+  /* ── pill badges ── */
+  .pill {
+    display: inline-block; font-family: 'JetBrains Mono', monospace;
+    font-size: .44em; padding: .08em .4em; border-radius: 99px;
+    border: 1px solid; margin: 0 .08em;
+  }
+  .pill.amber { color: var(--amber); border-color: var(--amber); }
+  .pill.green { color: var(--green); border-color: var(--green); }
+  .pill.purple{ color: var(--purple); border-color: var(--purple); }
+  .pill.blue  { color: var(--blue); border-color: var(--blue); }
+
+  /* ── footer — hidden; was overlapping scrollable content ── */
+  .reveal .slide-footer { display: none; }
+  /* title slide special */
+  .title-slide h1 { font-size: 1.8em; }
+  .title-slide .subtitle {
+    font-size: .7em; color: var(--green); font-family: 'DM Sans', sans-serif;
+    font-weight: 300; letter-spacing: .04em; margin: .3em 0 .6em;
+  }
+  .title-slide .meta { font-size: .48em; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+
+  /* ── super-step animator ── */
+  .ss-row {
+    display: flex; gap: .25em; align-items: center;
+    margin: .1em 0; font-size: .55em; font-family: 'JetBrains Mono', monospace;
+  }
+  .ss-node {
+    padding: .2em .55em; border-radius: 5px; font-size: .9em;
+    background: var(--bg3); border: 1px solid var(--border); color: var(--text);
+  }
+  .ss-node.active { background: #1a2a1a; border-color: var(--green); color: var(--green); }
+  .ss-node.done   { background: #1a1a2a; border-color: var(--purple); color: var(--purple); }
+  .ss-arrow { color: var(--amber); }
+  .ss-label { font-size: .8em; color: var(--muted); margin-left: .3em; }
+
+  /* reduce default margins */
+  .reveal ul, .reveal ol { margin: .15em 0 .15em 1em; }
+.reveal .slides > section { display: flex !important; flex-direction: column !important; overflow-y: auto !important; align-items: stretch !important; justify-content: flex-start !important; }
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+
+<!-- ═══════════════════════════════ SLIDE 01 — TITLE ═══════════════════════════════ -->
+<section class="title-slide" data-background-color="#0a0a0f">
+  <div style="text-align:left; max-width:820px; margin:0 auto; padding: 1em 0;">
+    <div style="font-family:'JetBrains Mono',monospace; font-size:.5em; color:var(--muted); margin-bottom:.4em; letter-spacing:.1em;">
+      COMPILERS SERIES &middot; PART 07 OF 10
+    </div>
+    <h1>Optimization</h1>
+    <div class="subtitle">Part 07 &mdash; Making Code Faster, Smaller, Leaner &mdash; Without Changing What It Means</div>
+    <div style="width:60px; height:3px; background:var(--amber); margin-bottom:1.4em;"></div>
+    <div style="display:flex; gap:1.2em; flex-wrap:wrap; margin-bottom:1em;">
+      <span class="pill amber">Data-Flow Analysis</span>
+      <span class="pill green">Lattices</span>
+      <span class="pill purple">SSA Passes</span>
+      <span class="pill blue">Loops &amp; SIMD</span>
+    </div>
+    <div class="ss-row" style="margin-top:0.6em;">
+      <span class="ss-node active">Analyse</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node active">Transform</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node active">Verify</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node done">Repeat</span>
+    </div>
+    <p style="max-width:640px; color:#a0a0c0; font-size:.56em; line-height:1.5; margin-top:1em;">
+      The optimiser is where the compiler earns its keep. We build the data-flow analysis framework from the ground up &mdash; lattices, transfer functions, the iterative worklist &mdash; survey the four classic analyses and the transformations they enable, dig into loop and SSA-based optimisations, and end with the phase-ordering problem and the real GCC/LLVM pass pipelines. The one inviolable rule throughout: optimisations must preserve program semantics.
+    </p>
+    <div class="meta" style="margin-top:1.4em;">
+      Scope &nbsp;&middot;&nbsp; Data-Flow &nbsp;&middot;&nbsp; Transforms &nbsp;&middot;&nbsp; Loops &nbsp;&middot;&nbsp; SSA &nbsp;&middot;&nbsp; Pipeline
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 02 — AGENDA ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">01</span>
+    <h2>Topics</h2>
+  </div>
+  <p>Optimisation is a misnomer &mdash; it is really <em>code improvement</em>. This deck builds the theory (data-flow analysis) and then applies it: the classic transformations, loop and SSA-based passes, and how real compilers sequence them.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">Foundations</h3>
+        <ul>
+          <li>Goals &amp; the as-if (semantics-preserving) rule</li>
+          <li>Scope: peephole &rarr; local &rarr; global &rarr; IPO &rarr; LTO &rarr; PGO</li>
+          <li>The data-flow framework: lattices, transfer functions</li>
+          <li>The iterative worklist algorithm &amp; why it terminates</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:.45em;">
+        <h3 class="g">The Classic Analyses</h3>
+        <ul>
+          <li>Reaching definitions, live variables</li>
+          <li>Available &amp; very-busy expressions</li>
+          <li>Direction &times; meet: the four-corner table</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">Transformations</h3>
+        <ul>
+          <li>Constant folding/propagation, copy prop, CSE, DCE</li>
+          <li>Strength reduction, inlining, algebraic simplification</li>
+          <li>Loop: LICM, IV reduction, unrolling, fusion, vectorisation</li>
+          <li>SSA-based: SCCP, GVN, aggressive DCE</li>
+        </ul>
+      </div>
+      <div class="card blue" style="margin-top:.45em;">
+        <h3 class="b">In Practice</h3>
+        <ul>
+          <li>Alias analysis &mdash; why it limits everything</li>
+          <li>Phase ordering; the LLVM/GCC pass pipeline</li>
+          <li><code>-O0..-O3 / -Os / -Oz</code>; pass managers</li>
+          <li>Undefined behaviour as an optimisation licence</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 03 — GOALS & THE AS-IF RULE ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">02</span>
+    <h2>Goals &amp; the Inviolable Rule</h2>
+  </div>
+  <p>An optimiser rewrites code to improve some <span class="a">objective</span> &mdash; but it may only do so if the rewrite is <span class="r">semantics-preserving</span>. This is the <span class="g">&ldquo;as-if&rdquo; rule</span>: the program must behave <em>as if</em> every step of the abstract machine ran, even if the compiler actually did something cheaper.</p>
+  <div class="cols cols-3">
+    <div class="card amber">
+      <h3 class="a">Run Faster</h3>
+      <p>Fewer / cheaper instructions, fewer memory accesses, better cache &amp; branch behaviour. The classic target.</p>
+    </div>
+    <div class="card green">
+      <h3 class="g">Smaller Code</h3>
+      <p>Shrink the binary (<code>-Os</code>, <code>-Oz</code>) &mdash; matters for embedded, instruction cache, mobile download size.</p>
+    </div>
+    <div class="card blue">
+      <h3 class="b">Less Energy</h3>
+      <p>Fewer cycles and memory ops mean less power &mdash; critical on battery &amp; in the datacentre.</p>
+    </div>
+  </div>
+  <div class="cols cols-2" style="margin-top:.45em;">
+    <div class="card red">
+      <h3 class="r">Never &ldquo;Optimal&rdquo;</h3>
+      <p>Finding genuinely optimal code is undecidable (reduces to the halting problem) or NP-hard in the cases that are decidable. &ldquo;Optimisation&rdquo; is a historical misnomer &mdash; we make code <em>better</em>, on a heuristic best-effort basis, never provably best.</p>
+    </div>
+    <div class="card purple">
+      <h3 class="p">Observable Behaviour Only</h3>
+      <p>The as-if rule constrains only <em>observable</em> effects: I/O, volatile accesses, program termination, and (in C++) the order of certain side-effects. Everything else &mdash; intermediate values, evaluation order, dead stores &mdash; is fair game to rewrite or delete.</p>
+    </div>
+  </div>
+  <p style="margin-top:.3em;">A &ldquo;faster&rdquo; program that computes a different answer is not an optimisation &mdash; it is a <span class="r">miscompilation</span>. Correctness first, always.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 04 — SCOPE LEVELS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">03</span>
+    <h2>Scope: How Wide Does the Optimiser Look?</h2>
+  </div>
+  <p>Optimisations are classified by the <span class="a">scope</span> they reason over. Wider scope sees more opportunities but costs more analysis &mdash; and crosses harder boundaries (function calls, translation units, the whole program).</p>
+  <table>
+    <thead>
+      <tr><th>Scope</th><th>Reasons over</th><th>Examples</th><th>Cost</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><span class="a">Peephole</span></td><td>A small sliding window of adjacent instructions</td><td>Replace <code>mul x,2</code> &rarr; <code>shl x,1</code>; remove redundant <code>mov</code></td><td>Tiny</td></tr>
+      <tr><td><span class="g">Local</span></td><td>One basic block (straight-line code)</td><td>Local CSE, local constant folding, value numbering</td><td>Low</td></tr>
+      <tr><td><span class="p">Global</span> (intraprocedural)</td><td>One whole function &mdash; the entire CFG</td><td>Data-flow analyses, LICM, global DCE, GVN</td><td>Moderate</td></tr>
+      <tr><td><span class="b">Interprocedural</span> (IPA/IPO)</td><td>Across function boundaries &amp; the call graph</td><td>Inlining, constant arg propagation, devirtualisation</td><td>High</td></tr>
+      <tr><td>Link-Time (<span class="a">LTO</span>)</td><td>Across translation units, at link time</td><td>Cross-TU inlining &amp; DCE; ThinLTO scales it</td><td>High</td></tr>
+      <tr><td>Whole-Program</td><td>The entire program at once (closed world)</td><td>Aggressive devirtualisation, global layout</td><td>Very high</td></tr>
+      <tr><td>Profile-Guided (<span class="g">PGO</span>)</td><td>Any scope, informed by runtime profiles</td><td>Hot/cold splitting, better inlining &amp; layout, branch hints</td><td>2-pass build</td></tr>
+    </tbody>
+  </table>
+  <div class="cols cols-2" style="margin-top:.4em;">
+    <div class="card blue">
+      <h3 class="b">LTO &amp; ThinLTO</h3>
+      <p>Classic LTO serialises IR into the object files and re-optimises the merged whole at link time. <span class="a">ThinLTO</span> (LLVM) keeps it parallel &amp; incremental by exchanging only summaries plus on-demand imports.</p>
+    </div>
+    <div class="card green">
+      <h3 class="g">PGO &mdash; Measure, Don't Guess</h3>
+      <p>Build instrumented &rarr; run a representative workload &rarr; feed the <code>.profdata</code> back. The compiler now <em>knows</em> which branches are hot, sizing inlining and block layout to reality rather than static heuristics.</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 05 — DATAFLOW FRAMEWORK INTRO ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">04</span>
+    <h2>The Data-Flow Analysis Framework</h2>
+  </div>
+  <p>Almost every global optimisation rests on <span class="a">data-flow analysis</span> (DFA): a general method for computing, at every program point, a conservative summary of what <em>must</em> or <em>may</em> hold there. The framework has four parts &mdash; pick them, turn the crank, get a sound answer.</p>
+  <div class="cols cols-2">
+    <div class="card amber">
+      <h3 class="a">The Four Ingredients</h3>
+      <ul>
+        <li><span class="g">A lattice</span> of facts (the domain), with a partial order &amp; a <em>meet</em> operator</li>
+        <li><span class="p">A direction</span> &mdash; forward or backward through the CFG</li>
+        <li><span class="b">Transfer functions</span> per block: how a block changes the fact (gen / kill)</li>
+        <li><span class="a">A boundary condition</span> at entry (fwd) or exit (bwd)</li>
+      </ul>
+    </div>
+    <div class="card green">
+      <h3 class="g">The General Equation</h3>
+      <pre><code class="language-plaintext">in[B]  = MEET over predecessors P of out[P]   (forward)
+out[B] = transfer_B( in[B] )
+         = gen[B] ∪ ( in[B] − kill[B] )
+
+# backward analyses swap in/out and use successors:
+out[B] = MEET over successors S of in[S]
+in[B]  = transfer_B( out[B] )</code></pre>
+      <p>Solve the system to a fixed point with the iterative worklist algorithm.</p>
+    </div>
+  </div>
+  <p style="margin-top:.3em;">The <span class="a">meet</span> operator combines facts arriving along different paths. Its choice (&cup; vs &cap;) is exactly what makes an analysis <span class="g">may</span> or <span class="r">must</span>.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 06 — THE LATTICE ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">05</span>
+    <h2>The Lattice &mdash; ⊤, ⊥, Meet &amp; Join</h2>
+  </div>
+  <p>The domain of facts forms a <span class="a">lattice</span>: a partially-ordered set where every pair of elements has a greatest lower bound (<span class="g">meet</span>, &and;) and a least upper bound (<span class="p">join</span>, &or;). <span class="b">&top;</span> (top) is &ldquo;no information yet / everything possible&rdquo;; <span class="r">&perp;</span> (bottom) is &ldquo;over-defined / conflicting&rdquo;. Iteration moves facts monotonically <em>down</em>.</p>
+  <div class="cols cols-6040">
+    <div>
+      <svg class="diagram" viewBox="0 0 460 300" width="460" height="300">
+        <!-- top -->
+        <rect x="180" y="15" width="100" height="32" rx="5" fill="#181824" stroke="#60a5fa" stroke-width="1.5"/>
+        <text x="230" y="36" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="12">⊤  (top)</text>
+        <!-- middle row: concrete constants -->
+        <rect x="40"  y="125" width="80" height="30" rx="5" fill="#181824" stroke="#4ecb8d" stroke-width="1.2"/>
+        <text x="80"  y="145" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="11">x = 0</text>
+        <rect x="150" y="125" width="80" height="30" rx="5" fill="#181824" stroke="#4ecb8d" stroke-width="1.2"/>
+        <text x="190" y="145" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="11">x = 1</text>
+        <rect x="260" y="125" width="80" height="30" rx="5" fill="#181824" stroke="#4ecb8d" stroke-width="1.2"/>
+        <text x="300" y="145" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="11">x = 2</text>
+        <rect x="370" y="125" width="80" height="30" rx="5" fill="#181824" stroke="#4ecb8d" stroke-width="1.2"/>
+        <text x="410" y="145" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="11">x = …</text>
+        <!-- bottom -->
+        <rect x="180" y="250" width="100" height="32" rx="5" fill="#181824" stroke="#f87171" stroke-width="1.5"/>
+        <text x="230" y="271" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono" font-size="12">⊥ (bottom)</text>
+        <!-- edges top to constants -->
+        <line x1="210" y1="47" x2="90"  y2="125" stroke="#2a2a3a" stroke-width="1"/>
+        <line x1="220" y1="47" x2="190" y2="125" stroke="#2a2a3a" stroke-width="1"/>
+        <line x1="240" y1="47" x2="300" y2="125" stroke="#2a2a3a" stroke-width="1"/>
+        <line x1="250" y1="47" x2="405" y2="125" stroke="#2a2a3a" stroke-width="1"/>
+        <!-- edges constants to bottom -->
+        <line x1="90"  y1="155" x2="200" y2="250" stroke="#2a2a3a" stroke-width="1"/>
+        <line x1="190" y1="155" x2="215" y2="250" stroke="#2a2a3a" stroke-width="1"/>
+        <line x1="300" y1="155" x2="245" y2="250" stroke="#2a2a3a" stroke-width="1"/>
+        <line x1="405" y1="155" x2="260" y2="250" stroke="#2a2a3a" stroke-width="1"/>
+        <text x="20" y="90" fill="#8888a8" font-family="JetBrains Mono" font-size="9" transform="rotate(-90 20 150)">meet ↓  loses info</text>
+      </svg>
+      <p style="text-align:center; font-size:.5em; color:#8888a8;">The constant-propagation lattice: ⊤ = &ldquo;unknown/undefined&rdquo;, a middle of known constants, ⊥ = &ldquo;not a constant (varies)&rdquo;. Meet of two <em>different</em> constants = ⊥.</p>
+    </div>
+    <div>
+      <div class="card amber">
+        <h3 class="a">Why a Lattice?</h3>
+        <ul>
+          <li>The meet of facts from two paths is well-defined &amp; associative</li>
+          <li>The partial order gives a notion of &ldquo;more / less precise&rdquo;</li>
+          <li><span class="b">Finite height</span> + monotone transfers &rArr; iteration <em>must</em> terminate</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">Meet vs Join</h3>
+        <p>For <span class="p">may</span> analyses the meet is set <span class="a">union</span> (&ldquo;could happen on <em>some</em> path&rdquo;). For <span class="r">must</span> analyses it is set <span class="a">intersection</span> (&ldquo;holds on <em>every</em> path&rdquo;). The lattice is drawn so meet always moves toward less information.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 07 — WORKLIST ALGORITHM ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">06</span>
+    <h2>The Iterative Worklist Algorithm</h2>
+  </div>
+  <p>To solve the equations we iterate to a <span class="a">fixed point</span>. Initialise every block to &top;, then repeatedly recompute blocks whose inputs changed until nothing changes. The <span class="g">worklist</span> keeps us from rescanning stable blocks.</p>
+  <div class="cols cols-2">
+    <div>
+      <pre><code class="language-plaintext">worklist ← all blocks
+out[B]   ← ⊤   for all B   (∅ for a union analysis)
+out[entry] ← boundary condition
+
+while worklist not empty:
+    B ← pop(worklist)
+    in[B]  ← MEET over preds P of out[P]
+    new    ← gen[B] ∪ (in[B] − kill[B])
+    if new ≠ out[B]:
+        out[B] ← new
+        worklist ← worklist ∪ successors(B)</code></pre>
+      <p style="font-size:.5em; color:#8888a8;">Backward analyses run on the reverse CFG: swap preds/succs and in/out, seed from the exit.</p>
+    </div>
+    <div>
+      <div class="card green">
+        <h3 class="g">Why It Terminates</h3>
+        <ul>
+          <li><span class="a">Monotonicity</span>: transfer functions never <em>add</em> precision &mdash; facts only move down the lattice</li>
+          <li><span class="b">Finite height</span>: any chain ⊤ &gt; … &gt; ⊥ has bounded length</li>
+          <li>So each block's value can change only finitely often &rArr; the loop halts</li>
+        </ul>
+      </div>
+      <div class="card purple" style="margin-top:.4em;">
+        <h3 class="p">MFP vs MOP</h3>
+        <p>The algorithm computes the <span class="a">Maximal Fixed Point</span> (MFP). The ideal answer is the <span class="g">Meet-Over-all-Paths</span> (MOP) solution. For <em>distributive</em> frameworks MFP = MOP; otherwise MFP is a safe, conservative under-approximation (MFP &le; MOP). Enumerating all paths is undecidable &mdash; hence we solve equations instead.</p>
+      </div>
+      <div class="card amber" style="margin-top:.4em;">
+        <h3 class="a">Order Matters for Speed</h3>
+        <p>Visiting in <span class="b">reverse postorder</span> (forward) or postorder (backward) typically converges in a handful of passes &mdash; bounded by the loop-nesting depth + 2.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 08 — DATAFLOW ON A CFG (SVG) ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">07</span>
+    <h2>Data-Flow on the CFG &mdash; Worked Example</h2>
+  </div>
+  <p><span class="a">Reaching definitions</span> (forward, may): which assignments could reach a point unkilled? At the join block B4, <code>in</code> is the <em>union</em> of both predecessors' <code>out</code> &mdash; so <code>d2</code> and <code>d3</code> both reach.</p>
+  <div class="cols cols-6040">
+    <div>
+      <svg class="diagram" viewBox="0 0 470 360" width="470" height="360">
+        <defs>
+          <marker id="aAmber" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#f5a623"/></marker>
+        </defs>
+        <!-- B1 -->
+        <rect x="160" y="15" width="150" height="50" rx="5" fill="#181824" stroke="#f5a623" stroke-width="1.3"/>
+        <text x="235" y="33" text-anchor="middle" fill="#f5a623" font-family="JetBrains Mono" font-size="10">B1</text>
+        <text x="235" y="50" text-anchor="middle" fill="#cdd6f4" font-family="JetBrains Mono" font-size="9">d1: x = 1</text>
+        <!-- B2 -->
+        <rect x="40" y="120" width="160" height="50" rx="5" fill="#181824" stroke="#4ecb8d" stroke-width="1.3"/>
+        <text x="120" y="138" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="10">B2 (then)</text>
+        <text x="120" y="155" text-anchor="middle" fill="#cdd6f4" font-family="JetBrains Mono" font-size="9">d2: x = 2</text>
+        <!-- B3 -->
+        <rect x="270" y="120" width="160" height="50" rx="5" fill="#181824" stroke="#60a5fa" stroke-width="1.3"/>
+        <text x="350" y="138" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="10">B3 (else)</text>
+        <text x="350" y="155" text-anchor="middle" fill="#cdd6f4" font-family="JetBrains Mono" font-size="9">d3: x = 3</text>
+        <!-- B4 join -->
+        <rect x="150" y="235" width="170" height="58" rx="5" fill="#1a1a2a" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="235" y="253" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono" font-size="10">B4 (join)</text>
+        <text x="235" y="270" text-anchor="middle" fill="#cdd6f4" font-family="JetBrains Mono" font-size="9">use x</text>
+        <text x="235" y="285" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="8.5">in = {d2, d3}</text>
+        <!-- edges -->
+        <line x1="200" y1="65" x2="130" y2="118" stroke="#f5a623" stroke-width="1.2" marker-end="url(#aAmber)"/>
+        <line x1="270" y1="65" x2="345" y2="118" stroke="#f5a623" stroke-width="1.2" marker-end="url(#aAmber)"/>
+        <line x1="120" y1="170" x2="200" y2="233" stroke="#f5a623" stroke-width="1.2" marker-end="url(#aAmber)"/>
+        <line x1="350" y1="170" x2="270" y2="233" stroke="#f5a623" stroke-width="1.2" marker-end="url(#aAmber)"/>
+        <text x="235" y="330" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8.5">d1 is KILLED by d2 and d3 (same var x)</text>
+      </svg>
+    </div>
+    <div>
+      <div class="card amber">
+        <h3 class="a">Gen / Kill for B2</h3>
+        <pre><code class="language-plaintext">gen[B2]  = { d2 }
+kill[B2] = { d1, d3 }   # other defs of x
+out[B2]  = gen ∪ (in − kill)
+         = { d2 }</code></pre>
+      </div>
+      <div class="card purple" style="margin-top:.4em;">
+        <h3 class="p">At the Join B4</h3>
+        <p><code>in[B4] = out[B2] &cup; out[B3] = {d2, d3}</code>. The original <code>d1</code> was killed on both arms, so it does <em>not</em> reach the use. This drives const-propagation: since two different values reach, <code>x</code> is not a known constant at B4.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 09 — FORWARD/BACKWARD, MAY/MUST ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">08</span>
+    <h2>Two Axes: Direction &times; Confidence</h2>
+  </div>
+  <p>Every data-flow analysis sits in one of four boxes, fixed by two independent choices: which <span class="a">direction</span> information flows, and whether facts are <span class="g">may</span> (union) or <span class="r">must</span> (intersection).</p>
+  <div class="cols cols-2">
+    <div>
+      <svg class="diagram" viewBox="0 0 430 240" width="430" height="240">
+        <!-- axis labels -->
+        <text x="215" y="16" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="10">may (∪)            must (∩)</text>
+        <text x="14" y="100" fill="#8888a8" font-family="JetBrains Mono" font-size="10" transform="rotate(-90 14 130)">forward          backward</text>
+        <!-- quadrants -->
+        <rect x="60"  y="30" width="160" height="80" rx="5" fill="#181824" stroke="#f5a623" stroke-width="1.2"/>
+        <text x="140" y="62" text-anchor="middle" fill="#f5a623" font-family="JetBrains Mono" font-size="10">Reaching Defs</text>
+        <text x="140" y="80" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">fwd · may</text>
+        <rect x="235" y="30" width="160" height="80" rx="5" fill="#181824" stroke="#4ecb8d" stroke-width="1.2"/>
+        <text x="315" y="62" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="10">Available Exprs</text>
+        <text x="315" y="80" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">fwd · must</text>
+        <rect x="60"  y="125" width="160" height="80" rx="5" fill="#181824" stroke="#60a5fa" stroke-width="1.2"/>
+        <text x="140" y="157" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="10">Live Variables</text>
+        <text x="140" y="175" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">bwd · may</text>
+        <rect x="235" y="125" width="160" height="80" rx="5" fill="#181824" stroke="#a78bfa" stroke-width="1.2"/>
+        <text x="315" y="157" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono" font-size="10">Very-Busy Exprs</text>
+        <text x="315" y="175" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">bwd · must</text>
+      </svg>
+    </div>
+    <div>
+      <div class="card amber">
+        <h3 class="a">Direction</h3>
+        <p><span class="g">Forward</span>: a block's fact depends on its <em>predecessors</em> (what has happened so far). <span class="b">Backward</span>: it depends on its <em>successors</em> (what will be needed later) &mdash; solved on the reverse CFG.</p>
+      </div>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">May (Union)</h3>
+        <p>&ldquo;True on <em>some</em> path.&rdquo; Safe for <em>optimistic deletion guards</em> &mdash; e.g. a variable is <em>live</em> if used on any later path, so we must keep it.</p>
+      </div>
+      <div class="card red" style="margin-top:.4em;">
+        <h3 class="r">Must (Intersection)</h3>
+        <p>&ldquo;True on <em>every</em> path.&rdquo; Needed to <em>justify a rewrite</em> &mdash; an expression is <em>available</em> only if already computed on all incoming paths, so we may reuse it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 10 — REACHING DEFS & LIVE VARS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">09</span>
+    <h2>Reaching Definitions &amp; Live Variables</h2>
+  </div>
+  <div class="cols cols-2">
+    <div class="card amber">
+      <h3 class="a">Reaching Definitions &mdash; fwd / may</h3>
+      <p>A definition <code>d</code> <em>reaches</em> a point if there is a path from <code>d</code> to that point along which <code>d</code> is not overwritten. Powers use-def chains, constant propagation, loop-invariance tests.</p>
+      <pre><code class="language-plaintext">gen[B]  = defs in B not later redefined in B
+kill[B] = all other defs of those vars
+in[B]   = ∪ out[pred]          # MAY = union
+out[B]  = gen[B] ∪ (in[B] − kill[B])
+init: out = ∅</code></pre>
+    </div>
+    <div class="card blue">
+      <h3 class="b">Live Variables &mdash; bwd / may</h3>
+      <p>A variable is <em>live</em> at a point if its current value <em>may</em> be used along some path before being redefined. The backbone of dead-code elimination and register allocation (interference).</p>
+      <pre><code class="language-plaintext">use[B] = vars read in B before any def in B
+def[B] = vars assigned in B
+out[B] = ∪ in[succ]            # MAY = union
+in[B]  = use[B] ∪ (out[B] − def[B])
+init: in = ∅ ;  solved on reverse CFG</code></pre>
+    </div>
+  </div>
+  <div class="card green" style="margin-top:.45em;">
+    <h3 class="g">Reading the Symmetry</h3>
+    <p>Note how the equations mirror each other: reaching defs flows <em>forward</em> over <code>gen/kill</code>; liveness flows <em>backward</em> over <code>use/def</code>. Both are <span class="p">may</span> analyses (union meet) &mdash; they answer &ldquo;could this matter on <em>some</em> path?&rdquo;, the safe question when deciding what to <em>keep</em>.</p>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 11 — AVAILABLE & VERY-BUSY EXPRS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">10</span>
+    <h2>Available &amp; Very-Busy Expressions</h2>
+  </div>
+  <div class="cols cols-2">
+    <div class="card green">
+      <h3 class="g">Available Expressions &mdash; fwd / must</h3>
+      <p>An expression <code>a+b</code> is <em>available</em> at a point if it has been computed on <em>every</em> path to that point and neither <code>a</code> nor <code>b</code> changed since. Justifies <span class="a">global CSE</span>: reuse the earlier value.</p>
+      <pre><code class="language-plaintext">gen[B]  = exprs computed in B, operands not
+          later killed in B
+kill[B] = exprs whose operands B redefines
+in[B]   = ∩ out[pred]          # MUST = intersection
+out[B]  = gen[B] ∪ (in[B] − kill[B])
+init: out = U (universal set); in[entry]=∅</code></pre>
+    </div>
+    <div class="card purple">
+      <h3 class="p">Very-Busy (Anticipated) Exprs &mdash; bwd / must</h3>
+      <p>An expression is <em>very busy</em> at a point if it <em>will</em> be evaluated on <em>every</em> path from there before any operand changes. Enables <span class="a">code hoisting</span> (compute once, earlier) to shrink code size.</p>
+      <pre><code class="language-plaintext">use[B] = exprs evaluated in B before operand def
+def[B] = exprs killed by defs in B
+out[B] = ∩ in[succ]            # MUST = intersection
+in[B]  = use[B] ∪ (out[B] − def[B])
+init: in = U ; solved on reverse CFG</code></pre>
+    </div>
+  </div>
+  <div class="card red" style="margin-top:.45em;">
+    <h3 class="r">The Must Initialiser Gotcha</h3>
+    <p>For <span class="a">must</span> (intersection) analyses, interior blocks must be initialised to the <em>universal</em> set <code>U</code> (full optimism), not &empty; &mdash; otherwise the first intersection collapses everything to empty and the fixed point is wrong. May/union analyses initialise to &empty;.</p>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 12 — FOUR ANALYSES SUMMARY TABLE ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">11</span>
+    <h2>The Four Classic Analyses &mdash; at a Glance</h2>
+  </div>
+  <p>The complete classification. Memorise the four-corner pattern and you can derive any of them from first principles.</p>
+  <table>
+    <thead>
+      <tr><th>Analysis</th><th>Domain (facts)</th><th>Direction</th><th>Meet</th><th>Confidence</th><th>Init (interior)</th><th>Enables</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><span class="a">Reaching Definitions</span></td><td>Set of definitions</td><td>Forward</td><td>&cup; union</td><td>may</td><td>&empty;</td><td>use-def chains, const prop</td></tr>
+      <tr><td><span class="b">Live Variables</span></td><td>Set of variables</td><td>Backward</td><td>&cup; union</td><td>may</td><td>&empty;</td><td>DCE, register allocation</td></tr>
+      <tr><td><span class="g">Available Expressions</span></td><td>Set of expressions</td><td>Forward</td><td>&cap; intersect</td><td>must</td><td>U (universe)</td><td>global CSE</td></tr>
+      <tr><td><span class="p">Very-Busy Expressions</span></td><td>Set of expressions</td><td>Backward</td><td>&cap; intersect</td><td>must</td><td>U (universe)</td><td>code hoisting (size)</td></tr>
+    </tbody>
+  </table>
+  <div class="cols cols-2" style="margin-top:.45em;">
+    <div class="card amber">
+      <h3 class="a">The Pattern</h3>
+      <ul>
+        <li><span class="g">may</span> &harr; <span class="g">union</span> &harr; init &empty; &mdash; &ldquo;keep if it might matter&rdquo;</li>
+        <li><span class="r">must</span> &harr; <span class="r">intersection</span> &harr; init U &mdash; &ldquo;rewrite only if guaranteed&rdquo;</li>
+        <li>Forward seeds the entry; backward seeds the exit</li>
+      </ul>
+    </div>
+    <div class="card green">
+      <h3 class="g">Beyond the Four</h3>
+      <p>The same framework yields many more: <em>copy propagation</em>, <em>constant propagation</em> (a non-distributive lattice), <em>dominators</em> (forward/must), <em>nullness</em>, <em>taint</em>, <em>def-use</em>, and the points-to analyses on the next slides. One engine, endless analyses.</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 13 — CONST FOLD/PROP, COPY PROP ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">12</span>
+    <h2>Constant Folding, Propagation &amp; Copy Propagation</h2>
+  </div>
+  <p>The bread-and-butter scalar transforms. Each is cheap, enabling, and synergistic &mdash; one creates opportunities for the next, which is why optimisers run them repeatedly.</p>
+  <div class="cols cols-3">
+    <div class="card amber">
+      <h3 class="a">Constant Folding</h3>
+      <p>Evaluate constant expressions at <em>compile</em> time.</p>
+      <pre><code class="language-c">int s = 60 * 60 * 24;
+// folds to:
+int s = 86400;</code></pre>
+      <p style="margin-top:.2em;">Mind overflow &amp; FP rounding &mdash; folding must match the target's runtime semantics exactly.</p>
+    </div>
+    <div class="card green">
+      <h3 class="g">Constant Propagation</h3>
+      <p>Substitute a variable's known constant value at its uses.</p>
+      <pre><code class="language-c">x = 4;
+y = x + 2;   // → y = 4 + 2
+             // → y = 6 (then folds)</code></pre>
+      <p style="margin-top:.2em;">Driven by reaching-definitions / SSA. A single value must reach the use.</p>
+    </div>
+    <div class="card purple">
+      <h3 class="p">Copy Propagation</h3>
+      <p>After <code>x = y</code>, replace later uses of <code>x</code> with <code>y</code>.</p>
+      <pre><code class="language-c">x = y;
+z = x + 1;   // → z = y + 1
+// x now possibly dead → DCE removes it</code></pre>
+      <p style="margin-top:.2em;">Cleans up the redundant copies that other passes (and SSA destruction) introduce.</p>
+    </div>
+  </div>
+  <div class="card blue" style="margin-top:.45em;">
+    <h3 class="b">They Feed Each Other</h3>
+    <p>Propagation exposes constants &rarr; folding collapses them &rarr; some variables become dead &rarr; DCE removes them &rarr; new copies/expressions become trivial. This <em>cascade</em> is exactly why a pass pipeline revisits the same simple passes many times.</p>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 14 — CSE, DCE, ALGEBRAIC ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">13</span>
+    <h2>CSE, Dead-Code Elimination &amp; Algebraic Simplification</h2>
+  </div>
+  <div class="cols cols-3">
+    <div class="card amber">
+      <h3 class="a">Common-Subexpression Elimination</h3>
+      <p>If <code>a+b</code> is <em>available</em>, compute it once and reuse.</p>
+      <pre><code class="language-c">t1 = a + b;
+...
+x = a + b;   // → x = t1
+y = a + b;   // → y = t1</code></pre>
+      <p style="margin-top:.2em;">Local CSE via value numbering; global CSE via available-expressions or GVN.</p>
+    </div>
+    <div class="card red">
+      <h3 class="r">Dead-Code Elimination</h3>
+      <p>Remove computations whose results are never used (variable not <em>live</em>), and unreachable blocks.</p>
+      <pre><code class="language-c">x = expensive();  // x never used
+                  // → deleted entirely
+if (0) { ... }    // unreachable → removed</code></pre>
+      <p style="margin-top:.2em;">Must respect side-effects: a call that does I/O is not dead even if its result is.</p>
+    </div>
+    <div class="card green">
+      <h3 class="g">Algebraic Simplification</h3>
+      <p>Apply identities &amp; canonicalise.</p>
+      <pre><code class="language-c">x + 0   → x       x * 1   → x
+x * 0   → 0       x - x   → 0
+x &amp; x   → x       !!b     → b
+(a+b)+c → a+(b+c) reassoc</code></pre>
+      <p style="margin-top:.2em;">FP is tricky: <code>x*0.0 ≠ 0.0</code> for NaN/−0.0 unless <code>-ffast-math</code>.</p>
+    </div>
+  </div>
+  <div class="card purple" style="margin-top:.45em;">
+    <h3 class="p">Sound Deletion Needs Liveness + Purity</h3>
+    <p>DCE is only legal when (a) the value is provably dead and (b) the computation is side-effect-free. This is exactly why <span class="a">alias</span> and <span class="a">effect</span> analyses (later) gate so much: if the compiler cannot prove a store or call is pure and unobserved, it cannot remove it.</p>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 15 — STRENGTH REDUCTION & INLINING ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">14</span>
+    <h2>Strength Reduction &amp; Function Inlining</h2>
+  </div>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">Strength Reduction</h3>
+        <p>Replace an expensive operation with a cheaper equivalent.</p>
+        <pre><code class="language-c">y = x * 8;     → y = x &lt;&lt; 3;
+y = x % 16;    → y = x &amp; 15;   // unsigned
+y = x / 2;     → y = x &gt;&gt; 1;   // unsigned</code></pre>
+        <p style="margin-top:.2em;">The <em>headline</em> use is in loops: turn a multiply by the loop index into an add per iteration (induction-variable strength reduction, next slide).</p>
+      </div>
+    </div>
+    <div>
+      <div class="card green">
+        <h3 class="g">Function Inlining</h3>
+        <p>Replace a call with the callee's body. The single most <em>enabling</em> optimisation &mdash; it exposes the callee's internals to the caller's optimiser (const prop, CSE, DCE across the boundary).</p>
+        <pre><code class="language-c">int sq(int n){ return n*n; }
+y = sq(a+1);
+// inlines to:
+y = (a+1)*(a+1);   // now foldable/CSE-able</code></pre>
+      </div>
+      <div class="card red" style="margin-top:.4em;">
+        <h3 class="r">Cost / Benefit &mdash; Code Bloat</h3>
+        <p>Inlining duplicates the body at each call site. Over-inlining bloats the binary, blows the instruction cache, and can <em>slow</em> code. Heuristics weigh callee size, call-site hotness (PGO), and recursion. <code>__attribute__((always_inline))</code> forces it; <code>noinline</code> forbids it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 16 — LOOP OPTS OVERVIEW + LICM SVG ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">15</span>
+    <h2>Loop Optimisations &mdash; LICM</h2>
+  </div>
+  <p>Loops are where programs spend their time, so they get the most attention. <span class="a">Loop-Invariant Code Motion</span> hoists computations that produce the same value every iteration out to the <span class="g">pre-header</span> &mdash; computed once instead of N times.</p>
+  <div class="cols cols-2">
+    <div>
+      <svg class="diagram" viewBox="0 0 440 300" width="440" height="300">
+        <defs>
+          <marker id="lGreen" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#4ecb8d"/></marker>
+        </defs>
+        <text x="110" y="14" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono" font-size="10">before</text>
+        <text x="330" y="14" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="10">after (hoisted)</text>
+        <!-- before loop box -->
+        <rect x="25" y="40" width="170" height="120" rx="6" fill="none" stroke="#f87171" stroke-width="1.3" stroke-dasharray="4"/>
+        <text x="110" y="58" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono" font-size="9">for i in 0..n</text>
+        <rect x="40" y="70" width="140" height="26" rx="4" fill="#181824" stroke="#f87171" stroke-width="1"/>
+        <text x="110" y="87" text-anchor="middle" fill="#cdd6f4" font-family="JetBrains Mono" font-size="8.5">t = a * b   // invariant!</text>
+        <rect x="40" y="104" width="140" height="26" rx="4" fill="#181824" stroke="#8888a8" stroke-width="1"/>
+        <text x="110" y="121" text-anchor="middle" fill="#cdd6f4" font-family="JetBrains Mono" font-size="8.5">x[i] = t + i</text>
+        <text x="110" y="150" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">a*b recomputed n times</text>
+        <!-- after: preheader + loop -->
+        <rect x="245" y="40" width="170" height="30" rx="4" fill="#1a2a1a" stroke="#4ecb8d" stroke-width="1.4"/>
+        <text x="330" y="52" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="8">pre-header</text>
+        <text x="330" y="64" text-anchor="middle" fill="#cdd6f4" font-family="JetBrains Mono" font-size="8.5">t = a * b</text>
+        <line x1="330" y1="70" x2="330" y2="86" stroke="#4ecb8d" stroke-width="1.2" marker-end="url(#lGreen)"/>
+        <rect x="245" y="90" width="170" height="90" rx="6" fill="none" stroke="#4ecb8d" stroke-width="1.3" stroke-dasharray="4"/>
+        <text x="330" y="108" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="9">for i in 0..n</text>
+        <rect x="260" y="120" width="140" height="26" rx="4" fill="#181824" stroke="#8888a8" stroke-width="1"/>
+        <text x="330" y="137" text-anchor="middle" fill="#cdd6f4" font-family="JetBrains Mono" font-size="8.5">x[i] = t + i</text>
+        <text x="330" y="170" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">a*b computed once</text>
+      </svg>
+    </div>
+    <div>
+      <div class="card amber">
+        <h3 class="a">When Is It Legal?</h3>
+        <ul>
+          <li>The expression's operands are <span class="g">invariant</span> (defined outside, or themselves invariant)</li>
+          <li>The instruction is <span class="b">safe to speculate</span> or its block dominates all loop exits (so it would always have run)</li>
+          <li>No side-effects / no trap that the loop might have avoided</li>
+        </ul>
+      </div>
+      <div class="card purple" style="margin-top:.4em;">
+        <h3 class="p">The Pre-Header</h3>
+        <p>LICM needs a single dedicated block on the loop's entry edge to hoist into. Compilers insert one if absent &mdash; a recurring theme: <em>normalise the CFG (loop-simplify form) first, then transform</em>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 17 — INDUCTION VARS, UNROLL, FUSION ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">16</span>
+    <h2>Induction Variables, Unrolling, Fusion &amp; Interchange</h2>
+  </div>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">Induction Variables &amp; SR</h3>
+        <p>A basic IV steps by a constant (<code>i += 1</code>). A derived IV is a linear function of it (<code>j = 4*i</code>). <span class="g">IV strength reduction</span> turns the multiply into an add:</p>
+        <pre><code class="language-c">for(i=0;i&lt;n;i++) a[4*i]=0;
+// → keep j, add 4 each iter:
+for(j=0; j&lt;4*n; j+=4) *(a+j)=0;</code></pre>
+      </div>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">Loop Unrolling</h3>
+        <p>Replicate the body K times, stepping by K. Amortises loop overhead (test/branch/increment), exposes ILP, and feeds vectorisation &mdash; at the cost of code size. A <em>remainder</em> loop handles the leftover iterations.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">Fusion &amp; Fission</h3>
+        <ul>
+          <li><span class="a">Fusion</span>: merge two adjacent loops over the same range &mdash; one loop overhead, better locality &amp; reuse</li>
+          <li><span class="b">Fission</span> (distribution): split one loop into several &mdash; isolates a vectorisable part, or reduces register pressure</li>
+        </ul>
+      </div>
+      <div class="card blue" style="margin-top:.4em;">
+        <h3 class="b">Loop Interchange</h3>
+        <p>Swap nested loops so the innermost stride is unit, walking arrays in <span class="a">row-major</span> order for cache locality:</p>
+        <pre><code class="language-c">for j: for i: A[i][j] // bad: column stride
+// interchange →
+for i: for j: A[i][j] // good: unit stride</code></pre>
+        <p style="margin-top:.2em;">Legal only if the dependence direction permits the swap.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 18 — VECTORISATION / SIMD ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">17</span>
+    <h2>Auto-Vectorisation &amp; SIMD</h2>
+  </div>
+  <p>Modern CPUs offer <span class="a">SIMD</span> units (SSE/AVX/AVX-512 on x86, NEON/SVE on ARM, V on RISC-V) that apply one operation to a vector of lanes. The vectoriser rewrites a scalar loop to process several elements per iteration.</p>
+  <div class="cols cols-6040">
+    <div>
+      <pre><code class="language-c">// scalar: 1 add per iteration
+for (i = 0; i &lt; n; i++)
+    c[i] = a[i] + b[i];
+
+// vectorised (width 4): 4 adds per iteration
+for (i = 0; i + 4 &lt;= n; i += 4)
+    c[i:i+4] = a[i:i+4] + b[i:i+4];  // one VADD
+// + a scalar remainder/peel loop for the tail</code></pre>
+      <div class="card blue" style="margin-top:.3em;">
+        <h3 class="b">SLP vs Loop Vectorisation</h3>
+        <p>Loop vectorisation widens across iterations; <span class="a">SLP</span> (Superword-Level Parallelism) packs independent scalar statements within one block into a vector.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card red">
+        <h3 class="r">What Blocks It</h3>
+        <ul>
+          <li>Loop-carried <span class="a">dependences</span> (<code>a[i]=a[i-1]</code>)</li>
+          <li>Possible aliasing of the pointers (needs runtime checks or <code>restrict</code>)</li>
+          <li>Unknown trip count, complex control flow, calls</li>
+          <li>Non-unit / gather-scatter access patterns</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">Helping the Compiler</h3>
+        <p><code>restrict</code> pointers, <code>#pragma omp simd</code>, aligned data, simple counted loops. Or write <em>intrinsics</em> when the auto-vectoriser gives up.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 19 — SSA-BASED OPTS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">18</span>
+    <h2>Why SSA Makes Optimisation Cheaper</h2>
+  </div>
+  <p>In <span class="a">SSA form</span> (Part 06) each variable is assigned exactly once, so a use points <em>directly</em> at its single definition &mdash; def-use chains are explicit and free. Many analyses that needed full data-flow now become a sparse graph walk.</p>
+  <div class="cols cols-3">
+    <div class="card amber">
+      <h3 class="a">SCCP</h3>
+      <p><span class="g">Sparse Conditional Constant Propagation</span> (Wegman &amp; Zadeck). Propagates constants <em>and</em> reachability together over the SSA + CFG lattices &mdash; strictly more powerful than running constant propagation and unreachable-code removal separately, because each unlocks the other.</p>
+    </div>
+    <div class="card green">
+      <h3 class="g">GVN</h3>
+      <p><span class="a">Global Value Numbering</span> assigns the same number to expressions that provably compute the same value &mdash; even across blocks &amp; through &phi;-nodes. Subsumes CSE and catches redundancies syntactic CSE misses (e.g. <code>a+b</code> vs <code>b+a</code>, or values that flow through copies).</p>
+    </div>
+    <div class="card purple">
+      <h3 class="p">Aggressive DCE</h3>
+      <p>Optimistic: assume <em>all</em> code is dead, then mark live only what (transitively) feeds an observable effect (return, store, I/O). Anything unmarked &mdash; including whole control-dependence regions &mdash; is deleted. SSA makes the mark-and-sweep over def-use edges trivial.</p>
+    </div>
+  </div>
+  <div class="card blue" style="margin-top:.45em;">
+    <h3 class="b">The Sparse Advantage</h3>
+    <p>Classic DFA stores a fact <em>per variable per program point</em> &mdash; dense and expensive. SSA attaches information to <em>values</em>, of which each has exactly one definition, so facts propagate along def-use edges only where they actually flow. Same answers, far less work &mdash; the reason SSA dominates modern middle-ends (LLVM, GCC's GIMPLE-SSA, V8, HotSpot).</p>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 20 — BEFORE/AFTER TRANSFORM SVG ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">19</span>
+    <h2>It All Compounds &mdash; A Before / After</h2>
+  </div>
+  <p>No single optimisation is dramatic; the <span class="a">cascade</span> is. Watch a snippet shrink as const-prop, folding, CSE, strength-reduction and DCE fire in sequence.</p>
+  <svg class="diagram" viewBox="0 0 900 240" width="900" height="240">
+    <defs>
+      <marker id="tAmber" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="#f5a623"/></marker>
+    </defs>
+    <!-- before box -->
+    <rect x="10" y="20" width="320" height="200" rx="6" fill="#181824" stroke="#f87171" stroke-width="1.3"/>
+    <text x="170" y="40" text-anchor="middle" fill="#f87171" font-family="Playfair Display" font-size="13" font-weight="700">before</text>
+    <text x="28" y="66"  fill="#cdd6f4" font-family="JetBrains Mono" font-size="11">int w = 4;</text>
+    <text x="28" y="88"  fill="#cdd6f4" font-family="JetBrains Mono" font-size="11">int h = w * 2;</text>
+    <text x="28" y="110" fill="#cdd6f4" font-family="JetBrains Mono" font-size="11">int area = w * h;</text>
+    <text x="28" y="132" fill="#cdd6f4" font-family="JetBrains Mono" font-size="11">int t = w * h;</text>
+    <text x="28" y="154" fill="#cdd6f4" font-family="JetBrains Mono" font-size="11">int unused = expensive();</text>
+    <text x="28" y="176" fill="#cdd6f4" font-family="JetBrains Mono" font-size="11">return area + t;</text>
+    <!-- arrow with labels -->
+    <line x1="340" y1="120" x2="560" y2="120" stroke="#f5a623" stroke-width="1.6" marker-end="url(#tAmber)"/>
+    <text x="450" y="100" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8.5">const-prop · fold</text>
+    <text x="450" y="135" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8.5">CSE · DCE</text>
+    <!-- after box -->
+    <rect x="570" y="20" width="320" height="200" rx="6" fill="#1a2a1a" stroke="#4ecb8d" stroke-width="1.4"/>
+    <text x="730" y="40" text-anchor="middle" fill="#4ecb8d" font-family="Playfair Display" font-size="13" font-weight="700">after</text>
+    <text x="588" y="78"  fill="#cdd6f4" font-family="JetBrains Mono" font-size="11">// w=4, h=8, area=32, t=32</text>
+    <text x="588" y="104" fill="#8888a8" font-family="JetBrains Mono" font-size="11">// 'unused' deleted (dead)</text>
+    <text x="588" y="140" fill="#4ecb8d" font-family="JetBrains Mono" font-size="13">return 64;</text>
+    <text x="730" y="195" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="9">six statements → one constant</text>
+  </svg>
+  <p style="text-align:center; margin-top:.2em;">Each pass is simple; together they fold the whole function to <code>return 64;</code>. The art is in <span class="a">ordering</span> and <span class="a">repeating</span> them.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 21 — ALIAS ANALYSIS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">20</span>
+    <h2>Alias / Points-To Analysis &mdash; the Great Limiter</h2>
+  </div>
+  <p>Two pointers <span class="a">alias</span> if they may refer to the same storage. Almost every memory optimisation hinges on the question &ldquo;can this store affect that load?&rdquo; &mdash; and a conservative &ldquo;maybe&rdquo; <em>kills</em> the optimisation. Alias analysis is the silent ceiling on what a compiler can do.</p>
+  <div class="cols cols-2">
+    <div class="card amber">
+      <h3 class="a">The Problem</h3>
+      <pre><code class="language-c">*p = 1;
+x = *q;        // is x == 1 ? only if p,q alias
+*p = 2;        // can we drop the *p=1 store?
+               // only if nothing reads through
+               // an alias in between</code></pre>
+      <p>If <code>p</code> and <code>q</code> <em>may</em> alias, the compiler must keep the load, keep the store, and forgo CSE/DCE/reordering across them.</p>
+    </div>
+    <div>
+      <div class="card green">
+        <h3 class="g">Flavours</h3>
+        <ul>
+          <li><span class="a">Type-based</span> (TBAA): different types can't alias (C/C++ strict aliasing)</li>
+          <li><span class="b">Andersen</span> (inclusion, precise, O(n³)) vs <span class="p">Steensgaard</span> (unification, near-linear, coarser)</li>
+          <li>Flow-/context-sensitive variants trade precision for cost</li>
+        </ul>
+      </div>
+      <div class="card red" style="margin-top:.4em;">
+        <h3 class="r">Why It Limits Everything</h3>
+        <p>Pointer aliasing is undecidable in general, so analysis is always conservative. <code>restrict</code> / <code>__restrict</code> and strict-aliasing rules exist precisely to <em>give the compiler back</em> the no-alias guarantees it cannot prove.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 22 — CALL GRAPH & DOMINATORS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">21</span>
+    <h2>Supporting Structures: Call Graph &amp; Dominators</h2>
+  </div>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">The Call Graph</h3>
+        <p>Nodes = functions, edges = &ldquo;may call&rdquo;. The substrate of all <span class="g">interprocedural</span> work: inlining order, propagating facts across calls, devirtualisation.</p>
+        <ul>
+          <li>Indirect/virtual calls &amp; function pointers make edges <em>uncertain</em> &mdash; needs points-to or class-hierarchy analysis</li>
+          <li>Visited <span class="b">bottom-up</span> over SCCs so a callee is optimised &amp; summarised before its callers</li>
+          <li>Recursion = a cycle (SCC) in the graph</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">Dominators (Recap from Part 06)</h3>
+        <p>Block <code>d</code> <span class="a">dominates</span> <code>n</code> if every path from entry to <code>n</code> goes through <code>d</code>. The dominator tree underpins much of the optimiser:</p>
+        <ul>
+          <li><span class="g">SSA</span> &phi;-placement (dominance frontiers)</li>
+          <li><span class="b">LICM</span> &amp; code hoisting (a hoist target must dominate all uses)</li>
+          <li><span class="a">GVN</span> / redundancy elimination scoping</li>
+          <li>Natural-loop detection via back edges to a dominating header</li>
+        </ul>
+        <p style="margin-top:.2em;">Computed in near-linear time (Lengauer&ndash;Tarjan; or the simpler Cooper&ndash;Harvey&ndash;Kennedy iterative algorithm).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 23 — PHASE ORDERING ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">22</span>
+    <h2>The Phase-Ordering Problem</h2>
+  </div>
+  <p>Optimisations <span class="a">interact</span>: one pass creates opportunities for another &mdash; or destroys them. There is no universally best order, and the search space is enormous. This is the <span class="r">phase-ordering problem</span>, and it has no clean solution.</p>
+  <div class="cols cols-2">
+    <div class="card amber">
+      <h3 class="a">Why It's Hard</h3>
+      <ul>
+        <li>Inlining enables const-prop; const-prop enables DCE; DCE may make more inlining profitable &mdash; cyclic dependencies</li>
+        <li>A pass can also <em>obscure</em> structure a later pass needed (e.g. aggressive lowering hides loop shape from the vectoriser)</li>
+        <li>Optimal ordering is intractable to search per-program</li>
+      </ul>
+    </div>
+    <div class="card green">
+      <h3 class="g">How Real Compilers Cope</h3>
+      <ul>
+        <li>A carefully hand-tuned <span class="a">fixed pipeline</span>, refined over decades</li>
+        <li><span class="b">Repetition</span>: cheap clean-up passes (instcombine, simplifycfg, DCE) run many times between the heavy passes</li>
+        <li>Run-to-fixed-point loops within a region</li>
+        <li>Research: ML / autotuning to search orderings (e.g. MLGO, autophase) &mdash; niche in production</li>
+      </ul>
+    </div>
+  </div>
+  <p style="margin-top:.3em;">The pragmatic answer: a <em>good enough, robust</em> order that works across most programs, with cheap normalising passes interleaved to keep each heavy pass fed with clean IR.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 24 — PASS PIPELINE (LLVM/GCC) ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">23</span>
+    <h2>The Real Pipeline: Pass Managers &amp; -O Levels</h2>
+  </div>
+  <p>LLVM and GCC organise optimisation as a sequence of <span class="a">passes</span> driven by a <span class="g">pass manager</span>. The <code>-O</code> level selects which passes run and how aggressively.</p>
+  <div class="ss-row" style="margin:.2em 0 .5em; flex-wrap:wrap;">
+    <span class="ss-node">parse</span><span class="ss-arrow">&rarr;</span>
+    <span class="ss-node done">mem2reg (SSA)</span><span class="ss-arrow">&rarr;</span>
+    <span class="ss-node active">inline</span><span class="ss-arrow">&rarr;</span>
+    <span class="ss-node active">SCCP·GVN·CSE</span><span class="ss-arrow">&rarr;</span>
+    <span class="ss-node active">LICM·unroll·vec</span><span class="ss-arrow">&rarr;</span>
+    <span class="ss-node active">DCE·simplifycfg</span><span class="ss-arrow">&rarr;</span>
+    <span class="ss-node done">codegen</span>
+  </div>
+  <div class="cols cols-2">
+    <div>
+      <table>
+        <thead><tr><th>Level</th><th>Intent</th></tr></thead>
+        <tbody>
+          <tr><td><code>-O0</code></td><td>None; fast compile, debuggable, predictable</td></tr>
+          <tr><td><code>-O1</code></td><td>Cheap wins, little code growth</td></tr>
+          <tr><td><code>-O2</code></td><td>Full opt, no risky size blow-up &mdash; the default</td></tr>
+          <tr><td><code>-O3</code></td><td>+ aggressive inlining, unroll, vectorise (more size)</td></tr>
+          <tr><td><code>-Os</code></td><td>Optimise for size (O2 minus size-growing passes)</td></tr>
+          <tr><td><code>-Oz</code></td><td>Minimise size at almost any speed cost</td></tr>
+          <tr><td><code>-Ofast</code></td><td>O3 + unsafe maths (<code>-ffast-math</code>) &mdash; breaks strict IEEE</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <div class="card amber">
+        <h3 class="a">Pass Kinds &amp; Managers</h3>
+        <p>Passes are scoped: <span class="g">module</span>, <span class="b">call-graph (SCC)</span>, <span class="p">function</span>, <span class="a">loop</span>. LLVM's <em>New Pass Manager</em> nests them and threads analysis results (with invalidation) so a transform can request, e.g., dominators or alias info on demand.</p>
+      </div>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">Inspecting It</h3>
+        <pre><code class="language-plaintext">clang -O2 -mllvm -print-pipeline-passes
+opt -passes='default&lt;O2&gt;' -print-after-all
+gcc -O2 -fdump-tree-all -fdump-rtl-all</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 25 — UNDEFINED BEHAVIOUR ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">24</span>
+    <h2>Undefined Behaviour as an Optimisation Licence</h2>
+  </div>
+  <p>C and C++ declare some constructs <span class="r">undefined behaviour</span> (UB): the standard imposes <em>no</em> requirements. The optimiser is then free to <span class="a">assume UB never happens</span> &mdash; and to rewrite code on that assumption. This is a powerful, and famously controversial, source of speed.</p>
+  <div class="cols cols-2">
+    <div class="card amber">
+      <h3 class="a">How It Enables Optimisation</h3>
+      <pre><code class="language-c">// signed overflow is UB → compiler assumes
+// it never happens → this loop terminates:
+for (int i = 0; i &lt;= n; i++) { ... }
+// i+1 can't wrap, so i&lt;=n is bounded → may
+// use a wider IV, vectorise, hoist checks
+
+int v = *p;       // deref → p assumed non-null
+if (p) { ... }    // → branch can be deleted!</code></pre>
+      <p>Strict aliasing, no-null-deref, no-signed-overflow, no-OOB and dereferenceable assumptions all feed real optimisations.</p>
+    </div>
+    <div>
+      <div class="card red">
+        <h3 class="r">The Controversy</h3>
+        <ul>
+          <li>UB-based rewrites can <em>delete</em> security checks (the famous &ldquo;null-check removed after deref&rdquo; CVEs)</li>
+          <li>Behaviour can change silently between <code>-O</code> levels or compiler versions</li>
+          <li>&ldquo;The compiler is allowed to do <em>anything</em>&rdquo; surprises programmers who expected a sane wrap/trap</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">Mitigations</h3>
+        <p>Sanitizers (<code>-fsanitize=undefined,address</code>) catch UB at runtime; flags like <code>-fwrapv</code>, <code>-fno-strict-aliasing</code>, <code>-fno-delete-null-pointer-checks</code> tame specific cases. Safer languages (Rust) eliminate most UB by construction.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 26 — SUMMARY ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">25</span>
+    <h2>Summary &amp; Further Reading</h2>
+  </div>
+  <div class="cols cols-2">
+    <div>
+      <div class="card green">
+        <h3 class="g">Key Takeaways</h3>
+        <ul>
+          <li>Optimisation = <em>improvement</em>, never optimal; it must be semantics-preserving (the as-if rule)</li>
+          <li>Scope spans peephole &rarr; local &rarr; global &rarr; IPO &rarr; LTO &rarr; whole-program, with PGO orthogonal</li>
+          <li>Data-flow = lattice + direction + transfer (gen/kill) + meet; solved by the monotone iterative worklist (terminates: monotonicity + finite height); MFP &le; MOP</li>
+          <li>Four classics: reaching-defs (fwd/may), live-vars (bwd/may), available-exprs (fwd/must), very-busy (bwd/must)</li>
+          <li>Transforms cascade: const-fold/prop, copy-prop, CSE, DCE, strength reduction, inlining</li>
+          <li>Loops: LICM, IV strength reduction, unroll, fusion/fission, interchange, vectorise</li>
+          <li>SSA makes SCCP, GVN &amp; aggressive DCE sparse &amp; cheap; alias analysis is the ceiling on memory opts</li>
+          <li>Phase ordering is unsolved &mdash; hand-tuned, repeated pipelines; <code>-O0..-O3/-Os/-Oz</code></li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card blue">
+        <h3 class="b">Further Reading</h3>
+        <ul>
+          <li>Aho, Lam, Sethi &amp; Ullman &mdash; <em>Compilers: Principles, Techniques &amp; Tools</em> (Dragon Book), ch. 9</li>
+          <li>Cooper &amp; Torczon &mdash; <em>Engineering a Compiler</em>, ch. 8&ndash;10</li>
+          <li>Muchnick &mdash; <em>Advanced Compiler Design &amp; Implementation</em></li>
+          <li>Kildall (1973) &mdash; the lattice/data-flow framework; Kam &amp; Ullman on monotone frameworks</li>
+          <li>Wegman &amp; Zadeck &mdash; <em>Constant Propagation with Conditional Branches</em> (SCCP)</li>
+          <li>Allen &amp; Cocke &mdash; catalogue of program transformations</li>
+          <li>The LLVM <em>Passes</em> reference &amp; <em>Writing an LLVM Pass</em>; <code>llvm.org</code></li>
+        </ul>
+      </div>
+      <div class="card purple" style="margin-top:.4em;">
+        <h3 class="p">Next &rarr; Part 08</h3>
+        <p><span class="a">Code Generation</span> &mdash; instruction selection (tree-tiling / BURS), instruction scheduling, and register allocation (graph-colouring vs linear-scan): turning optimised IR into real machine code.</p>
+      </div>
+      <div class="ss-row" style="margin-top:.4em; justify-content:center;">
+        <span class="ss-node done">Part 07 ✓</span>
+        <span class="ss-arrow">&rarr;</span>
+        <span class="ss-node active">Part 08: Code Generation</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+</div><!-- /slides -->
+</div><!-- /reveal -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/highlight/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/highlight/monokai.min.css">
+<script>
+Reveal.initialize({
+  hash: true,
+  slideNumber: 'c/t',
+  transition: 'fade',
+  transitionSpeed: 'fast',
+  controls: true,
+  progress: true,
+  center: false,
+  width: 1100,
+  height: 900,
+  margin: 0.01,
+  plugins: [RevealHighlight],
+  highlight: { theme: 'monokai' }
+});
+</script>
+<script>
+(function(){
+  var h = Reveal.getConfig().height || 900;
+  var m = Reveal.getConfig().margin || 0.02;
+  var maxH = Math.floor(h * (1 - 2 * m)) + 'px';
+  function fixSlides(){
+    document.querySelectorAll('.reveal .slides>section,.reveal .slides>section>section').forEach(function(s){
+      s.style.display = 'block';
+      s.style.maxHeight = maxH;
+    });
+  }
+  Reveal.on('ready', fixSlides);
+  Reveal.on('slidechanged', fixSlides);
+})();
+</script>
+</body>
+</html>

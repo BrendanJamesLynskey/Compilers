@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compilers — Part 03: Lexical Analysis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/theme/black.min.css">
+<style>
+  :root {
+    --amber:  #f5a623;
+    --green:  #4ecb8d;
+    --purple: #a78bfa;
+    --blue:   #60a5fa;
+    --red:    #f87171;
+    --bg:     #0a0a0f;
+    --bg2:    #10101a;
+    --bg3:    #181824;
+    --border: #2a2a3a;
+    --text:   #e8e8f0;
+    --muted:  #8888a8;
+  }
+
+  .reveal-viewport { background: var(--bg); }
+  .reveal .slides section { background: transparent; }
+
+  .reveal { font-family: 'DM Sans', sans-serif; color: var(--text); }
+  .reveal h1, .reveal h2, .reveal h3 { font-family: 'Playfair Display', serif; font-weight: 700; }
+  .reveal h1 { font-size: 1.6em; color: var(--amber); line-height: 1.1; }
+  .reveal h2 { font-size: 1.1em; color: var(--amber); margin-bottom: .2em; }
+  .reveal h3 { font-size: .78em; color: var(--green); margin-bottom: .15em; }
+  .reveal p  { font-size: .56em; line-height: 1.45; color: var(--text); }
+  .reveal li { font-size: .54em; line-height: 1.45; margin-bottom: .1em; }
+  .reveal code { font-family: 'JetBrains Mono', monospace; font-size: .72em; }
+  .reveal pre  { box-shadow: none; background: var(--bg3); border: 1px solid var(--border);
+                 border-radius: 6px; padding: .3em .5em; margin: .25em 0; }
+  .reveal pre code { font-size: .52em; line-height: 1.35; background: transparent; color: #cdd6f4; }
+
+  /* ── slide chrome ── */
+  .slide-hdr {
+    display: flex; align-items: center; gap: .4em;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: .2em; margin-bottom: .3em;
+  }
+  .slide-hdr .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .42em; font-weight: 500;
+    color: var(--bg); background: var(--amber);
+    padding: .1em .4em; border-radius: 3px;
+    letter-spacing: .04em;
+  }
+  .slide-hdr h2 { margin: 0; font-size: .95em; }
+
+  /* ── two-column ── */
+  .cols   { display: grid; gap: .5em; }
+  .cols-2 { grid-template-columns: 1fr 1fr; }
+  .cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .cols-6040 { grid-template-columns: 6fr 4fr; }
+  .cols-4060 { grid-template-columns: 4fr 6fr; }
+
+  /* ── cards ── */
+  .card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 6px; padding: .35em .6em;
+  }
+  .card.amber { border-left: 3px solid var(--amber); }
+  .card.green { border-left: 3px solid var(--green); }
+  .card.purple{ border-left: 3px solid var(--purple); }
+  .card.blue  { border-left: 3px solid var(--blue); }
+  .card.red   { border-left: 3px solid var(--red); }
+  .card h3 { font-size: .64em; margin: 0 0 .12em; }
+  .card p  { font-size: .52em; margin: 0; color: #b8b8d0; }
+  .card ul { margin: 0; padding-left: 1em; }
+  .card li { font-size: .52em; color: #b8b8d0; margin-bottom: .02em; }
+
+  /* ── table ── */
+  .reveal table { width: 100%; border-collapse: collapse; font-size: .5em; }
+  .reveal table th { background: var(--bg3); color: var(--amber); font-weight: 600;
+                     padding: .2em .4em; border: 1px solid var(--border); text-align: left; }
+  .reveal table td { padding: .18em .4em; border: 1px solid var(--border); color: #ccc; }
+  .reveal table tr:nth-child(even) td { background: #0e0e18; }
+
+  /* ── accent spans ── */
+  .a  { color: var(--amber); font-weight: 600; }
+  .g  { color: var(--green); font-weight: 600; }
+  .p  { color: var(--purple); font-weight: 600; }
+  .b  { color: var(--blue); font-weight: 600; }
+  .r  { color: var(--red); font-weight: 600; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* ── SVG graph diagrams ── */
+  svg.diagram { display: block; margin: 0 auto; overflow: visible; }
+
+  /* ── pill badges ── */
+  .pill {
+    display: inline-block; font-family: 'JetBrains Mono', monospace;
+    font-size: .44em; padding: .08em .4em; border-radius: 99px;
+    border: 1px solid; margin: 0 .08em;
+  }
+  .pill.amber { color: var(--amber); border-color: var(--amber); }
+  .pill.green { color: var(--green); border-color: var(--green); }
+  .pill.purple{ color: var(--purple); border-color: var(--purple); }
+  .pill.blue  { color: var(--blue); border-color: var(--blue); }
+
+  /* ── footer — hidden; was overlapping scrollable content ── */
+  .reveal .slide-footer { display: none; }
+  /* title slide special */
+  .title-slide h1 { font-size: 1.8em; }
+  .title-slide .subtitle {
+    font-size: .7em; color: var(--green); font-family: 'DM Sans', sans-serif;
+    font-weight: 300; letter-spacing: .04em; margin: .3em 0 .6em;
+  }
+  .title-slide .meta { font-size: .48em; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+
+  /* ── super-step animator ── */
+  .ss-row {
+    display: flex; gap: .25em; align-items: center;
+    margin: .1em 0; font-size: .55em; font-family: 'JetBrains Mono', monospace;
+  }
+  .ss-node {
+    padding: .2em .55em; border-radius: 5px; font-size: .9em;
+    background: var(--bg3); border: 1px solid var(--border); color: var(--text);
+  }
+  .ss-node.active { background: #1a2a1a; border-color: var(--green); color: var(--green); }
+  .ss-node.done   { background: #1a1a2a; border-color: var(--purple); color: var(--purple); }
+  .ss-arrow { color: var(--amber); }
+  .ss-label { font-size: .8em; color: var(--muted); margin-left: .3em; }
+
+  /* reduce default margins */
+  .reveal ul, .reveal ol { margin: .15em 0 .15em 1em; }
+.reveal .slides > section { display: flex !important; flex-direction: column !important; overflow-y: auto !important; align-items: stretch !important; justify-content: flex-start !important; }
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+
+<!-- ═══════════════════════════════ SLIDE 01 — TITLE ═══════════════════════════════ -->
+<section class="title-slide" data-background-color="#0a0a0f">
+  <div style="text-align:left; max-width:820px; margin:0 auto; padding: 1em 0;">
+    <div style="font-family:'JetBrains Mono',monospace; font-size:.5em; color:var(--muted); margin-bottom:.4em; letter-spacing:.1em;">
+      COMPILERS SERIES &middot; PART 03 OF 10
+    </div>
+    <h1>Lexical<br>Analysis</h1>
+    <div class="subtitle">Part 03 &mdash; From Characters to Tokens: the Scanner</div>
+    <div style="width:60px; height:3px; background:var(--amber); margin-bottom:1.4em;"></div>
+    <div style="display:flex; gap:1.2em; flex-wrap:wrap; margin-bottom:1em;">
+      <span class="pill amber">Regex</span>
+      <span class="pill green">NFA / DFA</span>
+      <span class="pill purple">Maximal Munch</span>
+      <span class="pill blue">flex / re2c</span>
+    </div>
+    <div class="ss-row" style="margin-top:0.6em;">
+      <span class="ss-node active">Regex</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node active">NFA</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node active">DFA</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node active">Minimise</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node done">Token Stream</span>
+    </div>
+    <p style="max-width:640px; color:#a0a0c0; font-size:.56em; line-height:1.5; margin-top:1em;">
+      The first phase of the front end: how a stream of raw characters becomes a stream of tokens. We build the full theory &mdash; regular expressions, finite automata, Thompson&rsquo;s construction and the subset construction &mdash; then put it to work in real, table-driven and hand-written scanners, and confront the hard cases that break the clean theory.
+    </p>
+    <div class="meta" style="margin-top:1.4em;">
+      Tokens &nbsp;&middot;&nbsp; Regular Languages &nbsp;&middot;&nbsp; Automata &nbsp;&middot;&nbsp; Scanner Generators
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 02 — AGENDA ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">01</span>
+    <h2>Topics</h2>
+  </div>
+  <p>Lexing is the most <span class="a">mathematically settled</span> phase of a compiler &mdash; it rests on the theory of regular languages, which gives us a mechanical path from a specification to fast code. This deck walks that path, then the messy reality of real languages.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">Foundations</h3>
+        <ul>
+          <li>The scanner&rsquo;s role &amp; why it is a separate phase</li>
+          <li>Tokens vs lexemes vs patterns</li>
+          <li>Regular expressions &amp; regular languages</li>
+          <li>Finite automata &mdash; DFA, NFA, &epsilon;-moves</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:.45em;">
+        <h3 class="g">The Construction Pipeline</h3>
+        <ul>
+          <li>Thompson&rsquo;s construction: regex &rarr; NFA</li>
+          <li>Subset construction: NFA &rarr; DFA</li>
+          <li>DFA minimisation (Myhill&ndash;Nerode / Hopcroft)</li>
+          <li>Worked example: <code>(a|b)*abb</code></li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">Scanning Rules &amp; Implementation</h3>
+        <ul>
+          <li>Maximal munch, rule order, lookahead</li>
+          <li>Hand-written vs generated scanners</li>
+          <li>Keywords, identifiers &amp; literals</li>
+          <li>Source handling &amp; the two-buffer scheme</li>
+        </ul>
+      </div>
+      <div class="card blue" style="margin-top:.45em;">
+        <h3 class="b">The Hard Cases</h3>
+        <ul>
+          <li>Location tracking &amp; error recovery</li>
+          <li>Significant indentation (INDENT/DEDENT)</li>
+          <li>The C &ldquo;lexer hack&rdquo;</li>
+          <li>String interpolation, nested comments</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 03 — ROLE OF THE SCANNER ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">02</span>
+    <h2>The Scanner&rsquo;s Role in the Pipeline</h2>
+  </div>
+  <p>The <span class="a">lexer</span> (scanner) is the first phase. It reads the source as a flat stream of characters and groups them into <span class="g">tokens</span> &mdash; the atomic words of the language &mdash; which it hands, one at a time, to the parser.</p>
+  <svg class="diagram" viewBox="0 0 900 200" width="900" height="200">
+    <defs>
+      <marker id="ar" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="#f5a623"/></marker>
+    </defs>
+    <!-- source -->
+    <rect x="10" y="70" width="150" height="60" rx="5" fill="#181824" stroke="#60a5fa" stroke-width="1.4"/>
+    <text x="85" y="95" text-anchor="middle" fill="#60a5fa" font-family="Playfair Display" font-size="13" font-weight="700">Source Text</text>
+    <text x="85" y="113" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">char stream</text>
+    <line x1="162" y1="100" x2="205" y2="100" stroke="#f5a623" stroke-width="1.5" marker-end="url(#ar)"/>
+    <!-- lexer -->
+    <rect x="208" y="60" width="170" height="80" rx="5" fill="#1a2a1a" stroke="#4ecb8d" stroke-width="1.6"/>
+    <text x="293" y="88" text-anchor="middle" fill="#4ecb8d" font-family="Playfair Display" font-size="13" font-weight="700">Lexer / Scanner</text>
+    <text x="293" y="106" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">DFA over characters</text>
+    <text x="293" y="120" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">strips whitespace</text>
+    <line x1="380" y1="100" x2="423" y2="100" stroke="#f5a623" stroke-width="1.5" marker-end="url(#ar)"/>
+    <!-- token stream -->
+    <rect x="426" y="60" width="190" height="80" rx="5" fill="#181824" stroke="#a78bfa" stroke-width="1.4"/>
+    <text x="521" y="86" text-anchor="middle" fill="#a78bfa" font-family="Playfair Display" font-size="12" font-weight="700">Token Stream</text>
+    <text x="521" y="104" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">ID PLUS NUM SEMI &hellip;</text>
+    <text x="521" y="118" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">getNextToken()</text>
+    <line x1="618" y1="100" x2="661" y2="100" stroke="#f5a623" stroke-width="1.5" marker-end="url(#ar)"/>
+    <!-- parser -->
+    <rect x="664" y="70" width="150" height="60" rx="5" fill="#181824" stroke="#f5a623" stroke-width="1.4"/>
+    <text x="739" y="95" text-anchor="middle" fill="#f5a623" font-family="Playfair Display" font-size="13" font-weight="700">Parser</text>
+    <text x="739" y="113" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">builds the tree</text>
+    <!-- symbol table feedback -->
+    <rect x="426" y="165" width="190" height="26" rx="4" fill="#0e0e18" stroke="#f87171" stroke-width="1"/>
+    <text x="521" y="182" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono" font-size="8">Symbol Table (shared)</text>
+    <line x1="293" y1="142" x2="450" y2="165" stroke="#8888a8" stroke-width="0.8" stroke-dasharray="3"/>
+    <line x1="739" y1="132" x2="592" y2="165" stroke="#8888a8" stroke-width="0.8" stroke-dasharray="3"/>
+  </svg>
+  <p style="margin-top:.2em;">The parser is the lexer&rsquo;s only client. It typically <span class="a">pulls</span> tokens on demand &mdash; calling <code>getNextToken()</code> each time it needs to advance &mdash; rather than the lexer running to completion and materialising a whole array first.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 04 — WHY A SEPARATE PHASE ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">03</span>
+    <h2>Why a Separate Phase?</h2>
+  </div>
+  <p>In principle the parser could read characters directly. In practice every serious compiler splits lexing off. The reasons are <span class="a">simplicity</span>, <span class="g">speed</span> and <span class="p">modularity</span> &mdash; and a clean theoretical boundary.</p>
+  <div class="cols cols-3">
+    <div class="card amber">
+      <h3 class="a">Simplicity</h3>
+      <p>The parser&rsquo;s grammar deals in tokens, not characters. It never has to know that whitespace, comments, or the spelling of <code>!=</code> exist &mdash; the lexer absorbs all of that lexical noise.</p>
+    </div>
+    <div class="card green">
+      <h3 class="g">Speed</h3>
+      <p>Lexing is ~75% of the character-touching work. A specialised DFA scanner with buffered I/O is far faster than running the parser&rsquo;s machinery per character. It is the one phase that reads every byte.</p>
+    </div>
+    <div class="card purple">
+      <h3 class="p">Modularity</h3>
+      <p>The clean interface decouples the two: input encodings, buffering and character sets live in the lexer; grammar rules live in the parser. Each can be specified, tested and replaced alone.</p>
+    </div>
+  </div>
+  <div class="cols cols-2" style="margin-top:.4em;">
+    <div class="card blue">
+      <h3 class="b">The Theoretical Boundary</h3>
+      <p>Token structure is <span class="b">regular</span> (recognised by finite automata, constant memory). Program structure is <span class="p">context-free</span> (needs a stack). Drawing the line where the language jumps from regular to context-free is exactly the right place to split phases.</p>
+    </div>
+    <div class="card red">
+      <h3 class="r">When the Line Blurs</h3>
+      <p>The split is an engineering convention, not a law. Some &ldquo;scannerless&rdquo; parsers (PEG, GLR) fold lexing into parsing to handle languages whose tokenisation depends on context. Most production compilers keep them separate.</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 05 — TOKENS / LEXEMES / PATTERNS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">04</span>
+    <h2>Tokens, Lexemes &amp; Patterns</h2>
+  </div>
+  <p>Three terms that are easy to conflate. A <span class="a">pattern</span> describes a set of strings; a <span class="g">lexeme</span> is one concrete string from the source that matches it; a <span class="p">token</span> is the classified result the lexer emits.</p>
+  <div class="cols cols-3">
+    <div class="card amber">
+      <h3 class="a">Pattern</h3>
+      <p>The rule (a regex) defining a token class.<br><code>[a-zA-Z_][a-zA-Z0-9_]*</code> &mdash; the pattern for an identifier.</p>
+    </div>
+    <div class="card green">
+      <h3 class="g">Lexeme</h3>
+      <p>The actual characters matched.<br>In <code>int count;</code> the lexemes are <code>int</code>, <code>count</code>, <code>;</code> &mdash; raw substrings of the source.</p>
+    </div>
+    <div class="card purple">
+      <h3 class="p">Token</h3>
+      <p>The pair <code>(type, attribute)</code> emitted.<br><code>count</code> &rarr; <code>(IDENT, "count")</code>; <code>;</code> &rarr; <code>(SEMICOLON)</code>.</p>
+    </div>
+  </div>
+  <p style="margin-top:.35em;">A token is more than its type: it carries an <span class="a">attribute</span> (the lexeme, or an interned id, or a parsed numeric value) and a <span class="b">source location</span> for diagnostics.</p>
+  <pre><code class="language-rust">struct Token {
+    kind:  TokenKind,   // IDENT, NUMBER, PLUS, LPAREN, KW_IF, ...
+    value: Attribute,   // interned symbol id, parsed integer, string contents
+    span:  Span,        // { file, byte_start, byte_end, line, column }
+}</code></pre>
+  <table style="margin-top:.2em;">
+    <thead><tr><th>Source</th><th>Lexeme</th><th>Token (type, attribute)</th></tr></thead>
+    <tbody>
+      <tr><td><code>x</code></td><td><code>x</code></td><td><code>(IDENT, sym#42)</code></td></tr>
+      <tr><td><code>0xFF</code></td><td><code>0xFF</code></td><td><code>(INT, 255)</code></td></tr>
+      <tr><td><code>"hi\n"</code></td><td><code>"hi\n"</code></td><td><code>(STRING, "hi&#92;n")</code></td></tr>
+      <tr><td><code>&lt;=</code></td><td><code>&lt;=</code></td><td><code>(LE)</code> &mdash; no attribute needed</td></tr>
+    </tbody>
+  </table>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 06 — TOKEN STREAM / WHITESPACE ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">05</span>
+    <h2>The Token Stream &mdash; What Survives</h2>
+  </div>
+  <p>The lexer flattens the rich source text into a thin stream. Most <span class="r">whitespace and comments are discarded</span> &mdash; they exist for humans, not the grammar &mdash; though not always (see right).</p>
+  <pre><code class="language-c">  int  total = price * qty;   // running cost</code></pre>
+  <svg class="diagram" viewBox="0 0 900 110" width="900" height="110">
+    <defs><marker id="art" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#8888a8"/></marker></defs>
+    <g font-family="JetBrains Mono" font-size="10">
+      <rect x="10"  y="30" width="78"  height="34" rx="4" fill="#1a2a1a" stroke="#4ecb8d"/><text x="49"  y="51" text-anchor="middle" fill="#4ecb8d">KW_INT</text>
+      <rect x="98"  y="30" width="86"  height="34" rx="4" fill="#181824" stroke="#a78bfa"/><text x="141" y="46" text-anchor="middle" fill="#a78bfa">IDENT</text><text x="141" y="58" text-anchor="middle" fill="#8888a8" font-size="8">"total"</text>
+      <rect x="194" y="30" width="50"  height="34" rx="4" fill="#181824" stroke="#f5a623"/><text x="219" y="51" text-anchor="middle" fill="#f5a623">ASSIGN</text>
+      <rect x="254" y="30" width="86"  height="34" rx="4" fill="#181824" stroke="#a78bfa"/><text x="297" y="46" text-anchor="middle" fill="#a78bfa">IDENT</text><text x="297" y="58" text-anchor="middle" fill="#8888a8" font-size="8">"price"</text>
+      <rect x="350" y="30" width="42"  height="34" rx="4" fill="#181824" stroke="#f5a623"/><text x="371" y="51" text-anchor="middle" fill="#f5a623">STAR</text>
+      <rect x="402" y="30" width="74"  height="34" rx="4" fill="#181824" stroke="#a78bfa"/><text x="439" y="46" text-anchor="middle" fill="#a78bfa">IDENT</text><text x="439" y="58" text-anchor="middle" fill="#8888a8" font-size="8">"qty"</text>
+      <rect x="486" y="30" width="46"  height="34" rx="4" fill="#181824" stroke="#f5a623"/><text x="509" y="51" text-anchor="middle" fill="#f5a623">SEMI</text>
+      <rect x="542" y="30" width="46"  height="34" rx="4" fill="#0e0e18" stroke="#f87171"/><text x="565" y="51" text-anchor="middle" fill="#f87171">EOF</text>
+      <text x="640" y="40" fill="#8888a8" font-size="9">whitespace &amp; the</text>
+      <text x="640" y="54" fill="#8888a8" font-size="9">comment: dropped</text>
+    </g>
+  </svg>
+  <div class="cols cols-2" style="margin-top:.2em;">
+    <div class="card green">
+      <h3 class="g">Usually Stripped</h3>
+      <ul>
+        <li>Spaces, tabs, newlines (in free-form languages)</li>
+        <li>Line and block comments</li>
+        <li>The lexer emits nothing for these &mdash; it loops back</li>
+      </ul>
+    </div>
+    <div class="card amber">
+      <h3 class="a">Sometimes Kept</h3>
+      <ul>
+        <li>Newlines where they are significant (Python, JS ASI, Go)</li>
+        <li>Doc comments needed by tooling</li>
+        <li><span class="b">Lossless</span> lexers (formatters, IDEs) keep <em>trivia</em> attached to tokens so the exact text can be rebuilt</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 07 — REGEX & REGULAR LANGUAGES ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">06</span>
+    <h2>Regular Expressions &amp; Regular Languages</h2>
+  </div>
+  <p>Token patterns are written as <span class="a">regular expressions</span>. A regular expression denotes a <span class="g">regular language</span> &mdash; a set of strings &mdash; built from just three operators over an alphabet &Sigma;.</p>
+  <div class="cols cols-2">
+    <div>
+      <table>
+        <thead><tr><th>Operator</th><th>Regex</th><th>Language</th></tr></thead>
+        <tbody>
+          <tr><td>Union (alternation)</td><td><code>r | s</code></td><td>L(r) &cup; L(s)</td></tr>
+          <tr><td>Concatenation</td><td><code>r s</code></td><td>{ xy : x&isin;L(r), y&isin;L(s) }</td></tr>
+          <tr><td>Kleene star</td><td><code>r*</code></td><td>zero or more r&rsquo;s</td></tr>
+          <tr><td>(base) symbol</td><td><code>a</code></td><td>{ &quot;a&quot; }</td></tr>
+          <tr><td>(base) empty</td><td><code>&epsilon;</code></td><td>{ &quot;&quot; } the empty string</td></tr>
+        </tbody>
+      </table>
+      <div class="card amber" style="margin-top:.35em;">
+        <h3 class="a">Derived Shorthand</h3>
+        <p><code>r+</code> = <code>rr*</code> (one or more) &middot; <code>r?</code> = <code>r|&epsilon;</code> (optional) &middot; <code>[a-z]</code> = a union of ranges &middot; <code>.</code> = any char &middot; <code>r{2,5}</code> = bounded repetition.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card green">
+        <h3 class="g">Classic Lexer Patterns</h3>
+        <pre><code class="language-plaintext">digit   = [0-9]
+letter  = [a-zA-Z_]
+ident   = letter (letter | digit)*
+int     = digit+
+float   = digit+ "." digit+ ([eE][+-]?digit+)?
+ws      = (" " | "\t" | "\n")+</code></pre>
+      </div>
+      <div class="card purple" style="margin-top:.35em;">
+        <h3 class="p">Regular &ne; PCRE</h3>
+        <p>Lexer regex is the <em>formal</em> kind: no backreferences, no lookbehind, no recursion. That restriction is what guarantees a finite-automaton implementation &mdash; and linear-time, backtrack-free scanning.</p>
+      </div>
+    </div>
+  </div>
+  <p style="margin-top:.25em;"><span class="r">Limits:</span> a regular language cannot count unboundedly &mdash; <code>a&#8319;b&#8319;</code> and balanced parentheses are <em>not</em> regular. That is precisely the work the parser will do.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 08 — FINITE AUTOMATA ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">07</span>
+    <h2>Finite Automata &mdash; DFA vs NFA</h2>
+  </div>
+  <p>A <span class="a">finite automaton</span> is the machine that recognises a regular language: a finite set of states, a start state, accepting states, and a transition function on input symbols. Two flavours, <span class="g">equivalent in power</span>.</p>
+  <div class="cols cols-2">
+    <div class="card blue">
+      <h3 class="b">DFA &mdash; Deterministic</h3>
+      <ul>
+        <li>&delta; : Q &times; &Sigma; &rarr; Q &mdash; exactly one move per (state, symbol)</li>
+        <li>No &epsilon;-transitions</li>
+        <li>Acceptance: follow the unique path; accept if it ends in a final state</li>
+        <li>Trivial, fast to run &mdash; a table lookup per character</li>
+      </ul>
+    </div>
+    <div class="card purple">
+      <h3 class="p">NFA &mdash; Non-deterministic</h3>
+      <ul>
+        <li>&delta; : Q &times; (&Sigma; &cup; {&epsilon;}) &rarr; 2&#7515; &mdash; a <em>set</em> of next states</li>
+        <li>May have &epsilon;-transitions (move with no input)</li>
+        <li>Acceptance: accept if <em>some</em> path reaches a final state</li>
+        <li>Easy to <em>build</em> from a regex; awkward to run directly</li>
+      </ul>
+    </div>
+  </div>
+  <svg class="diagram" viewBox="0 0 900 150" width="900" height="150" style="margin-top:.3em;">
+    <defs><marker id="a2" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="#a78bfa"/></marker>
+          <marker id="a3" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="#60a5fa"/></marker></defs>
+    <!-- NFA snippet: q0 --a--> q1, q0 --a--> q0 (nondeterministic on a) -->
+    <text x="130" y="22" text-anchor="middle" fill="#a78bfa" font-family="Playfair Display" font-size="12" font-weight="700">NFA: two moves on 'a'</text>
+    <circle cx="60"  cy="80" r="20" fill="#181824" stroke="#a78bfa" stroke-width="1.5"/><text x="60"  y="85" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono" font-size="11">q0</text>
+    <circle cx="200" cy="80" r="20" fill="#1a2a1a" stroke="#4ecb8d" stroke-width="1.5"/><circle cx="200" cy="80" r="15" fill="none" stroke="#4ecb8d" stroke-width="1"/><text x="200" y="85" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="11">q1</text>
+    <path d="M80,75 Q140,55 180,72" fill="none" stroke="#a78bfa" stroke-width="1.4" marker-end="url(#a2)"/><text x="130" y="52" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono" font-size="10">a</text>
+    <path d="M48,98 Q40,135 62,118" fill="none" stroke="#a78bfa" stroke-width="1.4" marker-end="url(#a2)"/><text x="30" y="120" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono" font-size="10">a</text>
+    <!-- DFA snippet -->
+    <text x="640" y="22" text-anchor="middle" fill="#60a5fa" font-family="Playfair Display" font-size="12" font-weight="700">DFA: one move on 'a'</text>
+    <circle cx="560" cy="80" r="20" fill="#181824" stroke="#60a5fa" stroke-width="1.5"/><text x="560" y="85" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="11">s0</text>
+    <circle cx="720" cy="80" r="20" fill="#1a2a1a" stroke="#4ecb8d" stroke-width="1.5"/><circle cx="720" cy="80" r="15" fill="none" stroke="#4ecb8d" stroke-width="1"/><text x="720" y="85" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="11">s1</text>
+    <path d="M580,80 L698,80" fill="none" stroke="#60a5fa" stroke-width="1.4" marker-end="url(#a3)"/><text x="640" y="72" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="10">a</text>
+    <text x="640" y="135" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="9">double ring = accepting state</text>
+  </svg>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 09 — THOMPSON'S CONSTRUCTION ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">08</span>
+    <h2>Thompson&rsquo;s Construction: Regex &rarr; NFA</h2>
+  </div>
+  <p>Ken Thompson&rsquo;s 1968 algorithm builds an NFA from a regex <span class="a">compositionally</span> &mdash; one small fragment per operator, glued with &epsilon;-transitions. Each fragment has exactly one start and one accept state.</p>
+  <svg class="diagram" viewBox="0 0 900 290" width="900" height="290">
+    <defs><marker id="te" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="#8888a8"/></marker></defs>
+    <g font-family="JetBrains Mono" font-size="10">
+      <!-- symbol a -->
+      <text x="20" y="30" fill="#f5a623" font-family="Playfair Display" font-size="12" font-weight="700">symbol  a</text>
+      <circle cx="40" cy="62" r="13" fill="#181824" stroke="#60a5fa"/><circle cx="150" cy="62" r="13" fill="#1a2a1a" stroke="#4ecb8d"/>
+      <line x1="53" y1="62" x2="135" y2="62" stroke="#8888a8" marker-end="url(#te)"/><text x="94" y="55" text-anchor="middle" fill="#f5a623">a</text>
+      <!-- concat r s -->
+      <text x="250" y="30" fill="#f5a623" font-family="Playfair Display" font-size="12" font-weight="700">concat  r&middot;s</text>
+      <rect x="250" y="45" width="70" height="34" rx="5" fill="#0e0e18" stroke="#a78bfa"/><text x="285" y="66" text-anchor="middle" fill="#a78bfa">r</text>
+      <rect x="370" y="45" width="70" height="34" rx="5" fill="#0e0e18" stroke="#a78bfa"/><text x="405" y="66" text-anchor="middle" fill="#a78bfa">s</text>
+      <line x1="320" y1="62" x2="368" y2="62" stroke="#8888a8" marker-end="url(#te)"/><text x="344" y="55" text-anchor="middle" fill="#8888a8">&epsilon;</text>
+      <!-- union r|s -->
+      <text x="560" y="30" fill="#f5a623" font-family="Playfair Display" font-size="12" font-weight="700">union  r|s</text>
+      <circle cx="555" cy="62" r="12" fill="#181824" stroke="#60a5fa"/>
+      <rect x="610" y="38" width="70" height="26" rx="5" fill="#0e0e18" stroke="#a78bfa"/><text x="645" y="56" text-anchor="middle" fill="#a78bfa">r</text>
+      <rect x="610" y="74" width="70" height="26" rx="5" fill="#0e0e18" stroke="#a78bfa"/><text x="645" y="92" text-anchor="middle" fill="#a78bfa">s</text>
+      <circle cx="735" cy="62" r="12" fill="#1a2a1a" stroke="#4ecb8d"/>
+      <line x1="567" y1="58" x2="608" y2="50" stroke="#8888a8" marker-end="url(#te)"/><line x1="567" y1="66" x2="608" y2="86" stroke="#8888a8" marker-end="url(#te)"/>
+      <line x1="680" y1="50" x2="724" y2="58" stroke="#8888a8" marker-end="url(#te)"/><line x1="680" y1="86" x2="724" y2="66" stroke="#8888a8" marker-end="url(#te)"/>
+      <text x="555" y="120" text-anchor="middle" fill="#8888a8" font-size="8">&epsilon; to both branches</text>
+      <!-- star r* -->
+      <text x="120" y="170" fill="#f5a623" font-family="Playfair Display" font-size="12" font-weight="700">Kleene star  r*</text>
+      <circle cx="120" cy="225" r="12" fill="#181824" stroke="#60a5fa"/>
+      <rect x="190" y="210" width="80" height="30" rx="5" fill="#0e0e18" stroke="#a78bfa"/><text x="230" y="230" text-anchor="middle" fill="#a78bfa">r</text>
+      <circle cx="340" cy="225" r="12" fill="#1a2a1a" stroke="#4ecb8d"/>
+      <line x1="132" y1="225" x2="188" y2="225" stroke="#8888a8" marker-end="url(#te)"/>
+      <line x1="270" y1="225" x2="326" y2="225" stroke="#8888a8" marker-end="url(#te)"/>
+      <path d="M260,210 Q230,165 200,208" fill="none" stroke="#8888a8" marker-end="url(#te)"/><text x="230" y="172" text-anchor="middle" fill="#8888a8">&epsilon; (loop back)</text>
+      <path d="M120,237 Q230,290 340,237" fill="none" stroke="#8888a8" marker-end="url(#te)"/><text x="230" y="282" text-anchor="middle" fill="#8888a8">&epsilon; (skip: zero r&rsquo;s)</text>
+    </g>
+  </svg>
+  <p style="margin-top:.15em;">The result is an NFA with at most <span class="a">2&times; the number of regex symbols</span> in states &mdash; linear size, built in linear time. The &epsilon;-transitions encode &ldquo;choose a branch&rdquo; and &ldquo;loop or exit&rdquo; without committing.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 10 — NFA FOR (a|b)*abb ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">09</span>
+    <h2>Worked Example: NFA for <code>(a|b)*abb</code></h2>
+  </div>
+  <p>The textbook example. We want all strings over {a,b} ending in <code>abb</code>. Here is a compact NFA &mdash; the <code>(a|b)*</code> loop on the start state, then a three-step tail <code>a b b</code>.</p>
+  <svg class="diagram" viewBox="0 0 900 230" width="900" height="230">
+    <defs><marker id="na" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="#a78bfa"/></marker></defs>
+    <!-- start arrow -->
+    <line x1="40" y1="120" x2="78" y2="120" stroke="#4ecb8d" stroke-width="1.5" marker-end="url(#na)"/>
+    <text x="55" y="110" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="9">start</text>
+    <!-- states: 0 (loop), 1, 2, 3(accept) -->
+    <circle cx="105" cy="120" r="24" fill="#181824" stroke="#a78bfa" stroke-width="1.6"/><text x="105" y="125" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono" font-size="13">0</text>
+    <circle cx="340" cy="120" r="24" fill="#181824" stroke="#a78bfa" stroke-width="1.6"/><text x="340" y="125" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono" font-size="13">1</text>
+    <circle cx="575" cy="120" r="24" fill="#181824" stroke="#a78bfa" stroke-width="1.6"/><text x="575" y="125" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono" font-size="13">2</text>
+    <circle cx="810" cy="120" r="24" fill="#1a2a1a" stroke="#4ecb8d" stroke-width="1.8"/><circle cx="810" cy="120" r="18" fill="none" stroke="#4ecb8d" stroke-width="1"/><text x="810" y="125" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="13">3</text>
+    <!-- self-loop on 0: a,b -->
+    <path d="M88,100 Q70,50 105,68 Q130,82 122,100" fill="none" stroke="#a78bfa" stroke-width="1.4" marker-end="url(#na)"/>
+    <text x="95" y="48" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono" font-size="11">a, b</text>
+    <!-- 0 -> 1 on a -->
+    <line x1="129" y1="120" x2="316" y2="120" stroke="#a78bfa" stroke-width="1.4" marker-end="url(#na)"/><text x="222" y="110" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono" font-size="12">a</text>
+    <!-- 1 -> 2 on b -->
+    <line x1="364" y1="120" x2="551" y2="120" stroke="#a78bfa" stroke-width="1.4" marker-end="url(#na)"/><text x="457" y="110" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono" font-size="12">b</text>
+    <!-- 2 -> 3 on b -->
+    <line x1="599" y1="120" x2="786" y2="120" stroke="#a78bfa" stroke-width="1.4" marker-end="url(#na)"/><text x="692" y="110" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono" font-size="12">b</text>
+    <text x="455" y="200" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="9">Non-deterministic: in state 0, on 'a' it may loop (stay 0) OR step to 1 &mdash; it &ldquo;guesses&rdquo; when the final abb begins.</text>
+  </svg>
+  <p style="margin-top:.1em;">State 0 is <span class="p">non-deterministic</span> on input <code>a</code>: both the self-loop and the edge to state 1 are valid. A real run must explore both possibilities &mdash; which is exactly what the subset construction makes deterministic.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 11 — SUBSET CONSTRUCTION CONCEPT ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">10</span>
+    <h2>Subset Construction: NFA &rarr; DFA</h2>
+  </div>
+  <p>To run an NFA efficiently we make it deterministic. The <span class="a">subset (powerset) construction</span> builds a DFA whose each state is a <em>set</em> of NFA states &mdash; &ldquo;all the places the NFA could currently be&rdquo;.</p>
+  <div class="cols cols-6040">
+    <div>
+      <svg class="diagram" viewBox="0 0 540 220" width="540" height="220">
+        <defs><marker id="sc" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="#60a5fa"/></marker></defs>
+        <!-- DFA state = subset of NFA states -->
+        <rect x="20"  y="90" width="120" height="44" rx="8" fill="#181824" stroke="#60a5fa" stroke-width="1.5"/>
+        <text x="80" y="108" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="11">A = {0}</text>
+        <text x="80" y="124" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">one DFA state</text>
+        <rect x="230" y="40"  width="140" height="44" rx="8" fill="#181824" stroke="#60a5fa" stroke-width="1.5"/>
+        <text x="300" y="58" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="11">B = {0,1}</text>
+        <text x="300" y="74" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">subset of NFA states</text>
+        <rect x="230" y="140" width="140" height="44" rx="8" fill="#181824" stroke="#60a5fa" stroke-width="1.5"/>
+        <text x="300" y="158" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="11">C = {0,2}</text>
+        <text x="300" y="174" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">distinct subset = new state</text>
+        <line x1="140" y1="105" x2="226" y2="68"  stroke="#60a5fa" stroke-width="1.4" marker-end="url(#sc)"/><text x="178" y="80" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="10">a</text>
+        <line x1="140" y1="120" x2="226" y2="158" stroke="#60a5fa" stroke-width="1.4" marker-end="url(#sc)"/><text x="178" y="152" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="10">b</text>
+      </svg>
+    </div>
+    <div>
+      <div class="card amber">
+        <h3 class="a">Two Helper Operations</h3>
+        <ul>
+          <li><code>&epsilon;-closure(S)</code> &mdash; S plus every state reachable by &epsilon;-moves alone</li>
+          <li><code>move(S, c)</code> &mdash; states reachable from S on input <code>c</code></li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:.35em;">
+        <h3 class="g">The Algorithm</h3>
+        <ul>
+          <li>Start state = &epsilon;-closure({start})</li>
+          <li>For each unmarked subset S and each <code>c</code>: T = &epsilon;-closure(move(S,c)); add T as a state</li>
+          <li>S is accepting if it contains <em>any</em> NFA accept state</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <p style="margin-top:.2em;">Worst case the DFA has <span class="r">2&#7515;</span> states (exponential blow-up), but for real token sets it is almost always small. This NFA has no &epsilon;-moves, so closures are trivial here.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 12 — SUBSET TABLE → DFA ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">11</span>
+    <h2>The Subset-Construction Table &rarr; DFA</h2>
+  </div>
+  <p>Running the construction on the <code>(a|b)*abb</code> NFA. Each row is a DFA state (a subset of {0,1,2,3}); we tabulate where <code>a</code> and <code>b</code> lead, discovering new subsets until closed.</p>
+  <div class="cols cols-2">
+    <div>
+      <table>
+        <thead><tr><th>DFA state</th><th>NFA subset</th><th>on a</th><th>on b</th><th>accept?</th></tr></thead>
+        <tbody>
+          <tr><td><b>A</b> (start)</td><td>{0}</td><td>B</td><td>A</td><td></td></tr>
+          <tr><td><b>B</b></td><td>{0,1}</td><td>B</td><td>C</td><td></td></tr>
+          <tr><td><b>C</b></td><td>{0,2}</td><td>B</td><td>D</td><td></td></tr>
+          <tr><td><b>D</b></td><td>{0,3}</td><td>B</td><td>A</td><td>&#10003; (has 3)</td></tr>
+        </tbody>
+      </table>
+      <div class="card amber" style="margin-top:.35em;">
+        <h3 class="a">Reading it</h3>
+        <p>From {0} on <code>a</code> the NFA could be in {0,1} (loop <em>and</em> step) &rarr; state B. Only D contains accept-state 3, so only D accepts. The result is a complete, deterministic 4-state DFA.</p>
+      </div>
+    </div>
+    <div>
+      <svg class="diagram" viewBox="0 0 460 280" width="460" height="280">
+        <defs><marker id="dd" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="#60a5fa"/></marker></defs>
+        <line x1="30" y1="50" x2="62" y2="50" stroke="#4ecb8d" stroke-width="1.4" marker-end="url(#dd)"/>
+        <circle cx="90"  cy="50"  r="22" fill="#181824" stroke="#60a5fa" stroke-width="1.6"/><text x="90"  y="55"  text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="13">A</text>
+        <circle cx="300" cy="50"  r="22" fill="#181824" stroke="#60a5fa" stroke-width="1.6"/><text x="300" y="55"  text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="13">B</text>
+        <circle cx="300" cy="170" r="22" fill="#181824" stroke="#60a5fa" stroke-width="1.6"/><text x="300" y="175" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="13">C</text>
+        <circle cx="90"  cy="170" r="22" fill="#1a2a1a" stroke="#4ecb8d" stroke-width="1.8"/><circle cx="90" cy="170" r="16" fill="none" stroke="#4ecb8d" stroke-width="1"/><text x="90" y="175" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="13">D</text>
+        <!-- A->B a -->
+        <line x1="112" y1="50" x2="278" y2="50" stroke="#60a5fa" stroke-width="1.3" marker-end="url(#dd)"/><text x="195" y="42" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="11">a</text>
+        <!-- A self b -->
+        <path d="M74,32 Q60,-2 96,28" fill="none" stroke="#60a5fa" stroke-width="1.3" marker-end="url(#dd)"/><text x="62" y="6" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="11">b</text>
+        <!-- B self a -->
+        <path d="M318,32 Q332,-2 322,30" fill="none" stroke="#60a5fa" stroke-width="1.3" marker-end="url(#dd)"/><text x="345" y="10" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="11">a</text>
+        <!-- B->C b -->
+        <line x1="300" y1="72" x2="300" y2="148" stroke="#60a5fa" stroke-width="1.3" marker-end="url(#dd)"/><text x="312" y="115" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="11">b</text>
+        <!-- C->B a -->
+        <path d="M282,150 Q250,110 282,72" fill="none" stroke="#60a5fa" stroke-width="1.3" marker-end="url(#dd)"/><text x="248" y="112" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="11">a</text>
+        <!-- C->D b -->
+        <line x1="278" y1="170" x2="112" y2="170" stroke="#60a5fa" stroke-width="1.3" marker-end="url(#dd)"/><text x="195" y="162" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="11">b</text>
+        <!-- D->B a (curve) -->
+        <path d="M108,154 Q210,90 290,68" fill="none" stroke="#60a5fa" stroke-width="1.1" stroke-dasharray="3" marker-end="url(#dd)"/><text x="180" y="100" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="10">a</text>
+        <!-- D->A b -->
+        <line x1="90" y1="148" x2="90" y2="72" stroke="#60a5fa" stroke-width="1.3" marker-end="url(#dd)"/><text x="78" y="115" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="11">b</text>
+        <text x="230" y="245" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="9">Deterministic: one outgoing edge per symbol</text>
+        <text x="230" y="262" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="9">D is the only accepting state</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 13 — DFA MINIMISATION ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">12</span>
+    <h2>DFA Minimisation</h2>
+  </div>
+  <p>The subset construction can leave <span class="r">redundant states</span> &mdash; states indistinguishable by any input. Minimisation merges them to give the unique smallest DFA for the language.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">Myhill&ndash;Nerode</h3>
+        <p>Two states are <span class="b">equivalent</span> iff for every input suffix they agree on accept/reject. The number of equivalence classes equals the number of states in the minimal DFA &mdash; and that DFA is unique up to renaming.</p>
+      </div>
+      <div class="card green" style="margin-top:.35em;">
+        <h3 class="g">Partition Refinement (Hopcroft)</h3>
+        <ul>
+          <li>Start with two classes: accepting vs non-accepting</li>
+          <li>Repeatedly split a class if some input sends its members to different classes</li>
+          <li>Stop at a fixed point; each class becomes one state</li>
+          <li>Hopcroft&rsquo;s 1971 algorithm does this in O(n log n)</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">Worked: collapse equivalent states</h3>
+        <p>Suppose two DFA states both reject everything and loop to themselves &mdash; a &ldquo;dead&rdquo; trap state appearing twice. They are Myhill&ndash;Nerode equivalent and merge into one.</p>
+      </div>
+      <svg class="diagram" viewBox="0 0 420 160" width="420" height="160" style="margin-top:.3em;">
+        <defs><marker id="mn" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#a78bfa"/></marker></defs>
+        <circle cx="60"  cy="50" r="18" fill="#181824" stroke="#f87171"/><text x="60"  y="55" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono" font-size="10">d1</text>
+        <circle cx="60"  cy="110" r="18" fill="#181824" stroke="#f87171"/><text x="60" y="115" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono" font-size="10">d2</text>
+        <text x="150" y="84" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono" font-size="20">&rArr;</text>
+        <circle cx="280" cy="80" r="20" fill="#1a1a2a" stroke="#a78bfa" stroke-width="1.6"/><text x="280" y="85" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono" font-size="11">d</text>
+        <text x="280" y="135" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="9">merged: same behaviour</text>
+      </svg>
+      <p style="margin-top:.15em;">Smaller DFA &rarr; smaller transition table &rarr; better cache behaviour. <code>flex</code> minimises by default.</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 14 — THE FULL PIPELINE RECAP ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">13</span>
+    <h2>The Construction Pipeline, End to End</h2>
+  </div>
+  <p>Putting the theory together: a token specification is a list of regexes, and a fully mechanical pipeline turns it into a fast scanner. This is exactly what <code>lex</code> and <code>flex</code> do at build time.</p>
+  <svg class="diagram" viewBox="0 0 900 130" width="900" height="130">
+    <defs><marker id="pp" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="#f5a623"/></marker></defs>
+    <g font-family="JetBrains Mono">
+      <rect x="10"  y="45" width="140" height="50" rx="6" fill="#181824" stroke="#f5a623" stroke-width="1.4"/><text x="80"  y="68" text-anchor="middle" fill="#f5a623" font-size="11">Regex specs</text><text x="80" y="84" text-anchor="middle" fill="#8888a8" font-size="8">per token class</text>
+      <line x1="152" y1="70" x2="188" y2="70" stroke="#f5a623" stroke-width="1.5" marker-end="url(#pp)"/>
+      <rect x="190" y="45" width="140" height="50" rx="6" fill="#181824" stroke="#a78bfa" stroke-width="1.4"/><text x="260" y="68" text-anchor="middle" fill="#a78bfa" font-size="11">NFA</text><text x="260" y="84" text-anchor="middle" fill="#8888a8" font-size="8">Thompson</text>
+      <line x1="332" y1="70" x2="368" y2="70" stroke="#f5a623" stroke-width="1.5" marker-end="url(#pp)"/>
+      <rect x="370" y="45" width="140" height="50" rx="6" fill="#181824" stroke="#60a5fa" stroke-width="1.4"/><text x="440" y="68" text-anchor="middle" fill="#60a5fa" font-size="11">DFA</text><text x="440" y="84" text-anchor="middle" fill="#8888a8" font-size="8">subset constr.</text>
+      <line x1="512" y1="70" x2="548" y2="70" stroke="#f5a623" stroke-width="1.5" marker-end="url(#pp)"/>
+      <rect x="550" y="45" width="150" height="50" rx="6" fill="#181824" stroke="#60a5fa" stroke-width="1.4"/><text x="625" y="68" text-anchor="middle" fill="#60a5fa" font-size="11">Minimal DFA</text><text x="625" y="84" text-anchor="middle" fill="#8888a8" font-size="8">Hopcroft</text>
+      <line x1="702" y1="70" x2="738" y2="70" stroke="#f5a623" stroke-width="1.5" marker-end="url(#pp)"/>
+      <rect x="740" y="45" width="150" height="50" rx="6" fill="#1a2a1a" stroke="#4ecb8d" stroke-width="1.6"/><text x="815" y="68" text-anchor="middle" fill="#4ecb8d" font-size="11">Scanner table</text><text x="815" y="84" text-anchor="middle" fill="#8888a8" font-size="8">+ actions</text>
+    </g>
+  </svg>
+  <div class="ss-row" style="margin-top:.4em; justify-content:center;">
+    <span class="ss-node done">Regex</span><span class="ss-arrow">&rarr;</span>
+    <span class="ss-node done">NFA</span><span class="ss-arrow">&rarr;</span>
+    <span class="ss-node done">DFA</span><span class="ss-arrow">&rarr;</span>
+    <span class="ss-node done">Min</span><span class="ss-arrow">&rarr;</span>
+    <span class="ss-node active">Table-driven scan</span>
+  </div>
+  <p style="margin-top:.3em;">An alternative is the <span class="b">derivatives of regular expressions</span> (Brzozowski) approach, which builds the DFA directly from the regex without an explicit NFA &mdash; used by tools like <code>re2c</code>.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 15 — MAXIMAL MUNCH ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">14</span>
+    <h2>Maximal Munch &amp; Tie-Breaking</h2>
+  </div>
+  <p>A DFA tells us <em>whether</em> a string matches a pattern. A scanner must also decide <em>where one token ends</em> when many patterns and lengths are possible. Two rules resolve this.</p>
+  <div class="cols cols-2">
+    <div class="card amber">
+      <h3 class="a">Rule 1 &mdash; Longest Match (Maximal Munch)</h3>
+      <p>Always take the longest lexeme that matches any pattern. Run the DFA forward, remembering the last accepting position; when stuck, back up to it.</p>
+      <p style="margin-top:.2em;"><code>&gt;=</code> scans as one <code>GE</code> token, not <code>&gt;</code> then <code>=</code>. <code>index</code> is one IDENT, not <code>in</code> + <code>dex</code>.</p>
+    </div>
+    <div class="card green">
+      <h3 class="g">Rule 2 &mdash; Rule Order (Priority)</h3>
+      <p>When two patterns match the <em>same</em> longest lexeme, the one listed <span class="a">first</span> wins. This is how keywords beat identifiers: list <code>if &rarr; KW_IF</code> before the identifier rule.</p>
+      <p style="margin-top:.2em;"><code>while</code> matches both the keyword pattern and the identifier pattern &mdash; rule order picks the keyword.</p>
+    </div>
+  </div>
+  <div class="card red" style="margin-top:.4em;">
+    <h3 class="r">When Maximal Munch Bites: C++ <code>&gt;&gt;</code></h3>
+    <p>In <code>vector&lt;vector&lt;int&gt;&gt;</code> the lexer greedily eats <code>&gt;&gt;</code> as a <em>shift operator</em>, breaking nested templates. Pre-C++11 you had to write <code>&gt; &gt;</code> with a space; C++11 added a special parser rule to re-interpret it. Maximal munch is locally correct but context-blind.</p>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 16 — LOOKAHEAD ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">15</span>
+    <h2>Lookahead &amp; Historical Hazards</h2>
+  </div>
+  <p>Backing up to the last accepting state is a form of <span class="a">lookahead</span> &mdash; the scanner reads past the token to know where it ends, then rewinds. A few languages need more, or made it infamously hard.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">FORTRAN &mdash; no reserved words, ignorable spaces</h3>
+        <pre><code class="language-plaintext">DO 5 I = 1,10    ! loop: DO-statement
+DO 5 I = 1.10    ! assign DO5I = 1.10</code></pre>
+        <p>Identical until the comma vs dot &mdash; arbitrary lookahead decides whether <code>DO</code> is a keyword. A famous near-cause of a lost NASA mission (myth) and a real lexer headache.</p>
+      </div>
+      <div class="card green" style="margin-top:.35em;">
+        <h3 class="g">C &mdash; <code>..</code> vs <code>.</code></h3>
+        <p>In <code>1..10</code> (where the language has a range operator) the scanner must not munch <code>1.</code> as a float. One character of lookahead after the dot disambiguates.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">Maximal munch can over-eat</h3>
+        <p>Classic teaching case: with patterns for identifiers and for the keyword sequence, naive longest-match plus rule order resolves most cases &mdash; but operators like <code>a---b</code> in C lex as <code>a -- - b</code> (munch <code>--</code> first), which is then a <em>parse</em> error, not a lex one.</p>
+      </div>
+      <div class="card blue" style="margin-top:.35em;">
+        <h3 class="b">Trailing context</h3>
+        <p><code>flex</code> supports <code>r/s</code> &mdash; match <code>r</code> only when followed by <code>s</code>, without consuming <code>s</code>. This expresses bounded lookahead declaratively for cases like the FORTRAN <code>DO</code>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 17 — HAND-WRITTEN VS GENERATED ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">16</span>
+    <h2>Implementing Scanners: Hand-Written vs Generated</h2>
+  </div>
+  <p>Two roads. Generate a table-driven DFA from a spec, or hand-write a state machine as a big <code>switch</code>. Production compilers split surprisingly evenly &mdash; many hand-write for speed and control.</p>
+  <div class="cols cols-2">
+    <div class="card green">
+      <h3 class="g">Generators &mdash; Spec &rarr; Code</h3>
+      <ul>
+        <li><span class="a">lex</span> (1975, Lesk &amp; Schmidt) / <span class="a">flex</span> &mdash; the classic, emits a C DFA</li>
+        <li><span class="a">re2c</span> &mdash; emits straight-line <code>goto</code> code, very fast, no tables</li>
+        <li><span class="a">ragel</span> &mdash; state machines with embedded actions; great for protocols</li>
+        <li>Pros: declarative, correct, maintainable, easy to change</li>
+        <li>Cons: build dependency, generated code can be opaque to debug</li>
+      </ul>
+    </div>
+    <div class="card purple">
+      <h3 class="p">Hand-Written &mdash; a <code>switch</code> Machine</h3>
+      <ul>
+        <li>GCC, Clang, V8, Rust&rsquo;s <code>rustc</code> all hand-write their lexers</li>
+        <li>Pros: total control, best error messages, no build-time tool, easy custom lookahead</li>
+        <li>Pros: trivial to special-case the lexer hack, interpolation, raw strings</li>
+        <li>Cons: more code, you own the correctness of the state logic</li>
+      </ul>
+    </div>
+  </div>
+  <pre style="margin-top:.3em;"><code class="language-rust">// Hand-written scanner core — the dispatch loop
+fn next_token(&amp;mut self) -&gt; Token {
+    self.skip_trivia();                       // whitespace + comments
+    let start = self.pos;
+    let c = self.bump();                      // consume one char
+    let kind = match c {
+        c if is_id_start(c) =&gt; self.ident_or_keyword(start),  // maximal munch
+        '0'..='9'          =&gt; self.number(start),
+        '"'                =&gt; self.string_literal(start),
+        '+' =&gt; if self.eat('=') { PlusEq } else { Plus },     // 1-char lookahead
+        '=' =&gt; if self.eat('=') { EqEq }   else { Assign },
+        '\0' =&gt; Eof,
+        _   =&gt; self.error("unexpected character"),
+    };
+    Token { kind, span: Span::new(start, self.pos) }
+}</code></pre>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 18 — TABLE-DRIVEN / FLEX ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">17</span>
+    <h2>The Generated Table-Driven DFA</h2>
+  </div>
+  <p>A generated scanner is a tiny driver loop over a 2-D <span class="a">transition table</span> <code>next[state][char]</code>, plus an <code>accept[state]</code> map saying which token a final state emits.</p>
+  <div class="cols cols-6040">
+    <div>
+      <pre><code class="language-c">/* The universal table-driven DFA driver */
+int next_token(void) {
+    int state = START, last_accept = -1, last_pos = pos;
+    while (state != DEAD) {
+        int c = input[pos];
+        int ns = next[state][c];   /* table lookup */
+        if (ns == DEAD) break;
+        state = ns; pos++;
+        if (accept[state]) {       /* remember longest match */
+            last_accept = accept[state];
+            last_pos = pos;
+        }
+    }
+    pos = last_pos;                /* back up to last accept */
+    return last_accept;            /* the token kind, or error */
+}</code></pre>
+    </div>
+    <div>
+      <div class="card amber">
+        <h3 class="a">flex spec format</h3>
+        <pre><code class="language-plaintext">%%
+[ \t\n]+        ;            /* skip ws */
+"if"            return KW_IF;
+[a-z]+          return IDENT;
+[0-9]+          return INT;
+"=="            return EQ;
+.               return yytext[0];
+%%</code></pre>
+      </div>
+      <div class="card green" style="margin-top:.3em;">
+        <h3 class="g">Why It&rsquo;s Fast</h3>
+        <ul>
+          <li>One table lookup + compare per input character</li>
+          <li>No backtracking within the DFA (only the longest-match back-up)</li>
+          <li>Tables compressed (row/column equiv classes) to fit cache</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 19 — KEYWORDS VS IDENTIFIERS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">18</span>
+    <h2>Keywords vs Identifiers</h2>
+  </div>
+  <p>Encoding every keyword as its own DFA path bloats the automaton. The standard trick: <span class="a">recognise any identifier</span>, then look the lexeme up in a <span class="g">keyword table</span> and reclassify if it hits.</p>
+  <div class="cols cols-2">
+    <div>
+      <pre><code class="language-rust">fn ident_or_keyword(&amp;self, s: &amp;str) -&gt; TokenKind {
+    // one identifier rule in the DFA; keywords are
+    // a post-lookup, not separate automaton paths
+    match s {
+        "if"    =&gt; KW_IF,
+        "else"  =&gt; KW_ELSE,
+        "while" =&gt; KW_WHILE,
+        "return"=&gt; KW_RETURN,
+        _       =&gt; IDENT,   // interned symbol id
+    }
+}</code></pre>
+      <p style="margin-top:.1em;">A perfect hash (<code>gperf</code>) makes the lookup O(1) with no collisions &mdash; common in C compilers.</p>
+    </div>
+    <div>
+      <div class="card amber">
+        <h3 class="a">Reserved Keywords</h3>
+        <p>Cannot be used as identifiers anywhere (<code>if</code>, <code>class</code>, <code>return</code>). The lexer settles them outright &mdash; the parser never sees them as names.</p>
+      </div>
+      <div class="card purple" style="margin-top:.35em;">
+        <h3 class="p">Contextual Keywords</h3>
+        <p>Reserved only in certain positions &mdash; <code>async</code>, <code>await</code>, <code>yield</code> in JS/C#; <code>get</code>/<code>set</code>. The <em>lexer</em> emits them as identifiers; the <span class="b">parser</span> decides their meaning from context, preserving backward compatibility.</p>
+      </div>
+      <div class="card green" style="margin-top:.35em;">
+        <h3 class="g">Why Not Bake Them In?</h3>
+        <p>A single identifier rule + table keeps the DFA small and lets keyword sets evolve without regenerating the automaton.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 20 — LITERALS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">19</span>
+    <h2>Literals: Numbers, Strings, Escapes</h2>
+  </div>
+  <p>Literals carry the most lexical complexity. The lexer both <span class="a">recognises</span> them and <span class="g">decodes</span> their value into the token attribute &mdash; parsing <code>0xFF</code> to the integer 255, resolving escapes in strings.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">Numeric</h3>
+        <ul>
+          <li>Decimal <code>42</code>, hex <code>0xFF</code>, octal <code>0o17</code>/<code>017</code>, binary <code>0b1010</code></li>
+          <li>Floats <code>3.14</code>, <code>1e-9</code>, <code>.5</code>, <code>6.022e23</code></li>
+          <li>Digit separators <code>1_000_000</code>; suffixes <code>10u8</code>, <code>3.0f</code>, <code>100L</code></li>
+        </ul>
+      </div>
+      <div class="card red" style="margin-top:.35em;">
+        <h3 class="r">Numeric Edge Cases</h3>
+        <ul>
+          <li><code>1.</code> vs <code>1..2</code> (float vs range &mdash; lookahead)</li>
+          <li><code>0x</code> with no digits &mdash; a lex error</li>
+          <li>Overflow: lex the text, range-check when decoding</li>
+          <li>Leading-zero octals (C) vs errors (Python 3)</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card green">
+        <h3 class="g">String &amp; Char</h3>
+        <ul>
+          <li>Escapes: <code>&#92;n &#92;t &#92;&#92; &#92;" &#92;u{1F600} &#92;x41</code></li>
+          <li>Char literals <code>'a'</code>, multi-byte handling</li>
+          <li>An unterminated string must be a <em>recoverable</em> error, not an infinite read</li>
+        </ul>
+      </div>
+      <div class="card purple" style="margin-top:.35em;">
+        <h3 class="p">Raw &amp; Multiline</h3>
+        <pre><code class="language-rust">r"C:\path\no\escapes"      // raw
+r#"he said "hi""#          // raw w/ quotes
+"""triple
+quoted"""                  // multiline</code></pre>
+        <p>Raw strings disable escape processing; the lexer must track the delimiter (e.g. the <code>#</code> count) to find the true end.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 21 — SOURCE HANDLING / BUFFERING ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">20</span>
+    <h2>Source Handling: Encodings &amp; Buffering</h2>
+  </div>
+  <p>Before any of the theory runs, the lexer must read bytes correctly and feed itself characters efficiently. Two classic concerns: <span class="a">what a character is</span>, and <span class="g">how to buffer the stream</span>.</p>
+  <div class="cols cols-2">
+    <div class="card amber">
+      <h3 class="a">Encoding &amp; Normalisation</h3>
+      <ul>
+        <li>Decode <span class="b">UTF-8</span> (the modern default) to code points</li>
+        <li>Skip a leading <span class="r">BOM</span> (U+FEFF) if present</li>
+        <li>Normalise line endings: <code>\r\n</code>, <code>\r</code>, <code>\n</code> &rarr; one newline</li>
+        <li>Unicode identifiers (UAX#31); confusable/normalisation (NFC) concerns</li>
+      </ul>
+    </div>
+    <div class="card green">
+      <h3 class="g">The Two-Buffer Scheme</h3>
+      <ul>
+        <li>Two halves loaded alternately so a lexeme can straddle a refill</li>
+        <li>A <span class="p">sentinel</span> (EOF marker) at each half&rsquo;s end means one bounds-check per char, not two</li>
+        <li><code>lexemeBegin</code> and <code>forward</code> pointers bracket the current lexeme</li>
+      </ul>
+    </div>
+  </div>
+  <svg class="diagram" viewBox="0 0 900 120" width="900" height="120">
+    <g font-family="JetBrains Mono" font-size="11">
+      <!-- buffer halves -->
+      <rect x="20" y="40" width="400" height="40" fill="#181824" stroke="#60a5fa" stroke-width="1.4"/>
+      <rect x="420" y="40" width="400" height="40" fill="#181824" stroke="#a78bfa" stroke-width="1.4"/>
+      <text x="220" y="32" text-anchor="middle" fill="#60a5fa" font-size="9">buffer half 1</text>
+      <text x="620" y="32" text-anchor="middle" fill="#a78bfa" font-size="9">buffer half 2</text>
+      <!-- content -->
+      <text x="40" y="66" fill="#cdd6f4">t o t a l _ = _ p r i c</text>
+      <text x="440" y="66" fill="#cdd6f4">e _ * _ q t y ;</text>
+      <!-- sentinels -->
+      <rect x="410" y="40" width="10" height="40" fill="#0e0e18" stroke="#f87171"/><text x="415" y="98" text-anchor="middle" fill="#f87171" font-size="8">eof</text>
+      <rect x="810" y="40" width="10" height="40" fill="#0e0e18" stroke="#f87171"/><text x="815" y="98" text-anchor="middle" fill="#f87171" font-size="8">eof</text>
+      <!-- pointers -->
+      <text x="60" y="34" fill="#4ecb8d" font-size="9">&#9650; lexemeBegin</text>
+      <text x="180" y="98" fill="#f5a623" font-size="9">&#9650; forward</text>
+    </g>
+  </svg>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 22 — LOCATION & ERRORS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">21</span>
+    <h2>Location Tracking &amp; Error Recovery</h2>
+  </div>
+  <p>Every token carries a <span class="a">source span</span> so later phases can point at the exact characters in a diagnostic. The lexer is also the first place errors surface &mdash; and it must keep going.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">Tracking Position</h3>
+        <ul>
+          <li>Maintain byte offset, line, and column as you bump</li>
+          <li>A newline resets column, increments line</li>
+          <li>Tabs and wide chars complicate <em>column</em> &mdash; many compilers store byte offsets and compute line/col lazily from a line-start index</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:.35em;">
+        <h3 class="g">Good Diagnostics</h3>
+        <p>A span lets the compiler render the caret line:</p>
+        <pre><code class="language-plaintext">error: unterminated string literal
+  --&gt; main.rs:4:13
+   |
+ 4 |   let s = "oops;
+   |           ^ unterminated</code></pre>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">Lexer-Level Errors</h3>
+        <ul>
+          <li>Stray characters (a lone <code>$</code>, <code>`</code>)</li>
+          <li>Unterminated string / block comment</li>
+          <li>Invalid escape or numeric literal</li>
+          <li>Bad UTF-8 / unexpected control char</li>
+        </ul>
+      </div>
+      <div class="card red" style="margin-top:.35em;">
+        <h3 class="r">Recovery: Don&rsquo;t Stop at One</h3>
+        <ul>
+          <li>Emit the error, skip the offending char(s), resynchronise and continue &mdash; report many errors per run</li>
+          <li>Often emit an <code>ERROR</code> token so the parser stays in sync rather than cascading</li>
+          <li>&ldquo;Panic mode&rdquo;: skip to the next whitespace or delimiter</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 23 — INDENTATION ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">22</span>
+    <h2>Hard Case: Significant Indentation</h2>
+  </div>
+  <p>Python, Haskell and friends use indentation for block structure &mdash; but indentation is <span class="r">not regular</span> (it needs to count nesting). The fix: a small <span class="a">stack</span> in the lexer that synthesises <code>INDENT</code>/<code>DEDENT</code> tokens.</p>
+  <div class="cols cols-6040">
+    <div>
+      <pre><code class="language-python">if x:
+    a = 1
+    if y:
+        b = 2
+    c = 3</code></pre>
+      <pre><code class="language-plaintext">KW_IF IDENT COLON NEWLINE
+INDENT IDENT = INT NEWLINE
+KW_IF IDENT COLON NEWLINE
+  INDENT IDENT = INT NEWLINE
+  DEDENT
+IDENT = INT NEWLINE
+DEDENT</code></pre>
+    </div>
+    <div>
+      <div class="card amber">
+        <h3 class="a">The Indent Stack</h3>
+        <ul>
+          <li>Push the column width at each new, deeper block</li>
+          <li>On a line, compare its indent to the stack top</li>
+          <li>Deeper &rarr; push, emit <code>INDENT</code></li>
+          <li>Shallower &rarr; pop &amp; emit <code>DEDENT</code> until it matches</li>
+          <li>Mismatched indent (no equal level) &rarr; error</li>
+        </ul>
+      </div>
+      <div class="card purple" style="margin-top:.35em;">
+        <h3 class="p">Subtleties</h3>
+        <p>Tabs-vs-spaces ambiguity (Python forbids mixing); continuation lines inside brackets suppress NEWLINE/INDENT; at EOF, emit a closing <code>DEDENT</code> for every open level.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 24 — THE LEXER HACK ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">23</span>
+    <h2>Hard Case: The C &ldquo;Lexer Hack&rdquo;</h2>
+  </div>
+  <p>C&rsquo;s grammar is ambiguous without knowing whether an identifier is a <span class="a">type name</span> or an ordinary variable &mdash; and the lexer cannot know that from the characters alone. The token depends on the symbol table.</p>
+  <div class="cols cols-2">
+    <div>
+      <pre><code class="language-c">typedef int T;
+
+T  * x;     // declaration: pointer-to-T named x
+y  * z;     // expression:  multiply y by z</code></pre>
+      <p style="margin-top:.1em;">The two lines are <span class="r">syntactically identical</span> token-shapes (<code>ID * ID ;</code>) yet mean completely different things. Whether <code>T</code> is a type decides the parse.</p>
+      <div class="card red" style="margin-top:.35em;">
+        <h3 class="r">Why It&rsquo;s &ldquo;a Hack&rdquo;</h3>
+        <p>It violates the clean one-way lexer&rarr;parser flow: information has to flow <em>back</em> from semantic analysis into lexing.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card amber">
+        <h3 class="a">The Resolution</h3>
+        <ul>
+          <li>The parser/semantic phase records each <code>typedef</code> name in the symbol table</li>
+          <li>The lexer consults that table: if the identifier is a known typedef-name it emits <code>TYPENAME</code>, else <code>IDENT</code></li>
+          <li>So the lexer and parser are <span class="r">coupled</span> &mdash; feedback breaks pure phase separation</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:.35em;">
+        <h3 class="g">Alternatives</h3>
+        <ul>
+          <li>Clang lexes plain identifiers and resolves typedef-vs-var in the parser using its own scope tables (a cleaner version of the same idea)</li>
+          <li>GLR / scannerless parsers sidestep it by carrying ambiguity into the parse</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 25 — INTERPOLATION & NESTED COMMENTS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">24</span>
+    <h2>Hard Cases: Interpolation &amp; Nested Comments</h2>
+  </div>
+  <p>Two more places where a pure regular lexer breaks down because the structure is <span class="r">recursive</span> &mdash; needing a stack or mode switching the bare DFA cannot provide.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">String Interpolation</h3>
+        <pre><code class="language-javascript">`sum = ${a + f(b)} done`</code></pre>
+        <p>The <code>${ &hellip; }</code> embeds full expressions &mdash; which can contain more strings, nesting arbitrarily. The lexer runs a <span class="b">mode stack</span>: it switches from string-mode into code-mode at <code>${</code>, lexes tokens normally, and pops back on the matching <code>}</code>.</p>
+        <p style="margin-top:.2em;">It usually emits pieces: <code>STR_START</code>, expression tokens, <code>STR_MID</code>, &hellip;, <code>STR_END</code>.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card green">
+        <h3 class="g">Nested Comments</h3>
+        <pre><code class="language-rust">/* outer /* inner */ still comment */</code></pre>
+        <p>Languages allowing nesting (Rust, OCaml, D) cannot match comments with a single regex &mdash; matching <code>/* &hellip; */</code> with balanced nesting is <span class="r">context-free</span>, not regular. The lexer keeps a <span class="b">depth counter</span>, incrementing on <code>/*</code> and decrementing on <code>*/</code>, ending only at depth 0.</p>
+        <p style="margin-top:.2em;">C deliberately forbids nesting precisely so a plain DFA suffices.</p>
+      </div>
+    </div>
+  </div>
+  <p style="margin-top:.3em;">The pattern is the same each time: when the lexical structure becomes recursive, the lexer keeps a tiny piece of <span class="a">explicit state</span> (stack or counter) outside the DFA &mdash; a controlled, pragmatic exception to &ldquo;tokens are regular&rdquo;.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 26 — SUMMARY ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">25</span>
+    <h2>Summary &amp; Further Reading</h2>
+  </div>
+  <div class="cols cols-2">
+    <div>
+      <div class="card green">
+        <h3 class="g">Key Takeaways</h3>
+        <ul>
+          <li>The lexer turns a char stream into a token stream &mdash; a separate phase for simplicity, speed &amp; modularity</li>
+          <li>Token = (type, attribute, location); whitespace &amp; comments are usually stripped</li>
+          <li>Token patterns are regular expressions &mdash; recognised by finite automata</li>
+          <li>Regex &rarr; NFA (Thompson) &rarr; DFA (subset) &rarr; minimal DFA (Hopcroft): a fully mechanical pipeline</li>
+          <li>Scanning rules: maximal munch + rule-order tie-breaking, with bounded lookahead</li>
+          <li>Real scanners are hand-written switches or generated tables (flex, re2c, ragel)</li>
+          <li>Hard cases (indentation, the lexer hack, interpolation, nesting) need state beyond a pure DFA</li>
+        </ul>
+      </div>
+      <div class="card amber" style="margin-top:.4em;">
+        <h3 class="a">Hands-On Exercise</h3>
+        <ul>
+          <li>Build the DFA for <code>(a|b)*abb</code> by hand &mdash; check it against the table on slide 11</li>
+          <li>Write a hand-coded scanner for integers, identifiers and <code>+ - * /</code> with maximal munch</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card blue">
+        <h3 class="b">Further Reading</h3>
+        <ul>
+          <li>Aho, Lam, Sethi &amp; Ullman &mdash; <em>Compilers</em> (the Dragon Book), ch. 3</li>
+          <li>Cooper &amp; Torczon &mdash; <em>Engineering a Compiler</em>, ch. 2</li>
+          <li>Appel &mdash; <em>Modern Compiler Implementation</em>, ch. 2</li>
+          <li>Thompson &mdash; <em>Regular Expression Search Algorithm</em> (CACM, 1968)</li>
+          <li>Russ Cox &mdash; <em>Regular Expression Matching Can Be Simple And Fast</em></li>
+          <li>Hopcroft &mdash; <em>An n log n Algorithm for Minimizing States in a Finite Automaton</em> (1971)</li>
+          <li>The <code>flex</code> &amp; <code>re2c</code> manuals</li>
+        </ul>
+      </div>
+      <div class="card purple" style="margin-top:.4em;">
+        <h3 class="p">Next &rarr; Part 04</h3>
+        <p><span class="a">Syntax Analysis</span> &mdash; context-free grammars, parse trees vs ASTs, top-down (LL) and bottom-up (LR / LALR) parsing, and how the token stream becomes a tree.</p>
+      </div>
+      <div class="ss-row" style="margin-top:.4em; justify-content:center;">
+        <span class="ss-node done">Part 03 &#10003;</span>
+        <span class="ss-arrow">&rarr;</span>
+        <span class="ss-node active">Part 04: Syntax Analysis</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+</div><!-- /slides -->
+</div><!-- /reveal -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/highlight/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/highlight/monokai.min.css">
+<script>
+Reveal.initialize({
+  hash: true,
+  slideNumber: 'c/t',
+  transition: 'fade',
+  transitionSpeed: 'fast',
+  controls: true,
+  progress: true,
+  center: false,
+  width: 1100,
+  height: 900,
+  margin: 0.01,
+  plugins: [RevealHighlight],
+  highlight: { theme: 'monokai' }
+});
+</script>
+<script>
+(function(){
+  var h = Reveal.getConfig().height || 900;
+  var m = Reveal.getConfig().margin || 0.02;
+  var maxH = Math.floor(h * (1 - 2 * m)) + 'px';
+  function fixSlides(){
+    document.querySelectorAll('.reveal .slides>section,.reveal .slides>section>section').forEach(function(s){
+      s.style.display = 'block';
+      s.style.maxHeight = maxH;
+    });
+  }
+  Reveal.on('ready', fixSlides);
+  Reveal.on('slidechanged', fixSlides);
+})();
+</script>
+</body>
+</html>

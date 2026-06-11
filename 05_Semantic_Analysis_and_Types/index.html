@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compilers — Part 05: Semantic Analysis &amp; Type Systems</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/theme/black.min.css">
+<style>
+  :root {
+    --amber:  #f5a623;
+    --green:  #4ecb8d;
+    --purple: #a78bfa;
+    --blue:   #60a5fa;
+    --red:    #f87171;
+    --bg:     #0a0a0f;
+    --bg2:    #10101a;
+    --bg3:    #181824;
+    --border: #2a2a3a;
+    --text:   #e8e8f0;
+    --muted:  #8888a8;
+  }
+
+  .reveal-viewport { background: var(--bg); }
+  .reveal .slides section { background: transparent; }
+
+  .reveal { font-family: 'DM Sans', sans-serif; color: var(--text); }
+  .reveal h1, .reveal h2, .reveal h3 { font-family: 'Playfair Display', serif; font-weight: 700; }
+  .reveal h1 { font-size: 1.6em; color: var(--amber); line-height: 1.1; }
+  .reveal h2 { font-size: 1.1em; color: var(--amber); margin-bottom: .2em; }
+  .reveal h3 { font-size: .78em; color: var(--green); margin-bottom: .15em; }
+  .reveal p  { font-size: .56em; line-height: 1.45; color: var(--text); }
+  .reveal li { font-size: .54em; line-height: 1.45; margin-bottom: .1em; }
+  .reveal code { font-family: 'JetBrains Mono', monospace; font-size: .72em; }
+  .reveal pre  { box-shadow: none; background: var(--bg3); border: 1px solid var(--border);
+                 border-radius: 6px; padding: .3em .5em; margin: .25em 0; }
+  .reveal pre code { font-size: .52em; line-height: 1.35; background: transparent; color: #cdd6f4; }
+
+  /* ── slide chrome ── */
+  .slide-hdr {
+    display: flex; align-items: center; gap: .4em;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: .2em; margin-bottom: .3em;
+  }
+  .slide-hdr .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .42em; font-weight: 500;
+    color: var(--bg); background: var(--amber);
+    padding: .1em .4em; border-radius: 3px;
+    letter-spacing: .04em;
+  }
+  .slide-hdr h2 { margin: 0; font-size: .95em; }
+
+  /* ── two-column ── */
+  .cols   { display: grid; gap: .5em; }
+  .cols-2 { grid-template-columns: 1fr 1fr; }
+  .cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .cols-6040 { grid-template-columns: 6fr 4fr; }
+  .cols-4060 { grid-template-columns: 4fr 6fr; }
+
+  /* ── cards ── */
+  .card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 6px; padding: .35em .6em;
+  }
+  .card.amber { border-left: 3px solid var(--amber); }
+  .card.green { border-left: 3px solid var(--green); }
+  .card.purple{ border-left: 3px solid var(--purple); }
+  .card.blue  { border-left: 3px solid var(--blue); }
+  .card.red   { border-left: 3px solid var(--red); }
+  .card h3 { font-size: .64em; margin: 0 0 .12em; }
+  .card p  { font-size: .52em; margin: 0; color: #b8b8d0; }
+  .card ul { margin: 0; padding-left: 1em; }
+  .card li { font-size: .52em; color: #b8b8d0; margin-bottom: .02em; }
+
+  /* ── table ── */
+  .reveal table { width: 100%; border-collapse: collapse; font-size: .5em; }
+  .reveal table th { background: var(--bg3); color: var(--amber); font-weight: 600;
+                     padding: .2em .4em; border: 1px solid var(--border); text-align: left; }
+  .reveal table td { padding: .18em .4em; border: 1px solid var(--border); color: #ccc; }
+  .reveal table tr:nth-child(even) td { background: #0e0e18; }
+
+  /* ── accent spans ── */
+  .a  { color: var(--amber); font-weight: 600; }
+  .g  { color: var(--green); font-weight: 600; }
+  .p  { color: var(--purple); font-weight: 600; }
+  .b  { color: var(--blue); font-weight: 600; }
+  .r  { color: var(--red); font-weight: 600; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* ── SVG graph diagrams ── */
+  svg.diagram { display: block; margin: 0 auto; overflow: visible; }
+
+  /* ── pill badges ── */
+  .pill {
+    display: inline-block; font-family: 'JetBrains Mono', monospace;
+    font-size: .44em; padding: .08em .4em; border-radius: 99px;
+    border: 1px solid; margin: 0 .08em;
+  }
+  .pill.amber { color: var(--amber); border-color: var(--amber); }
+  .pill.green { color: var(--green); border-color: var(--green); }
+  .pill.purple{ color: var(--purple); border-color: var(--purple); }
+  .pill.blue  { color: var(--blue); border-color: var(--blue); }
+
+  /* ── footer — hidden; was overlapping scrollable content ── */
+  .reveal .slide-footer { display: none; }
+  /* title slide special */
+  .title-slide h1 { font-size: 1.8em; }
+  .title-slide .subtitle {
+    font-size: .7em; color: var(--green); font-family: 'DM Sans', sans-serif;
+    font-weight: 300; letter-spacing: .04em; margin: .3em 0 .6em;
+  }
+  .title-slide .meta { font-size: .48em; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+
+  /* ── super-step animator ── */
+  .ss-row {
+    display: flex; gap: .25em; align-items: center;
+    margin: .1em 0; font-size: .55em; font-family: 'JetBrains Mono', monospace;
+  }
+  .ss-node {
+    padding: .2em .55em; border-radius: 5px; font-size: .9em;
+    background: var(--bg3); border: 1px solid var(--border); color: var(--text);
+  }
+  .ss-node.active { background: #1a2a1a; border-color: var(--green); color: var(--green); }
+  .ss-node.done   { background: #1a1a2a; border-color: var(--purple); color: var(--purple); }
+  .ss-arrow { color: var(--amber); }
+  .ss-label { font-size: .8em; color: var(--muted); margin-left: .3em; }
+
+  /* reduce default margins */
+  .reveal ul, .reveal ol { margin: .15em 0 .15em 1em; }
+.reveal .slides > section { display: flex !important; flex-direction: column !important; overflow-y: auto !important; align-items: stretch !important; justify-content: flex-start !important; }
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+
+<!-- ═══════════════════════════════ SLIDE 01 — TITLE ═══════════════════════════════ -->
+<section class="title-slide" data-background-color="#0a0a0f">
+  <div style="text-align:left; max-width:820px; margin:0 auto; padding: 1em 0;">
+    <div style="font-family:'JetBrains Mono',monospace; font-size:.5em; color:var(--muted); margin-bottom:.4em; letter-spacing:.1em;">
+      COMPILERS SERIES &middot; PART 05 OF 10
+    </div>
+    <h1>Semantic Analysis<br>&amp; Type Systems</h1>
+    <div class="subtitle">Part 05 &mdash; Meaning, Names &amp; Types: What the Grammar Can't Catch</div>
+    <div style="width:60px; height:3px; background:var(--amber); margin-bottom:1.4em;"></div>
+    <div style="display:flex; gap:1.2em; flex-wrap:wrap; margin-bottom:1em;">
+      <span class="pill amber">Symbol Tables</span>
+      <span class="pill green">Type Checking</span>
+      <span class="pill purple">Hindley&ndash;Milner</span>
+      <span class="pill blue">Unification</span>
+    </div>
+    <div class="ss-row" style="margin-top:0.6em;">
+      <span class="ss-node active">Resolve names</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node active">Build scopes</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node active">Type-check</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node active">Infer</span>
+      <span class="ss-arrow">&rarr;</span>
+      <span class="ss-node done">Annotated AST</span>
+    </div>
+    <p style="max-width:640px; color:#a0a0c0; font-size:.56em; line-height:1.5; margin-top:1em;">
+      After parsing proves a program is well-<em>formed</em>, semantic analysis proves it is well-<em>meaning</em> &mdash; resolving every name to a declaration, enforcing scope, and assigning each expression a type. We build symbol tables, write typing rules as judgements, and reconstruct types from scratch with Hindley&ndash;Milner and unification
+    </p>
+    <div class="meta" style="margin-top:1.4em;">
+      Scope &nbsp;&middot;&nbsp; Attributes &nbsp;&middot;&nbsp; &Gamma; &#8866; e : &tau; &nbsp;&middot;&nbsp; Inference
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 02 — AGENDA ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">01</span>
+    <h2>Topics</h2>
+  </div>
+  <p>The parser handed us a tree that is <em>syntactically</em> legal. This deck makes it <em>meaningful</em>: every identifier bound, every operation type-checked, every static rule the grammar couldn't express now enforced.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">Names &amp; Scope</h3>
+        <ul>
+          <li>Static vs dynamic semantics; what the parser can't catch</li>
+          <li>Symbol tables: structure, entries, name resolution</li>
+          <li>Lexical scope, nesting, shadowing, namespaces</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:.45em;">
+        <h3 class="g">Attributes &amp; Rules</h3>
+        <ul>
+          <li>Attribute grammars: synthesized vs inherited</li>
+          <li>S- and L-attributed; syntax-directed translation</li>
+          <li>Typing judgements <span class="mono">&Gamma; &#8866; e : &tau;</span> and inference rules</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">Type Systems &amp; Inference</h3>
+        <ul>
+          <li>Static/dynamic, strong/weak, nominal/structural</li>
+          <li>Soundness &mdash; &ldquo;well-typed programs don't go wrong&rdquo;</li>
+          <li>Hindley&ndash;Milner, Algorithm W, unification, let-polymorphism</li>
+        </ul>
+      </div>
+      <div class="card blue" style="margin-top:.45em;">
+        <h3 class="b">Richer Checks &amp; Diagnostics</h3>
+        <ul>
+          <li>Subtyping &amp; variance, generics, type classes, coercions</li>
+          <li>Definite assignment, returns, exhaustiveness, borrows</li>
+          <li>Why HM error messages are notoriously hard</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 03 — WHAT SEMANTIC ANALYSIS DOES ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">02</span>
+    <h2>What Semantic Analysis Does</h2>
+  </div>
+  <p>Parsing answers &ldquo;<em>is this a sentence of the grammar?</em>&rdquo; Semantic analysis answers &ldquo;<em>does this sentence mean anything sensible?</em>&rdquo; It is the last phase of the <span class="g">front end</span> &mdash; its output is an <span class="a">annotated, type-checked AST</span> plus a populated symbol table.</p>
+  <div class="cols cols-6040">
+    <div>
+      <svg class="diagram" viewBox="0 0 540 170" width="540" height="170">
+        <rect x="8" y="60" width="120" height="52" rx="5" fill="#181824" stroke="#4ecb8d" stroke-width="1.4"/>
+        <text x="68" y="83" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="10">Parser</text>
+        <text x="68" y="99" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">→ raw AST</text>
+        <line x1="130" y1="86" x2="178" y2="86" stroke="#f5a623" stroke-width="1.5" marker-end="url(#sA)"/>
+        <rect x="180" y="48" width="170" height="76" rx="6" fill="#1a1a2a" stroke="#f5a623" stroke-width="1.6"/>
+        <text x="265" y="74" text-anchor="middle" fill="#f5a623" font-family="Playfair Display" font-size="13" font-weight="700">Semantic Analysis</text>
+        <text x="265" y="92" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">resolve · scope · type</text>
+        <text x="265" y="106" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">+ symbol table</text>
+        <line x1="352" y1="86" x2="400" y2="86" stroke="#f5a623" stroke-width="1.5" marker-end="url(#sA)"/>
+        <rect x="402" y="60" width="130" height="52" rx="5" fill="#181824" stroke="#a78bfa" stroke-width="1.4"/>
+        <text x="467" y="83" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono" font-size="10">typed AST</text>
+        <text x="467" y="99" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">→ IR gen</text>
+        <line x1="265" y1="124" x2="265" y2="156" stroke="#f87171" stroke-width="1.3" marker-end="url(#sR)"/>
+        <text x="265" y="166" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono" font-size="8">type / scope errors</text>
+        <defs>
+          <marker id="sA" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#f5a623"/></marker>
+          <marker id="sR" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#f87171"/></marker>
+        </defs>
+      </svg>
+    </div>
+    <div>
+      <div class="card amber">
+        <h3 class="a">Core Jobs</h3>
+        <ul>
+          <li><span class="g">Name resolution</span> &mdash; bind each use to a declaration</li>
+          <li><span class="b">Type checking / inference</span> &mdash; give every node a type</li>
+          <li><span class="p">Static checks</span> &mdash; assignment, returns, exhaustiveness</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">Why a Separate Phase?</h3>
+        <p>These rules are <em>context-sensitive</em> &mdash; whether <code>x</code> is in scope depends on declarations elsewhere. Context-free grammars cannot express that, so it lives outside the parser.</p>
+      </div>
+    </div>
+  </div>
+  <p style="margin-top:.3em;">Once this phase signs off, the rest of the compiler may <span class="a">assume</span> the program is meaningful &mdash; IR generation never re-checks a type.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 04 — STATIC VS DYNAMIC SEMANTICS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">03</span>
+    <h2>Static vs Dynamic Semantics</h2>
+  </div>
+  <p>A language's <span class="a">semantics</span> &mdash; what programs <em>mean</em> &mdash; splits into what can be decided before the program runs and what only emerges as it runs.</p>
+  <div class="cols cols-2">
+    <div class="card green">
+      <h3 class="g">Static Semantics</h3>
+      <p>Rules checkable at <em>compile time</em> from the program text alone, without running it. The job of semantic analysis.</p>
+      <ul>
+        <li>Names are declared before use; types match operators</li>
+        <li>Function arity &amp; argument types agree</li>
+        <li>Every path through a non-<code>void</code> function returns</li>
+        <li>Often called the language's <em>well-formedness</em> rules</li>
+      </ul>
+    </div>
+    <div class="card purple">
+      <h3 class="p">Dynamic Semantics</h3>
+      <p>What a well-formed program <em>does</em> when executed &mdash; defined by an operational / denotational / axiomatic semantics, enforced at run time.</p>
+      <ul>
+        <li>Array index in bounds; pointer non-null; divisor non-zero</li>
+        <li>Order of evaluation; effects; the actual computed values</li>
+        <li>Caught by the runtime (a trap/exception), not the compiler</li>
+      </ul>
+    </div>
+  </div>
+  <div class="card amber" style="margin-top:.4em;">
+    <h3 class="a">The Dividing Line Is a Design Choice</h3>
+    <p>The more a language decides statically, the more errors caught before shipping &mdash; but the more the programmer must spell out. A null-dereference is dynamic in Java, but moved <em>static</em> in Kotlin/Rust via the type system. Pushing checks left (compile-time) is a recurring theme of modern language design.</p>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 05 — WHAT THE PARSER CAN'T CATCH ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">04</span>
+    <h2>What a Parser <em>Can't</em> Catch</h2>
+  </div>
+  <p>Every snippet below is a perfectly valid <em>parse tree</em> &mdash; grammatically flawless. Each is rejected only by semantic analysis, because the offending property is <span class="a">context-sensitive</span>.</p>
+  <div class="cols cols-2">
+    <div>
+      <pre><code class="language-c">int main(void) {
+    y = 3;            // undeclared 'y'
+    int x = "hello";  // type error: char* → int
+    int x = 7;        // redeclaration of 'x'
+    foo(1, 2);        // arity: foo takes 1 arg
+    return;           // missing return value
+}</code></pre>
+      <p style="margin-top:.2em; color:var(--muted); font-size:.5em;">The grammar happily accepts all five lines &mdash; <code>assignment</code>, <code>declaration</code> and <code>call</code> are each well-formed productions.</p>
+    </div>
+    <div>
+      <table>
+        <thead><tr><th>Error</th><th>Why the parser misses it</th></tr></thead>
+        <tbody>
+          <tr><td><span class="r">Undeclared name</span></td><td>Needs the set of names in scope &mdash; not in the CFG</td></tr>
+          <tr><td><span class="r">Type mismatch</span></td><td>Needs each subexpression's type</td></tr>
+          <tr><td><span class="r">Redeclaration</span></td><td>Needs to know what's already bound here</td></tr>
+          <tr><td><span class="r">Wrong arity</span></td><td>Needs the callee's signature</td></tr>
+          <tr><td><span class="r">Missing return</span></td><td>Needs control-flow reachability</td></tr>
+          <tr><td><span class="r">Break outside loop</span></td><td>Needs surrounding context</td></tr>
+        </tbody>
+      </table>
+      <div class="card blue" style="margin-top:.35em;">
+        <h3 class="b">The Theory Behind It</h3>
+        <p>&ldquo;Variable declared before use&rdquo; is the classic example of a <em>non</em>-context-free property. You'd need a context-sensitive grammar to encode it &mdash; impractical, so we use ad-hoc checks plus a symbol table instead.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 06 — SYMBOL TABLES ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">05</span>
+    <h2>Symbol Tables &mdash; Structure &amp; Entries</h2>
+  </div>
+  <p>The <span class="a">symbol table</span> maps names to everything the compiler knows about them. Lookups must be fast and frequent, so it is usually a <span class="g">hash table</span> &mdash; or a stack of them, one per scope.</p>
+  <div class="cols cols-4060">
+    <div>
+      <table>
+        <thead><tr><th>Field</th><th>Holds</th></tr></thead>
+        <tbody>
+          <tr><td><span class="a">name</span></td><td>the identifier (the hash key)</td></tr>
+          <tr><td><span class="a">kind</span></td><td>var / function / type / param / field</td></tr>
+          <tr><td><span class="a">type</span></td><td><code>int</code>, <code>(int,int)→bool</code>, &hellip;</td></tr>
+          <tr><td><span class="a">scope</span></td><td>nesting level / owning block</td></tr>
+          <tr><td><span class="a">location</span></td><td>stack offset / register / global addr</td></tr>
+          <tr><td><span class="a">attrs</span></td><td>const, mutable, visibility, line/col</td></tr>
+        </tbody>
+      </table>
+      <div class="card green" style="margin-top:.35em;">
+        <h3 class="g">Operations</h3>
+        <p><code>insert(name, entry)</code> on declaration; <code>lookup(name)</code> on use &mdash; searching the current scope, then enclosing scopes outward. <code>enterScope()</code> / <code>exitScope()</code> push/pop tables.</p>
+      </div>
+    </div>
+    <div>
+      <pre><code class="language-cpp">struct Symbol {
+  std::string  name;
+  Kind         kind;   // Var, Func, Type, ...
+  Type*        type;
+  int          scopeLevel;
+  Location     loc;    // offset / reg / addr
+  Attrs        attrs;  // const, mut, visibility
+};
+
+// A scope is one hash table; scopes nest.
+struct Scope {
+  std::unordered_map&lt;std::string, Symbol&gt; table;
+  Scope* parent;   // enclosing scope (or null)
+};
+
+Symbol* lookup(Scope* s, const std::string&amp; n) {
+  for (; s; s = s-&gt;parent)
+    if (auto it = s-&gt;table.find(n); it != s-&gt;table.end())
+      return &amp;it-&gt;second;   // first hit wins → shadowing
+  return nullptr;            // undeclared
+}</code></pre>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 07 — SCOPE TREE SVG ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">06</span>
+    <h2>Scope Tree &amp; the Symbol-Table Stack</h2>
+  </div>
+  <p>Nested blocks form a tree of scopes. At any point the live scopes are a <span class="a">stack</span>, root at the bottom. <code>lookup</code> walks the stack outward; the <span class="g">innermost</span> binding wins &mdash; that is <em>shadowing</em>.</p>
+  <svg class="diagram" viewBox="0 0 900 290" width="900" height="290">
+    <!-- source -->
+    <rect x="10" y="20" width="320" height="250" rx="6" fill="#0e0e18" stroke="#2a2a3a"/>
+    <g font-family="JetBrains Mono" font-size="10" fill="#cdd6f4">
+      <text x="28" y="46">int <tspan fill="#60a5fa">g</tspan> = 0;            <tspan fill="#8888a8" font-size="8">// global</tspan></text>
+      <text x="28" y="68">void <tspan fill="#f5a623">f</tspan>(int <tspan fill="#4ecb8d">p</tspan>) {     <tspan fill="#8888a8" font-size="8">// fn f</tspan></text>
+      <text x="48" y="90">int <tspan fill="#4ecb8d">x</tspan> = p;</text>
+      <text x="48" y="112">{                <tspan fill="#8888a8" font-size="8">// block B1</tspan></text>
+      <text x="68" y="134">int <tspan fill="#a78bfa">x</tspan> = 9;   <tspan fill="#8888a8" font-size="8">// shadows x</tspan></text>
+      <text x="68" y="156">int <tspan fill="#a78bfa">y</tspan> = x + g;</text>
+      <text x="48" y="178">}</text>
+      <text x="48" y="200">return x;        <tspan fill="#8888a8" font-size="8">// outer x</tspan></text>
+      <text x="28" y="222">}</text>
+    </g>
+    <!-- scope tree -->
+    <g font-family="JetBrains Mono" font-size="9">
+      <rect x="430" y="30" width="200" height="50" rx="5" fill="#181824" stroke="#60a5fa" stroke-width="1.4"/>
+      <text x="530" y="50" text-anchor="middle" fill="#60a5fa" font-size="10">Global scope</text>
+      <text x="530" y="68" text-anchor="middle" fill="#8888a8">g:int · f:(int)→void</text>
+
+      <rect x="430" y="115" width="200" height="50" rx="5" fill="#181824" stroke="#f5a623" stroke-width="1.4"/>
+      <text x="530" y="135" text-anchor="middle" fill="#f5a623" font-size="10">f's scope</text>
+      <text x="530" y="153" text-anchor="middle" fill="#8888a8">p:int · x:int</text>
+
+      <rect x="430" y="200" width="200" height="50" rx="5" fill="#181824" stroke="#a78bfa" stroke-width="1.4"/>
+      <text x="530" y="220" text-anchor="middle" fill="#a78bfa" font-size="10">block B1 scope</text>
+      <text x="530" y="238" text-anchor="middle" fill="#8888a8">x:int (shadows) · y:int</text>
+
+      <line x1="530" y1="80" x2="530" y2="113" stroke="#8888a8" stroke-width="1.2" marker-end="url(#sc)"/>
+      <line x1="530" y1="165" x2="530" y2="198" stroke="#8888a8" stroke-width="1.2" marker-end="url(#sc)"/>
+      <text x="545" y="100" fill="#8888a8" font-size="8">parent</text>
+      <text x="545" y="185" fill="#8888a8" font-size="8">parent</text>
+    </g>
+    <!-- stack annotation -->
+    <g font-family="JetBrains Mono" font-size="9">
+      <text x="690" y="50" fill="#60a5fa">push on enterScope()</text>
+      <text x="690" y="225" fill="#a78bfa">top of stack</text>
+      <text x="690" y="245" fill="#8888a8" font-size="8">lookup(x) → finds 9 first</text>
+      <text x="690" y="262" fill="#8888a8" font-size="8">pop on exitScope() → x=p</text>
+      <path d="M675 70 L675 215" stroke="#4ecb8d" stroke-width="1" stroke-dasharray="3" marker-end="url(#sc2)"/>
+      <text x="660" y="145" fill="#4ecb8d" font-size="8" transform="rotate(90 660 145)">lookup walks outward</text>
+    </g>
+    <defs>
+      <marker id="sc" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#8888a8"/></marker>
+      <marker id="sc2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#4ecb8d"/></marker>
+    </defs>
+  </svg>
+  <p style="margin-top:.2em; text-align:center; color:var(--muted); font-size:.5em;">The two <code>x</code> bindings coexist; the reference resolves to whichever scope is nearer on the stack.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 08 — NAME RESOLUTION & BINDING ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">07</span>
+    <h2>Name Resolution &amp; Binding</h2>
+  </div>
+  <p><span class="a">Binding</span> connects each <em>use</em> of a name to the <em>declaration</em> it refers to. Resolution is the algorithm that finds that declaration &mdash; and the rules for it are surprisingly subtle.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">Lexical (Static) Scope</h3>
+        <p>A name binds to the nearest enclosing declaration <em>in the program text</em> &mdash; decidable at compile time. The dominant rule (C, Java, Rust, ML, Scheme&hellip;).</p>
+      </div>
+      <div class="card purple" style="margin-top:.4em;">
+        <h3 class="p">Dynamic Scope</h3>
+        <p>A name binds to the most recent definition on the <em>call stack</em> at run time. Rare &mdash; early Lisp, Bash, Emacs Lisp specials. Hard to reason about; mostly abandoned.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card green">
+        <h3 class="g">Forward References</h3>
+        <p>A use that <em>precedes</em> its declaration. Handled by a separate declaration-gathering pass (or two passes): collect all top-level names first, then resolve bodies &mdash; so mutual recursion just works.</p>
+      </div>
+      <div class="card blue" style="margin-top:.4em;">
+        <h3 class="b">Namespaces &amp; Overloading</h3>
+        <p>One identifier can name different things in different <em>namespaces</em> (C: tags vs ordinary vs labels). With <span class="a">overloading</span>, a name maps to a <em>set</em> of entries; resolution picks one by argument types.</p>
+      </div>
+    </div>
+  </div>
+  <div class="card red" style="margin-top:.4em;">
+    <h3 class="r">Why Lexical Won</h3>
+    <p>Under dynamic scope, what <code>x</code> means depends on <em>who called you</em> &mdash; you can't read a function in isolation. Lexical scope makes a binding determinable from the source alone, which is essential for both humans and closures.</p>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 09 — ATTRIBUTE GRAMMARS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">08</span>
+    <h2>Attribute Grammars</h2>
+  </div>
+  <p>Knuth (1968) gave a formal way to attach <em>meaning</em> to a grammar: decorate each production with <span class="a">attributes</span> and <span class="g">semantic rules</span> that compute them. This is the theory behind syntax-directed translation.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card green">
+        <h3 class="g">Synthesized Attributes</h3>
+        <p>Computed <em>bottom-up</em>: a node's value is built from its <span class="b">children</span>. A node's <code>type</code> from its operands; a constant's value. Flow <em>up</em> the tree.</p>
+      </div>
+      <div class="card purple" style="margin-top:.4em;">
+        <h3 class="p">Inherited Attributes</h3>
+        <p>Computed <em>top-down</em>: a node's value comes from its <span class="a">parent</span> and/or <span class="b">siblings</span>. The current scope, the expected type, an indentation level. Flow <em>down</em> &amp; across.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card amber">
+        <h3 class="a">S-Attributed</h3>
+        <p>Uses <em>only</em> synthesized attributes. Evaluable in a single bottom-up pass &mdash; exactly what a <span class="b">bottom-up (LR)</span> parser can do on reductions.</p>
+      </div>
+      <div class="card blue" style="margin-top:.4em;">
+        <h3 class="b">L-Attributed</h3>
+        <p>Synthesized + inherited, but each inherited attribute depends only on the parent and on <em>left</em> siblings. Evaluable in one left-to-right depth-first pass &mdash; fits <span class="g">top-down (LL)</span> / recursive-descent parsing. Every S-attributed grammar is L-attributed.</p>
+      </div>
+    </div>
+  </div>
+  <p style="margin-top:.4em;">In practice few compilers run a full attribute-grammar engine; they hand-write tree walks. But the <em>vocabulary</em> &mdash; what flows up, what flows down, and the legal dependency order &mdash; is exactly how we reason about an AST traversal.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 10 — SDT EXAMPLE ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">09</span>
+    <h2>Syntax-Directed Translation &mdash; an Example</h2>
+  </div>
+  <p>Attaching a synthesized <code>.type</code> attribute to an expression grammar gives a one-pass bottom-up type-checker. Each rule combines its children's types into its own.</p>
+  <div class="cols cols-2">
+    <div>
+      <pre><code class="language-plaintext">E → E1 + E2   { E.type =
+                  unify(E1.type, E2.type) }
+E → E1 * E2   { E.type =
+                  numeric(E1.type, E2.type) }
+E → ( E1 )    { E.type = E1.type }
+E → num       { E.type = int }
+E → real      { E.type = float }
+E → id        { E.type =
+                  lookup(id.name).type }</code></pre>
+      <p style="margin-top:.2em; color:var(--muted); font-size:.5em;"><code>.type</code> is <span class="g">synthesized</span> &mdash; this grammar is S-attributed, so an LR parser can type-check during reduction.</p>
+    </div>
+    <div>
+      <svg class="diagram" viewBox="0 0 380 250" width="380" height="250">
+        <text x="190" y="18" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="9">typing  3 + x * 2.0   (x : float)</text>
+        <!-- + -->
+        <circle cx="190" cy="50" r="16" fill="#0e0e18" stroke="#4ecb8d" stroke-width="1.4"/>
+        <text x="190" y="54" text-anchor="middle" fill="#4ecb8d" font-size="11">+</text>
+        <text x="208" y="44" fill="#a78bfa" font-family="JetBrains Mono" font-size="8">:float</text>
+        <line x1="178" y1="62" x2="120" y2="92" stroke="#8888a8"/>
+        <line x1="202" y1="62" x2="260" y2="92" stroke="#8888a8"/>
+        <!-- 3 -->
+        <circle cx="110" cy="106" r="16" fill="#0e0e18" stroke="#60a5fa" stroke-width="1.4"/>
+        <text x="110" y="110" text-anchor="middle" fill="#60a5fa" font-size="10">3</text>
+        <text x="60" y="110" fill="#a78bfa" font-family="JetBrains Mono" font-size="8">:int</text>
+        <!-- * -->
+        <circle cx="270" cy="106" r="16" fill="#0e0e18" stroke="#4ecb8d" stroke-width="1.4"/>
+        <text x="270" y="110" text-anchor="middle" fill="#4ecb8d" font-size="11">*</text>
+        <text x="288" y="100" fill="#a78bfa" font-family="JetBrains Mono" font-size="8">:float</text>
+        <line x1="258" y1="118" x2="210" y2="158" stroke="#8888a8"/>
+        <line x1="282" y1="118" x2="320" y2="158" stroke="#8888a8"/>
+        <!-- x -->
+        <circle cx="200" cy="172" r="16" fill="#0e0e18" stroke="#f5a623" stroke-width="1.4"/>
+        <text x="200" y="176" text-anchor="middle" fill="#f5a623" font-size="10">x</text>
+        <text x="150" y="176" fill="#a78bfa" font-family="JetBrains Mono" font-size="8">:float</text>
+        <!-- 2.0 -->
+        <circle cx="330" cy="172" r="16" fill="#0e0e18" stroke="#60a5fa" stroke-width="1.4"/>
+        <text x="330" y="176" text-anchor="middle" fill="#60a5fa" font-size="9">2.0</text>
+        <text x="300" y="200" fill="#a78bfa" font-family="JetBrains Mono" font-size="8">:float</text>
+        <text x="190" y="240" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="8">types flow ↑ bottom-up; int 3 coerced to float</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 11 — TYPED AST SVG ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">10</span>
+    <h2>Annotating the AST &mdash; the Typed Tree</h2>
+  </div>
+  <p>The product of type checking is a <span class="a">typed AST</span>: every expression node carries a resolved type, every identifier a pointer into the symbol table, and implicit conversions are made explicit as <code>Coerce</code> nodes.</p>
+  <svg class="diagram" viewBox="0 0 900 250" width="900" height="250">
+    <text x="450" y="18" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="10">double r = n + 1;     (n : int, r : double)</text>
+    <!-- = -->
+    <rect x="400" y="35" width="100" height="34" rx="5" fill="#0e0e18" stroke="#f5a623" stroke-width="1.4"/>
+    <text x="450" y="57" text-anchor="middle" fill="#f5a623" font-family="JetBrains Mono" font-size="10">Assign :double</text>
+    <line x1="425" y1="69" x2="250" y2="100" stroke="#8888a8" marker-end="url(#ta)"/>
+    <line x1="475" y1="69" x2="640" y2="100" stroke="#8888a8" marker-end="url(#ta)"/>
+    <!-- r -->
+    <rect x="180" y="100" width="140" height="34" rx="5" fill="#0e0e18" stroke="#60a5fa" stroke-width="1.4"/>
+    <text x="250" y="122" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="10">Var r :double</text>
+    <text x="250" y="150" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">→ symtab[r]</text>
+    <!-- Coerce -->
+    <rect x="570" y="100" width="140" height="34" rx="5" fill="#1a1a12" stroke="#a78bfa" stroke-width="1.4"/>
+    <text x="640" y="122" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono" font-size="9">Coerce int→double</text>
+    <line x1="640" y1="134" x2="640" y2="160" stroke="#8888a8" marker-end="url(#ta)"/>
+    <!-- + -->
+    <rect x="570" y="160" width="140" height="34" rx="5" fill="#0e0e18" stroke="#4ecb8d" stroke-width="1.4"/>
+    <text x="640" y="182" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="10">Add :int</text>
+    <line x1="610" y1="194" x2="540" y2="220" stroke="#8888a8" marker-end="url(#ta)"/>
+    <line x1="670" y1="194" x2="740" y2="220" stroke="#8888a8" marker-end="url(#ta)"/>
+    <!-- n -->
+    <rect x="470" y="220" width="120" height="30" rx="5" fill="#0e0e18" stroke="#60a5fa" stroke-width="1.4"/>
+    <text x="530" y="240" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="9">Var n :int</text>
+    <!-- 1 -->
+    <rect x="700" y="220" width="120" height="30" rx="5" fill="#0e0e18" stroke="#60a5fa" stroke-width="1.4"/>
+    <text x="760" y="240" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="9">Lit 1 :int</text>
+    <defs>
+      <marker id="ta" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6" fill="#8888a8"/></marker>
+    </defs>
+  </svg>
+  <div class="cols cols-2" style="margin-top:.2em;">
+    <div class="card purple">
+      <h3 class="p">Implicit Made Explicit</h3>
+      <p>The <code>int</code> result of <code>n + 1</code> must become a <code>double</code> to store in <code>r</code>. The checker inserts a <code>Coerce</code> node so the back end never has to re-derive the conversion.</p>
+    </div>
+    <div class="card green">
+      <h3 class="g">Decorations Carried</h3>
+      <p>Each node gains: a resolved <span class="a">type</span>, a <span class="b">symbol</span> reference for identifiers, and sometimes a constant-folded value or an effect annotation.</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 12 — TYPE SYSTEMS OVERVIEW ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">11</span>
+    <h2>Type Systems &mdash; the Axes</h2>
+  </div>
+  <p>A <span class="a">type system</span> is a tractable, syntactic method for proving the absence of certain bad behaviours by classifying values. Languages sit at different points on several independent axes.</p>
+  <table>
+    <thead><tr><th>Axis</th><th>One end</th><th>Other end</th><th>Examples</th></tr></thead>
+    <tbody>
+      <tr><td><span class="a">When checked</span></td><td><span class="g">Static</span> &mdash; at compile time</td><td><span class="p">Dynamic</span> &mdash; at run time</td><td>Rust / C++ &nbsp;vs&nbsp; Python / JS</td></tr>
+      <tr><td><span class="a">Strength</span></td><td><span class="g">Strong</span> &mdash; few implicit holes</td><td><span class="p">Weak</span> &mdash; free reinterpretation</td><td>Haskell / Python &nbsp;vs&nbsp; C</td></tr>
+      <tr><td><span class="a">Manifest?</span></td><td><span class="g">Manifest</span> &mdash; annotations written</td><td><span class="p">Inferred</span> &mdash; reconstructed</td><td>Java &nbsp;vs&nbsp; ML / Haskell</td></tr>
+      <tr><td><span class="a">Identity</span></td><td><span class="g">Nominal</span> &mdash; by name</td><td><span class="p">Structural</span> &mdash; by shape</td><td>Java / Rust &nbsp;vs&nbsp; TypeScript / Go ifaces</td></tr>
+    </tbody>
+  </table>
+  <div class="cols cols-2" style="margin-top:.35em;">
+    <div class="card amber">
+      <h3 class="a">Strong &ne; Static</h3>
+      <p>Orthogonal axes, endlessly confused. Python is <em>dynamically</em> but <em>strongly</em> typed (<code>"a" + 1</code> raises, never silently coerces). C is <em>statically</em> but <em>weakly</em> typed (casts reinterpret bits). &ldquo;Strong&rdquo; is informal; &ldquo;static&rdquo; is precise.</p>
+    </div>
+    <div class="card blue">
+      <h3 class="b">Nominal vs Structural</h3>
+      <p>Two records with identical fields are the <em>same</em> type structurally, but <em>different</em> types nominally unless one declares it implements the other. Nominal catches &ldquo;accidental&rdquo; matches; structural is more flexible.</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 13 — SOUNDNESS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">12</span>
+    <h2>Soundness &mdash; &ldquo;Well-Typed Programs Don't Go Wrong&rdquo;</h2>
+  </div>
+  <p>Milner's 1978 slogan is the promise a type system makes: if the checker accepts a program, certain run-time errors <em>cannot</em> happen. Soundness is proved as two lemmas.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card green">
+        <h3 class="g">Progress</h3>
+        <p>A well-typed term is either a <em>value</em> or it can take an evaluation <em>step</em> &mdash; it never gets &ldquo;stuck&rdquo; in a meaningless state (like adding a function to an integer).</p>
+      </div>
+      <div class="card purple" style="margin-top:.4em;">
+        <h3 class="p">Preservation (Subject Reduction)</h3>
+        <p>If a well-typed term takes a step, the result is still well-typed, <em>with the same type</em>. Types are an invariant of execution.</p>
+      </div>
+      <div class="card amber" style="margin-top:.4em;">
+        <h3 class="a">Progress + Preservation = Safety</h3>
+        <p>Together they guarantee a well-typed program never reaches a stuck state &mdash; the formal content of &ldquo;don't go wrong&rdquo;. (Wright &amp; Felleisen, 1994.)</p>
+      </div>
+    </div>
+    <div>
+      <div class="card blue">
+        <h3 class="b">The Two Ways to Fail</h3>
+        <ul>
+          <li><span class="r">Unsound</span> &mdash; accepts some program that <em>does</em> go wrong (a hole in the system; e.g. Java array covariance throws <code>ArrayStoreException</code>)</li>
+          <li><span class="g">Incomplete</span> &mdash; rejects some program that would have been fine (the <em>conservative</em> price of decidability)</li>
+        </ul>
+      </div>
+      <div class="card red" style="margin-top:.4em;">
+        <h3 class="r">The Fundamental Trade-off</h3>
+        <p>Type-checking a Turing-complete property is undecidable, so every sound, decidable system is necessarily <em>incomplete</em> &mdash; it must reject some safe programs. Good design minimises the surprising rejections.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 14 — TYPING JUDGEMENTS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">13</span>
+    <h2>Typing Judgements &mdash; <span class="mono">&Gamma; &#8866; e : &tau;</span></h2>
+  </div>
+  <p>Type rules are written as <span class="a">inference rules</span>: premises above the line, conclusion below. The judgement <span class="mono">&Gamma; &#8866; e : &tau;</span> reads &ldquo;<em>in context &Gamma;, expression e has type &tau;</em>&rdquo;. &Gamma; is the typing environment &mdash; the symbol table, formally.</p>
+  <div class="cols cols-2">
+    <div>
+      <svg class="diagram" viewBox="0 0 420 260" width="420" height="260">
+        <g font-family="JetBrains Mono" font-size="13" fill="#cdd6f4">
+          <!-- INT -->
+          <text x="20" y="34" fill="#8888a8" font-size="9">(T-Int)</text>
+          <line x1="20" y1="44" x2="180" y2="44" stroke="#4ecb8d" stroke-width="1.2"/>
+          <text x="40" y="62" fill="#60a5fa">Γ ⊢ n : int</text>
+
+          <!-- VAR -->
+          <text x="20" y="100" fill="#8888a8" font-size="9">(T-Var)</text>
+          <text x="40" y="98" fill="#a78bfa">x : τ ∈ Γ</text>
+          <line x1="20" y1="110" x2="180" y2="110" stroke="#4ecb8d" stroke-width="1.2"/>
+          <text x="55" y="128" fill="#60a5fa">Γ ⊢ x : τ</text>
+
+          <!-- IF -->
+          <text x="20" y="170" fill="#8888a8" font-size="9">(T-If)</text>
+          <text x="22" y="166" fill="#cdd6f4" font-size="10">Γ⊢e₁:bool &nbsp;Γ⊢e₂:τ &nbsp;Γ⊢e₃:τ</text>
+          <line x1="20" y1="178" x2="395" y2="178" stroke="#4ecb8d" stroke-width="1.2"/>
+          <text x="60" y="196" fill="#60a5fa">Γ ⊢ if e₁ then e₂ else e₃ : τ</text>
+
+          <!-- APP -->
+          <text x="20" y="232" fill="#8888a8" font-size="9">(T-App)</text>
+          <text x="30" y="228" fill="#cdd6f4" font-size="11">Γ ⊢ e₁ : σ→τ &nbsp;&nbsp; Γ ⊢ e₂ : σ</text>
+          <line x1="20" y1="240" x2="340" y2="240" stroke="#4ecb8d" stroke-width="1.2"/>
+          <text x="80" y="258" fill="#60a5fa">Γ ⊢ e₁ e₂ : τ</text>
+        </g>
+      </svg>
+    </div>
+    <div>
+      <div class="card green">
+        <h3 class="g">Reading the Rules</h3>
+        <ul>
+          <li><span class="b">T-Int</span> &mdash; a literal needs no premises; an axiom</li>
+          <li><span class="b">T-Var</span> &mdash; look the name up in &Gamma;</li>
+          <li><span class="b">T-If</span> &mdash; condition <code>bool</code>; both branches <em>the same</em> &tau;</li>
+          <li><span class="b">T-App</span> &mdash; argument type must match the function's domain &sigma;; result is the codomain &tau;</li>
+        </ul>
+      </div>
+      <div class="card amber" style="margin-top:.4em;">
+        <h3 class="a">Type Checking = Proof Search</h3>
+        <p>To type an expression is to build a <em>derivation tree</em> of these rules with the expression at its root. A type checker is a proof searcher; a type <em>error</em> is a failure to find any derivation.</p>
+      </div>
+      <div class="card purple" style="margin-top:.4em;">
+        <h3 class="p">T-Abs (functions)</h3>
+        <p>To type <code>λx:σ. e</code>, extend the context: if <code>Γ, x:σ ⊢ e : τ</code> then <code>Γ ⊢ λx:σ.e : σ→τ</code>. Entering a binder <em>extends</em> &Gamma; &mdash; exactly <code>enterScope</code>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 15 — DERIVATION ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">14</span>
+    <h2>A Worked Derivation</h2>
+  </div>
+  <p>Type <code>if b then x else 0</code> in context <span class="mono">&Gamma; = { b : bool, x : int }</span>. We compose the rules into a derivation tree &mdash; leaves are axioms, the root is the goal.</p>
+  <div class="cols cols-6040">
+    <div>
+      <svg class="diagram" viewBox="0 0 540 200" width="540" height="200">
+        <g font-family="JetBrains Mono" font-size="11" fill="#cdd6f4">
+          <!-- premises -->
+          <text x="20" y="60" fill="#a78bfa" font-size="9">b:bool∈Γ</text>
+          <line x1="15" y1="68" x2="110" y2="68" stroke="#4ecb8d" stroke-width="1"/>
+          <text x="22" y="84" fill="#60a5fa" font-size="10">Γ ⊢ b : bool</text>
+
+          <text x="160" y="60" fill="#a78bfa" font-size="9">x:int∈Γ</text>
+          <line x1="155" y1="68" x2="245" y2="68" stroke="#4ecb8d" stroke-width="1"/>
+          <text x="168" y="84" fill="#60a5fa" font-size="10">Γ ⊢ x : int</text>
+
+          <text x="300" y="60" fill="#8888a8" font-size="9">(T-Int)</text>
+          <line x1="295" y1="68" x2="385" y2="68" stroke="#4ecb8d" stroke-width="1"/>
+          <text x="312" y="84" fill="#60a5fa" font-size="10">Γ ⊢ 0 : int</text>
+
+          <!-- combine -->
+          <line x1="15" y1="110" x2="430" y2="110" stroke="#f5a623" stroke-width="1.3"/>
+          <text x="440" y="105" fill="#8888a8" font-size="9">(T-If)</text>
+          <text x="60" y="132" fill="#f5a623" font-size="11">Γ ⊢ if b then x else 0 : int</text>
+          <text x="60" y="170" fill="#8888a8" font-size="9">both branches : int  ⇒  whole expr : int  ✓</text>
+        </g>
+      </svg>
+    </div>
+    <div>
+      <div class="card green">
+        <h3 class="g">Top to Bottom</h3>
+        <ul>
+          <li>Leaves discharge <span class="b">T-Var</span> / <span class="b">T-Int</span></li>
+          <li>The <code>if</code>'s three premises are satisfied: guard <code>bool</code>, both arms <code>int</code></li>
+          <li><span class="b">T-If</span> fires &rarr; the whole term is <code>int</code></li>
+        </ul>
+      </div>
+      <div class="card red" style="margin-top:.4em;">
+        <h3 class="r">Where It Would Fail</h3>
+        <p>Had the <code>else</code> arm been <code>"hi"</code>, the two branch premises (<code>int</code> vs <code>string</code>) couldn't both equal one &tau; &mdash; no derivation exists, so it's a type error.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 16 — TYPE INFERENCE / HM ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">15</span>
+    <h2>Type Inference &mdash; Hindley&ndash;Milner</h2>
+  </div>
+  <p>The rules above need types written down. <span class="a">Hindley&ndash;Milner</span> (HM) <em>reconstructs</em> them: with <em>no</em> annotations it finds the most general type, if one exists. Discovered independently by Hindley (1969) and Milner (1978); Milner's <span class="g">Algorithm W</span> is the implementation.</p>
+  <div class="cols cols-2">
+    <div>
+      <pre><code class="language-haskell">-- No annotations anywhere...
+compose f g x = f (g x)
+-- W infers the principal type:
+-- compose :: (b -> c) -> (a -> b) -> a -> c
+
+twice f x = f (f x)
+-- twice :: (a -> a) -> a -> a
+
+id x = x
+-- id :: a -> a   (a is a fresh type variable)</code></pre>
+      <div class="card green" style="margin-top:.3em;">
+        <h3 class="g">The Algorithm, in Three Moves</h3>
+        <ol>
+          <li>Give every unknown a <em>fresh type variable</em></li>
+          <li>Walk the AST emitting <em>equality constraints</em> between types</li>
+          <li><em>Unify</em> all constraints into one substitution</li>
+        </ol>
+      </div>
+    </div>
+    <div>
+      <div class="card amber">
+        <h3 class="a">Principal Types</h3>
+        <p>HM guarantees a <span class="b">principal type</span>: a single most-general type from which every other valid type is an instance. <code>id</code>'s principal type is <code>a → a</code>; <code>Int → Int</code> is just one instance.</p>
+      </div>
+      <div class="card purple" style="margin-top:.4em;">
+        <h3 class="p">Why HM Is the Sweet Spot</h3>
+        <ul>
+          <li>Decidable &amp; efficient (near-linear in practice)</li>
+          <li>No annotations required &mdash; full inference</li>
+          <li>Powers ML, OCaml, Haskell, F#, Rust &amp; Swift locals, Elm</li>
+        </ul>
+      </div>
+      <div class="card blue" style="margin-top:.4em;">
+        <h3 class="b">The Boundary</h3>
+        <p>HM trades power for decidability: no first-class polymorphism (rank-N), no subtyping. Add those and full inference becomes undecidable &mdash; hence annotations creep back in.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 17 — UNIFICATION ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">16</span>
+    <h2>Unification &amp; the Occurs-Check</h2>
+  </div>
+  <p><span class="a">Unification</span> (Robinson, 1965) is HM's engine: given two type terms, find the <em>most general substitution</em> making them equal &mdash; or fail. It solves the equality constraints W generates.</p>
+  <div class="cols cols-6040">
+    <div>
+      <pre><code class="language-plaintext">unify(t1, t2):
+  t1, t2 = resolve(t1), resolve(t2)   # follow bound vars
+  if t1 == t2:                  return            # done
+  if t1 is a var α:    occurs_check(α, t2)
+                       bind α := t2;  return
+  if t2 is a var β:    occurs_check(β, t1)
+                       bind β := t1;  return
+  if t1 = C(a1..an) and t2 = C(b1..bn):  # same constructor
+       for i: unify(ai, bi)              # arity must match
+       return
+  fail("cannot unify " + t1 + " with " + t2)</code></pre>
+      <div class="card red" style="margin-top:.3em;">
+        <h3 class="r">The Occurs-Check</h3>
+        <p>Before binding <code>α := t</code>, verify <code>α</code> does <em>not</em> occur inside <code>t</code>. Binding <code>α := α → β</code> would build an <em>infinite</em> type. The occurs-check is exactly what rejects the untypable <code>λx. x x</code>.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card green">
+        <h3 class="g">Three Outcomes</h3>
+        <ul>
+          <li><span class="b">Same constructor</span> &rarr; recurse on arguments pairwise</li>
+          <li><span class="b">Variable</span> &rarr; bind it (after the occurs-check)</li>
+          <li><span class="b">Clash</span> (<code>int</code> vs <code>bool</code>, or wrong arity) &rarr; type error</li>
+        </ul>
+      </div>
+      <div class="card amber" style="margin-top:.4em;">
+        <h3 class="a">Most General Unifier</h3>
+        <p>Unification returns the <em>mgu</em> &mdash; the substitution that commits to nothing more than necessary. That minimality is precisely why HM yields <em>principal</em> types.</p>
+      </div>
+      <div class="card blue" style="margin-top:.4em;">
+        <h3 class="b">Implementation</h3>
+        <p>Type vars are mutable cells (union-find); <code>resolve</code> path-compresses. This is why HM is near-linear despite the recursion.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 18 — UNIFICATION WORKED + SVG ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">17</span>
+    <h2>Unification &mdash; a Worked Example</h2>
+  </div>
+  <p>Infer the type of <code>apply f x = f x</code>. Give fresh variables, generate the one constraint <code>f</code> imposes, and unify.</p>
+  <div class="cols cols-2">
+    <div>
+      <pre><code class="language-plaintext">f : α          x : β        (fresh)
+apply : α → β → γ           (γ fresh, result)
+
+the call  f x  demands:
+   α  =  β → γ        ← f used as a function
+
+unify(α, β → γ):
+   α is a var, occurs-check(α, β→γ) ✓ (α ∉ β→γ)
+   bind  α := β → γ
+
+substitute back:
+   apply : (β → γ) → β → γ
+generalise free vars β, γ →  ∀β γ. ...
+
+   apply :: (b -> c) -> b -> c     ✓ principal</code></pre>
+    </div>
+    <div>
+      <svg class="diagram" viewBox="0 0 420 240" width="420" height="240">
+        <text x="210" y="20" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="9">unify(  α  ,  β → γ  )</text>
+        <!-- left term α -->
+        <rect x="40" y="45" width="70" height="38" rx="6" fill="#1a1a12" stroke="#f5a623" stroke-width="1.5"/>
+        <text x="75" y="69" text-anchor="middle" fill="#f5a623" font-family="JetBrains Mono" font-size="14">α</text>
+        <text x="75" y="98" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">a variable</text>
+        <!-- right term arrow -->
+        <rect x="240" y="45" width="140" height="38" rx="6" fill="#0e0e18" stroke="#4ecb8d" stroke-width="1.4"/>
+        <text x="310" y="69" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="13">β → γ</text>
+        <text x="310" y="98" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">→ constructor</text>
+        <!-- bind arrow -->
+        <line x1="112" y1="64" x2="238" y2="64" stroke="#a78bfa" stroke-width="1.6" stroke-dasharray="4" marker-end="url(#uA)"/>
+        <text x="175" y="56" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono" font-size="9">bind α</text>
+        <!-- occurs check -->
+        <rect x="110" y="130" width="200" height="40" rx="6" fill="#1a1212" stroke="#f87171" stroke-width="1.3"/>
+        <text x="210" y="148" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono" font-size="9">occurs-check: α ∈ β→γ ?</text>
+        <text x="210" y="163" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="9">no → safe to bind ✓</text>
+        <!-- result -->
+        <rect x="70" y="195" width="280" height="34" rx="6" fill="#1a2a1a" stroke="#4ecb8d" stroke-width="1.5"/>
+        <text x="210" y="217" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="11">mgu = { α ↦ β → γ }</text>
+        <defs>
+          <marker id="uA" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#a78bfa"/></marker>
+        </defs>
+      </svg>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 19 — LET-POLYMORPHISM ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">18</span>
+    <h2>Let-Polymorphism &amp; Generalisation</h2>
+  </div>
+  <p>HM's polymorphism lives at <code>let</code>. When a binding is generalised, its free type variables are <span class="a">closed over</span> into a <em>type scheme</em> <span class="mono">&forall;&alpha;. &tau;</span> &mdash; each <em>use</em> then gets fresh copies (instantiation).</p>
+  <div class="cols cols-2">
+    <div>
+      <pre><code class="language-haskell">let id = \x -> x in
+  (id 3, id True)
+-- id generalised to  ∀a. a -> a
+-- use 1: instantiate a := Int   → id 3
+-- use 2: instantiate a := Bool  → id True
+-- BOTH type-check ✓</code></pre>
+      <pre><code class="language-haskell">-- λ-bound params are NOT generalised:
+\id -> (id 3, id True)   -- TYPE ERROR
+-- one monomorphic α can't be both Int and Bool</code></pre>
+    </div>
+    <div>
+      <div class="card green">
+        <h3 class="g">Generalisation (gen)</h3>
+        <p>At a <code>let</code>, quantify over type variables free in &tau; but <em>not</em> free in the environment &Gamma; &mdash; those are still constrained elsewhere and must stay fixed.</p>
+      </div>
+      <div class="card purple" style="margin-top:.4em;">
+        <h3 class="p">Instantiation (inst)</h3>
+        <p>At each use of a scheme <span class="mono">&forall;&alpha;.&tau;</span>, replace the bound &alpha; with fresh variables &mdash; so distinct uses don't constrain each other.</p>
+      </div>
+      <div class="card red" style="margin-top:.4em;">
+        <h3 class="r">The Value Restriction</h3>
+        <p>Generalising arbitrary expressions is <em>unsound</em> with mutable references (a polymorphic <code>ref</code> leaks). ML restricts generalisation to <em>syntactic values</em> &mdash; the famous value restriction.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 20 — SUBTYPING & VARIANCE ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">19</span>
+    <h2>Subtyping &amp; Variance</h2>
+  </div>
+  <p><span class="a">Subtyping</span> <span class="mono">S &lt;: T</span> means an <code>S</code> may stand in wherever a <code>T</code> is expected (Liskov substitution). The hard question: how does subtyping lift through <em>type constructors</em>?</p>
+  <div class="cols cols-2">
+    <div>
+      <table>
+        <thead><tr><th>Variance</th><th>Rule (if S &lt;: T)</th><th>Where</th></tr></thead>
+        <tbody>
+          <tr><td><span class="g">Covariant</span></td><td><code>F&lt;S&gt; &lt;: F&lt;T&gt;</code></td><td>read-only, return types</td></tr>
+          <tr><td><span class="p">Contravariant</span></td><td><code>F&lt;T&gt; &lt;: F&lt;S&gt;</code></td><td>fn argument positions</td></tr>
+          <tr><td><span class="b">Invariant</span></td><td>neither direction</td><td>mutable cells</td></tr>
+        </tbody>
+      </table>
+      <div class="card amber" style="margin-top:.35em;">
+        <h3 class="a">The Function Rule</h3>
+        <p><code>(A→B) &lt;: (C→D)</code> iff <code>C &lt;: A</code> (contravariant in the argument) <em>and</em> <code>B &lt;: D</code> (covariant in the result). Arguments flip; results follow.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card red">
+        <h3 class="r">Why Mutable = Invariant</h3>
+        <p>If <code>Cat &lt;: Animal</code> made <code>List&lt;Cat&gt; &lt;: List&lt;Animal&gt;</code>, you could insert a <code>Dog</code> into the aliased <code>List&lt;Animal&gt;</code> and break the <code>List&lt;Cat&gt;</code>. Java's covariant <em>arrays</em> have exactly this hole &mdash; checked at run time via <code>ArrayStoreException</code>.</p>
+      </div>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">In Practice</h3>
+        <ul>
+          <li><span class="b">Scala</span> <code>+T</code> / <code>-T</code> declaration-site variance</li>
+          <li><span class="b">C#</span> <code>out</code> / <code>in</code> on generic params</li>
+          <li><span class="b">Java</span> use-site: <code>? extends</code> / <code>? super</code></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 21 — POLYMORPHISM FLAVOURS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">20</span>
+    <h2>Generics, Type Classes &amp; Overloading</h2>
+  </div>
+  <p>&ldquo;Polymorphism&rdquo; &mdash; one name, many behaviours &mdash; comes in distinct flavours (Strachey, Cardelli&ndash;Wegner). Each is resolved differently by the checker.</p>
+  <div class="cols cols-3">
+    <div class="card green">
+      <h3 class="g">Parametric</h3>
+      <p>One body, <em>any</em> type, uniformly: <code>List&lt;T&gt;</code>, <code>fn id&lt;T&gt;(x:T)->T</code>. Generics / ML polymorphism. The code can't inspect <code>T</code>.</p>
+      <p style="margin-top:.15em;"><em>Impl:</em> erasure (Java/HM) or monomorphisation (Rust/C++ templates).</p>
+    </div>
+    <div class="card purple">
+      <h3 class="p">Ad-hoc</h3>
+      <p>Different code per type, chosen by type. <em>Overloading</em> &amp; <span class="a">type classes</span> / <span class="a">traits</span>: <code>(+)</code> on <code>Int</code> vs <code>Float</code>, <code>Show a</code>.</p>
+      <p style="margin-top:.15em;"><em>Impl:</em> the compiler passes a hidden <em>dictionary</em> of methods.</p>
+    </div>
+    <div class="card blue">
+      <h3 class="b">Subtype</h3>
+      <p>Inclusion polymorphism via <code>S &lt;: T</code> &mdash; the OO kind. A <code>Circle</code> works wherever a <code>Shape</code> does, dispatched dynamically.</p>
+      <p style="margin-top:.15em;"><em>Impl:</em> vtables / dynamic dispatch.</p>
+    </div>
+  </div>
+  <div class="cols cols-2" style="margin-top:.4em;">
+    <div class="card amber">
+      <h3 class="a">Type Classes vs Overloading</h3>
+      <p>Haskell's classes are <em>principled</em> overloading: a class declares an interface (<code>class Eq a where (==) :: a→a→Bool</code>); instances supply it; constraints (<code>Eq a =&gt;</code>) thread through inference. Rust <em>traits</em> are the same idea with coherence rules.</p>
+    </div>
+    <div class="card red">
+      <h3 class="r">Overload Resolution</h3>
+      <p>With C++/Java overloading the checker ranks candidates by how well argument types match (exact &gt; promotion &gt; conversion), preferring the most specific. Ambiguity &mdash; two equally good candidates &mdash; is an error. This interacts badly with full inference, so HM languages avoid raw overloading.</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 22 — COERCIONS & ALIASES ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">21</span>
+    <h2>Coercions, Conversions &amp; Aliases</h2>
+  </div>
+  <p>Beyond accepting or rejecting, the checker sometimes <em>inserts work</em>: implicit conversions that bridge nearly-compatible types &mdash; the source of much convenience and many bugs.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card green">
+        <h3 class="g">Implicit Coercions</h3>
+        <ul>
+          <li><span class="a">Widening</span> &mdash; <code>int → long → double</code>, value-preserving, usually safe &amp; silent</li>
+          <li><span class="a">Narrowing</span> &mdash; <code>double → int</code>, lossy; many languages require an explicit cast</li>
+          <li>Inserted as the <code>Coerce</code> nodes from slide 10</li>
+        </ul>
+      </div>
+      <div class="card red" style="margin-top:.4em;">
+        <h3 class="r">The Hazard</h3>
+        <p>C's integer promotions &amp; usual arithmetic conversions are a notorious footgun &mdash; <code>unsigned</code>/<code>signed</code> mixing flips comparisons. Strongly-typed languages keep coercions few and explicit.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card blue">
+        <h3 class="b">Type Aliases vs New Types</h3>
+        <p>An <em>alias</em> (<code>typedef</code>, <code>type X = Y</code>) is the <em>same</em> type under a new name &mdash; interchangeable, no safety added. A <em>nominal newtype</em> (Haskell <code>newtype</code>, Rust tuple-struct) is a <em>distinct</em> type, so <code>Metres</code> can't be mixed with <code>Seconds</code>.</p>
+      </div>
+      <div class="card purple" style="margin-top:.4em;">
+        <h3 class="p">Coercion as Subtyping</h3>
+        <p>One can model coercions as a subtype relation with an inserted conversion function. Scala's <code>implicit</code> conversions and C++ converting-constructors formalise exactly this &mdash; powerful, and easy to abuse.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 23 — OTHER STATIC CHECKS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">22</span>
+    <h2>Other Semantic Checks</h2>
+  </div>
+  <p>Type checking is the headline, but the same phase runs a battery of other <span class="a">flow-sensitive</span> analyses &mdash; many are small dataflow problems over the AST/CFG.</p>
+  <div class="cols cols-3">
+    <div class="card green">
+      <h3 class="g">Definite Assignment</h3>
+      <p>Every local is written on <em>all</em> paths before it is read. Java &amp; C# reject reads of possibly-unassigned variables.</p>
+    </div>
+    <div class="card purple">
+      <h3 class="p">Reachability &amp; Returns</h3>
+      <p>Code after a <code>return</code> is unreachable; a non-<code>void</code> function must return on every path. A forward CFG dataflow check.</p>
+    </div>
+    <div class="card blue">
+      <h3 class="b">Exhaustiveness</h3>
+      <p><code>match</code> must cover every case of a sum type; missing variants warn or error. Rust/ML/Swift enforce this &mdash; a key safety win.</p>
+    </div>
+    <div class="card amber" style="margin-top:.4em;">
+      <h3 class="a">Const-ness &amp; lvalues</h3>
+      <p>You may not assign to a <code>const</code> / <code>final</code>; the LHS of <code>=</code> must be an <em>lvalue</em> (has an address), not a temporary.</p>
+    </div>
+    <div class="card green" style="margin-top:.4em;">
+      <h3 class="g">Effects &amp; Purity</h3>
+      <p>Effect systems track I/O / exceptions / async in the type (Koka, checked exceptions, <code>async</code> colouring) &mdash; what a function may <em>do</em>, not just return.</p>
+    </div>
+    <div class="card red" style="margin-top:.4em;">
+      <h3 class="r">Initialisation Order</h3>
+      <p>Use-before-init of globals, cyclic <code>static</code> init, <code>this</code> escaping a constructor &mdash; all caught here.</p>
+    </div>
+  </div>
+  <p style="margin-top:.35em;">These reuse the symbol table and run as AST/CFG traversals &mdash; the attribute-grammar machinery from earlier, applied to control flow rather than types.</p>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 24 — BORROW CHECKER & DEPENDENT ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">23</span>
+    <h2>Frontiers &mdash; Borrows, Dependent &amp; Refinement Types</h2>
+  </div>
+  <p>The richest semantic checks push the type system to encode <em>memory safety</em>, <em>resource ownership</em> and even <em>logical specifications</em>.</p>
+  <div class="cols cols-3">
+    <div class="card amber">
+      <h3 class="a">Rust's Borrow Checker</h3>
+      <ul>
+        <li>Every value has one <em>owner</em>; ownership <em>moves</em></li>
+        <li>Either many <code>&amp;</code> shared <em>or</em> one <code>&amp;mut</code>, never both</li>
+        <li><span class="g">Lifetimes</span> <code>'a</code> are type variables bounding how long a borrow is valid</li>
+        <li>A flow-sensitive (NLL) analysis &mdash; no GC, no use-after-free, at compile time</li>
+      </ul>
+    </div>
+    <div class="card purple">
+      <h3 class="p">Dependent Types</h3>
+      <p>Types that depend on <em>values</em>: <code>Vec n A</code> &mdash; a vector of statically-known length <code>n</code>. <code>append</code> provably returns length <code>n+m</code>. Idris, Agda, Coq, Lean. Type-checking subsumes <em>proof</em>-checking.</p>
+    </div>
+    <div class="card blue">
+      <h3 class="b">Refinement Types</h3>
+      <p>A base type plus a predicate: <code>{ v:Int | v &gt; 0 }</code>. An SMT solver discharges the obligations. Liquid Haskell, F*, Dafny &mdash; lighter than full dependent types, still catches off-by-one &amp; division-by-zero statically.</p>
+    </div>
+  </div>
+  <div class="card green" style="margin-top:.4em;">
+    <h3 class="g">The Common Thread</h3>
+    <p>All three move properties that were <em>dynamic</em> (a crash, a leak, a bad index) into the <em>static</em> type system &mdash; the same &ldquo;shift-left&rdquo; principle that motivated type checking in the first place, taken to its limit.</p>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 25 — DIAGNOSTICS ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">24</span>
+    <h2>Diagnostics &amp; Error Recovery</h2>
+  </div>
+  <p>A type system is only as good as its <span class="a">error messages</span>. The cruel irony: the more inference a system does, the <em>harder</em> good diagnostics become &mdash; the error surfaces far from its cause.</p>
+  <div class="cols cols-2">
+    <div>
+      <div class="card red">
+        <h3 class="r">Why HM Errors Are Hard</h3>
+        <ul>
+          <li>Unification fails at <em>one</em> constraint, but the real mistake may be <em>anywhere</em> that contributed to it</li>
+          <li>&ldquo;Cannot unify <code>Int</code> with <code>Bool</code>&rdquo; names the symptom, not the bug</li>
+          <li>Reported location depends on traversal <em>order</em> &mdash; left-to-right bias blames the wrong expression</li>
+          <li>Inferred types can be huge &amp; full of fresh variables (<code>t47 → t48</code>)</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:.4em;">
+        <h3 class="g">Making Them Better</h3>
+        <ul>
+          <li>Track the <em>provenance</em> of every constraint to point at source spans</li>
+          <li>Prefer the user's annotation as &ldquo;expected&rdquo;, inferred as &ldquo;actual&rdquo;</li>
+          <li>Suggest fixes; show the minimal conflicting set (type-error slicing)</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <pre><code class="language-rust">// Elm / Rust set the bar: span-precise, fix-it
+error[E0308]: mismatched types
+  --&gt; src/main.rs:3:18
+   |
+ 3 |     let x: i32 = "hello";
+   |            ---   ^^^^^^^ expected `i32`,
+   |            |             found `&amp;str`
+   |            expected due to this
+   = help: try parsing with `.parse()`</code></pre>
+      <div class="card blue" style="margin-top:.3em;">
+        <h3 class="b">Error Recovery in the Checker</h3>
+        <p>After an error, don't cascade: assign the broken node an <span class="a">error type</span> (&perp;) that unifies with <em>anything</em> and suppresses downstream complaints. One mistake &rarr; one message, not fifty.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ SLIDE 26 — SUMMARY ═══════════════════════════════ -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr">
+    <span class="tag">25</span>
+    <h2>Summary &amp; Further Reading</h2>
+  </div>
+  <div class="cols cols-2">
+    <div>
+      <div class="card green">
+        <h3 class="g">Key Takeaways</h3>
+        <ul>
+          <li>Semantic analysis enforces <em>context-sensitive</em> rules the CFG can't &mdash; names, types, arity</li>
+          <li>Symbol tables (scoped hash tables) drive name resolution; lexical scope &amp; shadowing fall out of stack lookup</li>
+          <li>Attribute grammars frame the AST walk: <em>synthesized</em> flows up, <em>inherited</em> flows down (S- / L-attributed)</li>
+          <li>Typing rules are inference rules <span class="mono">&Gamma; &#8866; e : &tau;</span>; checking = building a derivation</li>
+          <li>Hindley&ndash;Milner reconstructs <em>principal</em> types via fresh vars + constraint <em>unification</em> (with the occurs-check)</li>
+          <li>Let-polymorphism generalises; subtyping, variance, generics &amp; type classes extend the system</li>
+          <li>Soundness = progress + preservation: &ldquo;well-typed programs don't go wrong&rdquo;</li>
+        </ul>
+      </div>
+      <div class="card amber" style="margin-top:.4em;">
+        <h3 class="a">Exercise</h3>
+        <p>Hand-run Algorithm W on <code>map f xs = case xs of [] -&gt; []; (y:ys) -&gt; f y : map f ys</code> and confirm the principal type <code>(a-&gt;b) -&gt; [a] -&gt; [b]</code>.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card blue">
+        <h3 class="b">Further Reading</h3>
+        <ul>
+          <li><span class="mono">Pierce</span> &mdash; <em>Types and Programming Languages</em> (TAPL), 2002: the definitive text on type systems, soundness, subtyping &amp; inference</li>
+          <li><span class="mono">Aho, Lam, Sethi &amp; Ullman</span> &mdash; the <em>Dragon Book</em>, ch. 5 (SDT) &amp; ch. 6 (type checking)</li>
+          <li><span class="mono">Milner (1978)</span> &mdash; &ldquo;A Theory of Type Polymorphism in Programming&rdquo;</li>
+          <li><span class="mono">Damas &amp; Milner (1982)</span> &mdash; principal-type theorem for Algorithm W</li>
+          <li><span class="mono">Robinson (1965)</span> &mdash; the unification algorithm</li>
+          <li><span class="mono">Krishnamurthi</span> &mdash; <em>PLAI</em> (free online)</li>
+        </ul>
+      </div>
+      <div class="card purple" style="margin-top:.4em;">
+        <h3 class="p">Next &rarr; Part 06</h3>
+        <p><span class="a">Intermediate Representations</span> &mdash; lowering the typed AST into three-address code &amp; SSA, control-flow graphs, and the IR that the optimiser will chew on.</p>
+      </div>
+      <div class="ss-row" style="margin-top:.4em; justify-content:center;">
+        <span class="ss-node done">Part 05 ✓</span>
+        <span class="ss-arrow">&rarr;</span>
+        <span class="ss-node active">Part 06: Intermediate Representations</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+</div><!-- /slides -->
+</div><!-- /reveal -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/highlight/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/highlight/monokai.min.css">
+<script>
+Reveal.initialize({
+  hash: true,
+  slideNumber: 'c/t',
+  transition: 'fade',
+  transitionSpeed: 'fast',
+  controls: true,
+  progress: true,
+  center: false,
+  width: 1100,
+  height: 900,
+  margin: 0.01,
+  plugins: [RevealHighlight],
+  highlight: { theme: 'monokai' }
+});
+</script>
+<script>
+(function(){
+  var h = Reveal.getConfig().height || 900;
+  var m = Reveal.getConfig().margin || 0.02;
+  var maxH = Math.floor(h * (1 - 2 * m)) + 'px';
+  function fixSlides(){
+    document.querySelectorAll('.reveal .slides>section,.reveal .slides>section>section').forEach(function(s){
+      s.style.display = 'block';
+      s.style.maxHeight = maxH;
+    });
+  }
+  Reveal.on('ready', fixSlides);
+  Reveal.on('slidechanged', fixSlides);
+})();
+</script>
+</body>
+</html>
