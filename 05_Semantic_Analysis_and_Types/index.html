@@ -8,20 +8,20 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/theme/black.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/theme/white.min.css">
 <style>
   :root {
-    --amber:  #f5a623;
-    --green:  #4ecb8d;
-    --purple: #a78bfa;
-    --blue:   #60a5fa;
-    --red:    #f87171;
-    --bg:     #0a0a0f;
-    --bg2:    #10101a;
-    --bg3:    #181824;
-    --border: #2a2a3a;
-    --text:   #e8e8f0;
-    --muted:  #8888a8;
+    --amber:  #bf7d10;
+    --green:  #1c815a;
+    --purple: #6435bc;
+    --blue:   #2b3dc5;
+    --red:    #db3a30;
+    --bg:     #fafaf8;
+    --bg2:    #f1f1ee;
+    --bg3:    #eaeae6;
+    --border: #d1d1cb;
+    --text:   #161616;
+    --muted:  #6a6a63;
   }
 
   .reveal-viewport { background: var(--bg); }
@@ -37,7 +37,7 @@
   .reveal code { font-family: 'JetBrains Mono', monospace; font-size: .72em; }
   .reveal pre  { box-shadow: none; background: var(--bg3); border: 1px solid var(--border);
                  border-radius: 6px; padding: .3em .5em; margin: .25em 0; }
-  .reveal pre code { font-size: .52em; line-height: 1.35; background: transparent; color: #cdd6f4; }
+  .reveal pre code { font-size: .52em; line-height: 1.35; background: transparent; color: #242422; }
 
   /* ── slide chrome ── */
   .slide-hdr {
@@ -72,16 +72,16 @@
   .card.blue  { border-left: 3px solid var(--blue); }
   .card.red   { border-left: 3px solid var(--red); }
   .card h3 { font-size: .64em; margin: 0 0 .12em; }
-  .card p  { font-size: .52em; margin: 0; color: #b8b8d0; }
+  .card p  { font-size: .52em; margin: 0; color: #3d3d39; }
   .card ul { margin: 0; padding-left: 1em; }
-  .card li { font-size: .52em; color: #b8b8d0; margin-bottom: .02em; }
+  .card li { font-size: .52em; color: #3d3d39; margin-bottom: .02em; }
 
   /* ── table ── */
   .reveal table { width: 100%; border-collapse: collapse; font-size: .5em; }
   .reveal table th { background: var(--bg3); color: var(--amber); font-weight: 600;
                      padding: .2em .4em; border: 1px solid var(--border); text-align: left; }
-  .reveal table td { padding: .18em .4em; border: 1px solid var(--border); color: #ccc; }
-  .reveal table tr:nth-child(even) td { background: #0e0e18; }
+  .reveal table td { padding: .18em .4em; border: 1px solid var(--border); color: #2d2d2b; }
+  .reveal table tr:nth-child(even) td { background: #f3f3f1; }
 
   /* ── accent spans ── */
   .a  { color: var(--amber); font-weight: 600; }
@@ -124,8 +124,8 @@
     padding: .2em .55em; border-radius: 5px; font-size: .9em;
     background: var(--bg3); border: 1px solid var(--border); color: var(--text);
   }
-  .ss-node.active { background: #1a2a1a; border-color: var(--green); color: var(--green); }
-  .ss-node.done   { background: #1a1a2a; border-color: var(--purple); color: var(--purple); }
+  .ss-node.active { background: #d3e1d5; border-color: var(--green); color: var(--green); }
+  .ss-node.done   { background: #e6e6e2; border-color: var(--purple); color: var(--purple); }
   .ss-arrow { color: var(--amber); }
   .ss-label { font-size: .8em; color: var(--muted); margin-left: .3em; }
 
@@ -133,6 +133,7 @@
   .reveal ul, .reveal ol { margin: .15em 0 .15em 1em; }
 .reveal .slides > section { display: flex !important; flex-direction: column !important; overflow-y: auto !important; align-items: stretch !important; justify-content: flex-start !important; }
 </style>
+<style>.reveal .slide-number{background-color:transparent}</style>
 </head>
 <body>
 <div class="reveal">
@@ -140,7 +141,7 @@
 
 
 <!-- ═══════════════════════════════ SLIDE 01 — TITLE ═══════════════════════════════ -->
-<section class="title-slide" data-background-color="#0a0a0f">
+<section class="title-slide" data-background-color="#fafaf8">
   <div style="text-align:left; max-width:820px; margin:0 auto; padding: 1em 0;">
     <div style="font-family:'JetBrains Mono',monospace; font-size:.5em; color:var(--muted); margin-bottom:.4em; letter-spacing:.1em;">
       COMPILERS SERIES &middot; PART 05 OF 10
@@ -165,7 +166,7 @@
       <span class="ss-arrow">&rarr;</span>
       <span class="ss-node done">Annotated AST</span>
     </div>
-    <p style="max-width:640px; color:#a0a0c0; font-size:.56em; line-height:1.5; margin-top:1em;">
+    <p style="max-width:640px; color:#52524c; font-size:.56em; line-height:1.5; margin-top:1em;">
       After parsing proves a program is well-<em>formed</em>, semantic analysis proves it is well-<em>meaning</em> &mdash; resolving every name to a declaration, enforcing scope, and assigning each expression a type. We build symbol tables, write typing rules as judgements, and reconstruct types from scratch with Hindley&ndash;Milner and unification
     </p>
     <div class="meta" style="margin-top:1.4em;">
@@ -176,7 +177,7 @@
 
 
 <!-- ═══════════════════════════════ SLIDE 02 — AGENDA ═══════════════════════════════ -->
-<section data-background-color="#0a0a0f">
+<section data-background-color="#fafaf8">
   <div class="slide-hdr">
     <span class="tag">01</span>
     <h2>Topics</h2>
@@ -224,7 +225,7 @@
 
 
 <!-- ═══════════════════════════════ SLIDE 03 — WHAT SEMANTIC ANALYSIS DOES ═══════════════════════════════ -->
-<section data-background-color="#0a0a0f">
+<section data-background-color="#fafaf8">
   <div class="slide-hdr">
     <span class="tag">02</span>
     <h2>What Semantic Analysis Does</h2>
@@ -233,23 +234,23 @@
   <div class="cols cols-6040">
     <div>
       <svg class="diagram" viewBox="0 0 540 170" width="540" height="170">
-        <rect x="8" y="60" width="120" height="52" rx="5" fill="#181824" stroke="#4ecb8d" stroke-width="1.4"/>
-        <text x="68" y="83" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="10">Parser</text>
-        <text x="68" y="99" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">→ raw AST</text>
-        <line x1="130" y1="86" x2="178" y2="86" stroke="#f5a623" stroke-width="1.5" marker-end="url(#sA)"/>
-        <rect x="180" y="48" width="170" height="76" rx="6" fill="#1a1a2a" stroke="#f5a623" stroke-width="1.6"/>
-        <text x="265" y="74" text-anchor="middle" fill="#f5a623" font-family="Playfair Display" font-size="13" font-weight="700">Semantic Analysis</text>
-        <text x="265" y="92" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">resolve · scope · type</text>
-        <text x="265" y="106" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">+ symbol table</text>
-        <line x1="352" y1="86" x2="400" y2="86" stroke="#f5a623" stroke-width="1.5" marker-end="url(#sA)"/>
-        <rect x="402" y="60" width="130" height="52" rx="5" fill="#181824" stroke="#a78bfa" stroke-width="1.4"/>
-        <text x="467" y="83" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono" font-size="10">typed AST</text>
-        <text x="467" y="99" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">→ IR gen</text>
-        <line x1="265" y1="124" x2="265" y2="156" stroke="#f87171" stroke-width="1.3" marker-end="url(#sR)"/>
-        <text x="265" y="166" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono" font-size="8">type / scope errors</text>
+        <rect x="8" y="60" width="120" height="52" rx="5" fill="#eaeae6" stroke="#1c815a" stroke-width="1.4"/>
+        <text x="68" y="83" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="10">Parser</text>
+        <text x="68" y="99" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">→ raw AST</text>
+        <line x1="130" y1="86" x2="178" y2="86" stroke="#bf7d10" stroke-width="1.5" marker-end="url(#sA)"/>
+        <rect x="180" y="48" width="170" height="76" rx="6" fill="#e6e6e2" stroke="#bf7d10" stroke-width="1.6"/>
+        <text x="265" y="74" text-anchor="middle" fill="#bf7d10" font-family="Playfair Display" font-size="13" font-weight="700">Semantic Analysis</text>
+        <text x="265" y="92" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">resolve · scope · type</text>
+        <text x="265" y="106" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">+ symbol table</text>
+        <line x1="352" y1="86" x2="400" y2="86" stroke="#bf7d10" stroke-width="1.5" marker-end="url(#sA)"/>
+        <rect x="402" y="60" width="130" height="52" rx="5" fill="#eaeae6" stroke="#6435bc" stroke-width="1.4"/>
+        <text x="467" y="83" text-anchor="middle" fill="#6435bc" font-family="JetBrains Mono" font-size="10">typed AST</text>
+        <text x="467" y="99" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">→ IR gen</text>
+        <line x1="265" y1="124" x2="265" y2="156" stroke="#db3a30" stroke-width="1.3" marker-end="url(#sR)"/>
+        <text x="265" y="166" text-anchor="middle" fill="#db3a30" font-family="JetBrains Mono" font-size="8">type / scope errors</text>
         <defs>
-          <marker id="sA" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#f5a623"/></marker>
-          <marker id="sR" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#f87171"/></marker>
+          <marker id="sA" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#bf7d10"/></marker>
+          <marker id="sR" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#db3a30"/></marker>
         </defs>
       </svg>
     </div>
@@ -273,7 +274,7 @@
 
 
 <!-- ═══════════════════════════════ SLIDE 04 — STATIC VS DYNAMIC SEMANTICS ═══════════════════════════════ -->
-<section data-background-color="#0a0a0f">
+<section data-background-color="#fafaf8">
   <div class="slide-hdr">
     <span class="tag">03</span>
     <h2>Static vs Dynamic Semantics</h2>
@@ -308,7 +309,7 @@
 
 
 <!-- ═══════════════════════════════ SLIDE 05 — WHAT THE PARSER CAN'T CATCH ═══════════════════════════════ -->
-<section data-background-color="#0a0a0f">
+<section data-background-color="#fafaf8">
   <div class="slide-hdr">
     <span class="tag">04</span>
     <h2>What a Parser <em>Can't</em> Catch</h2>
@@ -347,7 +348,7 @@
 
 
 <!-- ═══════════════════════════════ SLIDE 06 — SYMBOL TABLES ═══════════════════════════════ -->
-<section data-background-color="#0a0a0f">
+<section data-background-color="#fafaf8">
   <div class="slide-hdr">
     <span class="tag">05</span>
     <h2>Symbol Tables &mdash; Structure &amp; Entries</h2>
@@ -399,7 +400,7 @@ Symbol* lookup(Scope* s, const std::string&amp; n) {
 
 
 <!-- ═══════════════════════════════ SLIDE 07 — SCOPE TREE SVG ═══════════════════════════════ -->
-<section data-background-color="#0a0a0f">
+<section data-background-color="#fafaf8">
   <div class="slide-hdr">
     <span class="tag">06</span>
     <h2>Scope Tree &amp; the Symbol-Table Stack</h2>
@@ -407,49 +408,49 @@ Symbol* lookup(Scope* s, const std::string&amp; n) {
   <p>Nested blocks form a tree of scopes. At any point the live scopes are a <span class="a">stack</span>, root at the bottom. <code>lookup</code> walks the stack outward; the <span class="g">innermost</span> binding wins &mdash; that is <em>shadowing</em>.</p>
   <svg class="diagram" viewBox="0 0 900 290" width="900" height="290">
     <!-- source -->
-    <rect x="10" y="20" width="320" height="250" rx="6" fill="#0e0e18" stroke="#2a2a3a"/>
-    <g font-family="JetBrains Mono" font-size="10" fill="#cdd6f4">
-      <text x="28" y="46">int <tspan fill="#60a5fa">g</tspan> = 0;            <tspan fill="#8888a8" font-size="8">// global</tspan></text>
-      <text x="28" y="68">void <tspan fill="#f5a623">f</tspan>(int <tspan fill="#4ecb8d">p</tspan>) {     <tspan fill="#8888a8" font-size="8">// fn f</tspan></text>
-      <text x="48" y="90">int <tspan fill="#4ecb8d">x</tspan> = p;</text>
-      <text x="48" y="112">{                <tspan fill="#8888a8" font-size="8">// block B1</tspan></text>
-      <text x="68" y="134">int <tspan fill="#a78bfa">x</tspan> = 9;   <tspan fill="#8888a8" font-size="8">// shadows x</tspan></text>
-      <text x="68" y="156">int <tspan fill="#a78bfa">y</tspan> = x + g;</text>
+    <rect x="10" y="20" width="320" height="250" rx="6" fill="#f3f3f1" stroke="#d1d1cb"/>
+    <g font-family="JetBrains Mono" font-size="10" fill="#242422">
+      <text x="28" y="46">int <tspan fill="#2b3dc5">g</tspan> = 0;            <tspan fill="#6a6a63" font-size="8">// global</tspan></text>
+      <text x="28" y="68">void <tspan fill="#bf7d10">f</tspan>(int <tspan fill="#1c815a">p</tspan>) {     <tspan fill="#6a6a63" font-size="8">// fn f</tspan></text>
+      <text x="48" y="90">int <tspan fill="#1c815a">x</tspan> = p;</text>
+      <text x="48" y="112">{                <tspan fill="#6a6a63" font-size="8">// block B1</tspan></text>
+      <text x="68" y="134">int <tspan fill="#6435bc">x</tspan> = 9;   <tspan fill="#6a6a63" font-size="8">// shadows x</tspan></text>
+      <text x="68" y="156">int <tspan fill="#6435bc">y</tspan> = x + g;</text>
       <text x="48" y="178">}</text>
-      <text x="48" y="200">return x;        <tspan fill="#8888a8" font-size="8">// outer x</tspan></text>
+      <text x="48" y="200">return x;        <tspan fill="#6a6a63" font-size="8">// outer x</tspan></text>
       <text x="28" y="222">}</text>
     </g>
     <!-- scope tree -->
     <g font-family="JetBrains Mono" font-size="9">
-      <rect x="430" y="30" width="200" height="50" rx="5" fill="#181824" stroke="#60a5fa" stroke-width="1.4"/>
-      <text x="530" y="50" text-anchor="middle" fill="#60a5fa" font-size="10">Global scope</text>
-      <text x="530" y="68" text-anchor="middle" fill="#8888a8">g:int · f:(int)→void</text>
+      <rect x="430" y="30" width="200" height="50" rx="5" fill="#eaeae6" stroke="#2b3dc5" stroke-width="1.4"/>
+      <text x="530" y="50" text-anchor="middle" fill="#2b3dc5" font-size="10">Global scope</text>
+      <text x="530" y="68" text-anchor="middle" fill="#6a6a63">g:int · f:(int)→void</text>
 
-      <rect x="430" y="115" width="200" height="50" rx="5" fill="#181824" stroke="#f5a623" stroke-width="1.4"/>
-      <text x="530" y="135" text-anchor="middle" fill="#f5a623" font-size="10">f's scope</text>
-      <text x="530" y="153" text-anchor="middle" fill="#8888a8">p:int · x:int</text>
+      <rect x="430" y="115" width="200" height="50" rx="5" fill="#eaeae6" stroke="#bf7d10" stroke-width="1.4"/>
+      <text x="530" y="135" text-anchor="middle" fill="#bf7d10" font-size="10">f's scope</text>
+      <text x="530" y="153" text-anchor="middle" fill="#6a6a63">p:int · x:int</text>
 
-      <rect x="430" y="200" width="200" height="50" rx="5" fill="#181824" stroke="#a78bfa" stroke-width="1.4"/>
-      <text x="530" y="220" text-anchor="middle" fill="#a78bfa" font-size="10">block B1 scope</text>
-      <text x="530" y="238" text-anchor="middle" fill="#8888a8">x:int (shadows) · y:int</text>
+      <rect x="430" y="200" width="200" height="50" rx="5" fill="#eaeae6" stroke="#6435bc" stroke-width="1.4"/>
+      <text x="530" y="220" text-anchor="middle" fill="#6435bc" font-size="10">block B1 scope</text>
+      <text x="530" y="238" text-anchor="middle" fill="#6a6a63">x:int (shadows) · y:int</text>
 
-      <line x1="530" y1="80" x2="530" y2="113" stroke="#8888a8" stroke-width="1.2" marker-end="url(#sc)"/>
-      <line x1="530" y1="165" x2="530" y2="198" stroke="#8888a8" stroke-width="1.2" marker-end="url(#sc)"/>
-      <text x="545" y="100" fill="#8888a8" font-size="8">parent</text>
-      <text x="545" y="185" fill="#8888a8" font-size="8">parent</text>
+      <line x1="530" y1="80" x2="530" y2="113" stroke="#6a6a63" stroke-width="1.2" marker-end="url(#sc)"/>
+      <line x1="530" y1="165" x2="530" y2="198" stroke="#6a6a63" stroke-width="1.2" marker-end="url(#sc)"/>
+      <text x="545" y="100" fill="#6a6a63" font-size="8">parent</text>
+      <text x="545" y="185" fill="#6a6a63" font-size="8">parent</text>
     </g>
     <!-- stack annotation -->
     <g font-family="JetBrains Mono" font-size="9">
-      <text x="690" y="50" fill="#60a5fa">push on enterScope()</text>
-      <text x="690" y="225" fill="#a78bfa">top of stack</text>
-      <text x="690" y="245" fill="#8888a8" font-size="8">lookup(x) → finds 9 first</text>
-      <text x="690" y="262" fill="#8888a8" font-size="8">pop on exitScope() → x=p</text>
-      <path d="M675 70 L675 215" stroke="#4ecb8d" stroke-width="1" stroke-dasharray="3" marker-end="url(#sc2)"/>
-      <text x="660" y="145" fill="#4ecb8d" font-size="8" transform="rotate(90 660 145)">lookup walks outward</text>
+      <text x="690" y="50" fill="#2b3dc5">push on enterScope()</text>
+      <text x="690" y="225" fill="#6435bc">top of stack</text>
+      <text x="690" y="245" fill="#6a6a63" font-size="8">lookup(x) → finds 9 first</text>
+      <text x="690" y="262" fill="#6a6a63" font-size="8">pop on exitScope() → x=p</text>
+      <path d="M675 70 L675 215" stroke="#1c815a" stroke-width="1" stroke-dasharray="3" marker-end="url(#sc2)"/>
+      <text x="660" y="145" fill="#1c815a" font-size="8" transform="rotate(90 660 145)">lookup walks outward</text>
     </g>
     <defs>
-      <marker id="sc" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#8888a8"/></marker>
-      <marker id="sc2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#4ecb8d"/></marker>
+      <marker id="sc" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#6a6a63"/></marker>
+      <marker id="sc2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#1c815a"/></marker>
     </defs>
   </svg>
   <p style="margin-top:.2em; text-align:center; color:var(--muted); font-size:.5em;">The two <code>x</code> bindings coexist; the reference resolves to whichever scope is nearer on the stack.</p>
@@ -457,7 +458,7 @@ Symbol* lookup(Scope* s, const std::string&amp; n) {
 
 
 <!-- ═══════════════════════════════ SLIDE 08 — NAME RESOLUTION & BINDING ═══════════════════════════════ -->
-<section data-background-color="#0a0a0f">
+<section data-background-color="#fafaf8">
   <div class="slide-hdr">
     <span class="tag">07</span>
     <h2>Name Resolution &amp; Binding</h2>
@@ -493,7 +494,7 @@ Symbol* lookup(Scope* s, const std::string&amp; n) {
 
 
 <!-- ═══════════════════════════════ SLIDE 09 — ATTRIBUTE GRAMMARS ═══════════════════════════════ -->
-<section data-background-color="#0a0a0f">
+<section data-background-color="#fafaf8">
   <div class="slide-hdr">
     <span class="tag">08</span>
     <h2>Attribute Grammars</h2>
@@ -526,7 +527,7 @@ Symbol* lookup(Scope* s, const std::string&amp; n) {
 
 
 <!-- ═══════════════════════════════ SLIDE 10 — SDT EXAMPLE ═══════════════════════════════ -->
-<section data-background-color="#0a0a0f">
+<section data-background-color="#fafaf8">
   <div class="slide-hdr">
     <span class="tag">09</span>
     <h2>Syntax-Directed Translation &mdash; an Example</h2>
@@ -547,32 +548,32 @@ E → id        { E.type =
     </div>
     <div>
       <svg class="diagram" viewBox="0 0 380 250" width="380" height="250">
-        <text x="190" y="18" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="9">typing  3 + x * 2.0   (x : float)</text>
+        <text x="190" y="18" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="9">typing  3 + x * 2.0   (x : float)</text>
         <!-- + -->
-        <circle cx="190" cy="50" r="16" fill="#0e0e18" stroke="#4ecb8d" stroke-width="1.4"/>
-        <text x="190" y="54" text-anchor="middle" fill="#4ecb8d" font-size="11">+</text>
-        <text x="208" y="44" fill="#a78bfa" font-family="JetBrains Mono" font-size="8">:float</text>
-        <line x1="178" y1="62" x2="120" y2="92" stroke="#8888a8"/>
-        <line x1="202" y1="62" x2="260" y2="92" stroke="#8888a8"/>
+        <circle cx="190" cy="50" r="16" fill="#f3f3f1" stroke="#1c815a" stroke-width="1.4"/>
+        <text x="190" y="54" text-anchor="middle" fill="#1c815a" font-size="11">+</text>
+        <text x="208" y="44" fill="#6435bc" font-family="JetBrains Mono" font-size="8">:float</text>
+        <line x1="178" y1="62" x2="120" y2="92" stroke="#6a6a63"/>
+        <line x1="202" y1="62" x2="260" y2="92" stroke="#6a6a63"/>
         <!-- 3 -->
-        <circle cx="110" cy="106" r="16" fill="#0e0e18" stroke="#60a5fa" stroke-width="1.4"/>
-        <text x="110" y="110" text-anchor="middle" fill="#60a5fa" font-size="10">3</text>
-        <text x="60" y="110" fill="#a78bfa" font-family="JetBrains Mono" font-size="8">:int</text>
+        <circle cx="110" cy="106" r="16" fill="#f3f3f1" stroke="#2b3dc5" stroke-width="1.4"/>
+        <text x="110" y="110" text-anchor="middle" fill="#2b3dc5" font-size="10">3</text>
+        <text x="60" y="110" fill="#6435bc" font-family="JetBrains Mono" font-size="8">:int</text>
         <!-- * -->
-        <circle cx="270" cy="106" r="16" fill="#0e0e18" stroke="#4ecb8d" stroke-width="1.4"/>
-        <text x="270" y="110" text-anchor="middle" fill="#4ecb8d" font-size="11">*</text>
-        <text x="288" y="100" fill="#a78bfa" font-family="JetBrains Mono" font-size="8">:float</text>
-        <line x1="258" y1="118" x2="210" y2="158" stroke="#8888a8"/>
-        <line x1="282" y1="118" x2="320" y2="158" stroke="#8888a8"/>
+        <circle cx="270" cy="106" r="16" fill="#f3f3f1" stroke="#1c815a" stroke-width="1.4"/>
+        <text x="270" y="110" text-anchor="middle" fill="#1c815a" font-size="11">*</text>
+        <text x="288" y="100" fill="#6435bc" font-family="JetBrains Mono" font-size="8">:float</text>
+        <line x1="258" y1="118" x2="210" y2="158" stroke="#6a6a63"/>
+        <line x1="282" y1="118" x2="320" y2="158" stroke="#6a6a63"/>
         <!-- x -->
-        <circle cx="200" cy="172" r="16" fill="#0e0e18" stroke="#f5a623" stroke-width="1.4"/>
-        <text x="200" y="176" text-anchor="middle" fill="#f5a623" font-size="10">x</text>
-        <text x="150" y="176" fill="#a78bfa" font-family="JetBrains Mono" font-size="8">:float</text>
+        <circle cx="200" cy="172" r="16" fill="#f3f3f1" stroke="#bf7d10" stroke-width="1.4"/>
+        <text x="200" y="176" text-anchor="middle" fill="#bf7d10" font-size="10">x</text>
+        <text x="150" y="176" fill="#6435bc" font-family="JetBrains Mono" font-size="8">:float</text>
         <!-- 2.0 -->
-        <circle cx="330" cy="172" r="16" fill="#0e0e18" stroke="#60a5fa" stroke-width="1.4"/>
-        <text x="330" y="176" text-anchor="middle" fill="#60a5fa" font-size="9">2.0</text>
-        <text x="300" y="200" fill="#a78bfa" font-family="JetBrains Mono" font-size="8">:float</text>
-        <text x="190" y="240" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="8">types flow ↑ bottom-up; int 3 coerced to float</text>
+        <circle cx="330" cy="172" r="16" fill="#f3f3f1" stroke="#2b3dc5" stroke-width="1.4"/>
+        <text x="330" y="176" text-anchor="middle" fill="#2b3dc5" font-size="9">2.0</text>
+        <text x="300" y="200" fill="#6435bc" font-family="JetBrains Mono" font-size="8">:float</text>
+        <text x="190" y="240" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="8">types flow ↑ bottom-up; int 3 coerced to float</text>
       </svg>
     </div>
   </div>
@@ -580,40 +581,40 @@ E → id        { E.type =
 
 
 <!-- ═══════════════════════════════ SLIDE 11 — TYPED AST SVG ═══════════════════════════════ -->
-<section data-background-color="#0a0a0f">
+<section data-background-color="#fafaf8">
   <div class="slide-hdr">
     <span class="tag">10</span>
     <h2>Annotating the AST &mdash; the Typed Tree</h2>
   </div>
   <p>The product of type checking is a <span class="a">typed AST</span>: every expression node carries a resolved type, every identifier a pointer into the symbol table, and implicit conversions are made explicit as <code>Coerce</code> nodes.</p>
   <svg class="diagram" viewBox="0 0 900 250" width="900" height="250">
-    <text x="450" y="18" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="10">double r = n + 1;     (n : int, r : double)</text>
+    <text x="450" y="18" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="10">double r = n + 1;     (n : int, r : double)</text>
     <!-- = -->
-    <rect x="400" y="35" width="100" height="34" rx="5" fill="#0e0e18" stroke="#f5a623" stroke-width="1.4"/>
-    <text x="450" y="57" text-anchor="middle" fill="#f5a623" font-family="JetBrains Mono" font-size="10">Assign :double</text>
-    <line x1="425" y1="69" x2="250" y2="100" stroke="#8888a8" marker-end="url(#ta)"/>
-    <line x1="475" y1="69" x2="640" y2="100" stroke="#8888a8" marker-end="url(#ta)"/>
+    <rect x="400" y="35" width="100" height="34" rx="5" fill="#f3f3f1" stroke="#bf7d10" stroke-width="1.4"/>
+    <text x="450" y="57" text-anchor="middle" fill="#bf7d10" font-family="JetBrains Mono" font-size="10">Assign :double</text>
+    <line x1="425" y1="69" x2="250" y2="100" stroke="#6a6a63" marker-end="url(#ta)"/>
+    <line x1="475" y1="69" x2="640" y2="100" stroke="#6a6a63" marker-end="url(#ta)"/>
     <!-- r -->
-    <rect x="180" y="100" width="140" height="34" rx="5" fill="#0e0e18" stroke="#60a5fa" stroke-width="1.4"/>
-    <text x="250" y="122" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="10">Var r :double</text>
-    <text x="250" y="150" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">→ symtab[r]</text>
+    <rect x="180" y="100" width="140" height="34" rx="5" fill="#f3f3f1" stroke="#2b3dc5" stroke-width="1.4"/>
+    <text x="250" y="122" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="10">Var r :double</text>
+    <text x="250" y="150" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">→ symtab[r]</text>
     <!-- Coerce -->
-    <rect x="570" y="100" width="140" height="34" rx="5" fill="#1a1a12" stroke="#a78bfa" stroke-width="1.4"/>
-    <text x="640" y="122" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono" font-size="9">Coerce int→double</text>
-    <line x1="640" y1="134" x2="640" y2="160" stroke="#8888a8" marker-end="url(#ta)"/>
+    <rect x="570" y="100" width="140" height="34" rx="5" fill="#eaeae6" stroke="#6435bc" stroke-width="1.4"/>
+    <text x="640" y="122" text-anchor="middle" fill="#6435bc" font-family="JetBrains Mono" font-size="9">Coerce int→double</text>
+    <line x1="640" y1="134" x2="640" y2="160" stroke="#6a6a63" marker-end="url(#ta)"/>
     <!-- + -->
-    <rect x="570" y="160" width="140" height="34" rx="5" fill="#0e0e18" stroke="#4ecb8d" stroke-width="1.4"/>
-    <text x="640" y="182" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="10">Add :int</text>
-    <line x1="610" y1="194" x2="540" y2="220" stroke="#8888a8" marker-end="url(#ta)"/>
-    <line x1="670" y1="194" x2="740" y2="220" stroke="#8888a8" marker-end="url(#ta)"/>
+    <rect x="570" y="160" width="140" height="34" rx="5" fill="#f3f3f1" stroke="#1c815a" stroke-width="1.4"/>
+    <text x="640" y="182" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="10">Add :int</text>
+    <line x1="610" y1="194" x2="540" y2="220" stroke="#6a6a63" marker-end="url(#ta)"/>
+    <line x1="670" y1="194" x2="740" y2="220" stroke="#6a6a63" marker-end="url(#ta)"/>
     <!-- n -->
-    <rect x="470" y="220" width="120" height="30" rx="5" fill="#0e0e18" stroke="#60a5fa" stroke-width="1.4"/>
-    <text x="530" y="240" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="9">Var n :int</text>
+    <rect x="470" y="220" width="120" height="30" rx="5" fill="#f3f3f1" stroke="#2b3dc5" stroke-width="1.4"/>
+    <text x="530" y="240" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="9">Var n :int</text>
     <!-- 1 -->
-    <rect x="700" y="220" width="120" height="30" rx="5" fill="#0e0e18" stroke="#60a5fa" stroke-width="1.4"/>
-    <text x="760" y="240" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="9">Lit 1 :int</text>
+    <rect x="700" y="220" width="120" height="30" rx="5" fill="#f3f3f1" stroke="#2b3dc5" stroke-width="1.4"/>
+    <text x="760" y="240" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="9">Lit 1 :int</text>
     <defs>
-      <marker id="ta" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6" fill="#8888a8"/></marker>
+      <marker id="ta" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6" fill="#6a6a63"/></marker>
     </defs>
   </svg>
   <div class="cols cols-2" style="margin-top:.2em;">
@@ -630,7 +631,7 @@ E → id        { E.type =
 
 
 <!-- ═══════════════════════════════ SLIDE 12 — TYPE SYSTEMS OVERVIEW ═══════════════════════════════ -->
-<section data-background-color="#0a0a0f">
+<section data-background-color="#fafaf8">
   <div class="slide-hdr">
     <span class="tag">11</span>
     <h2>Type Systems &mdash; the Axes</h2>
@@ -659,7 +660,7 @@ E → id        { E.type =
 
 
 <!-- ═══════════════════════════════ SLIDE 13 — SOUNDNESS ═══════════════════════════════ -->
-<section data-background-color="#0a0a0f">
+<section data-background-color="#fafaf8">
   <div class="slide-hdr">
     <span class="tag">12</span>
     <h2>Soundness &mdash; &ldquo;Well-Typed Programs Don't Go Wrong&rdquo;</h2>
@@ -698,7 +699,7 @@ E → id        { E.type =
 
 
 <!-- ═══════════════════════════════ SLIDE 14 — TYPING JUDGEMENTS ═══════════════════════════════ -->
-<section data-background-color="#0a0a0f">
+<section data-background-color="#fafaf8">
   <div class="slide-hdr">
     <span class="tag">13</span>
     <h2>Typing Judgements &mdash; <span class="mono">&Gamma; &#8866; e : &tau;</span></h2>
@@ -707,29 +708,29 @@ E → id        { E.type =
   <div class="cols cols-2">
     <div>
       <svg class="diagram" viewBox="0 0 420 260" width="420" height="260">
-        <g font-family="JetBrains Mono" font-size="13" fill="#cdd6f4">
+        <g font-family="JetBrains Mono" font-size="13" fill="#242422">
           <!-- INT -->
-          <text x="20" y="34" fill="#8888a8" font-size="9">(T-Int)</text>
-          <line x1="20" y1="44" x2="180" y2="44" stroke="#4ecb8d" stroke-width="1.2"/>
-          <text x="40" y="62" fill="#60a5fa">Γ ⊢ n : int</text>
+          <text x="20" y="34" fill="#6a6a63" font-size="9">(T-Int)</text>
+          <line x1="20" y1="44" x2="180" y2="44" stroke="#1c815a" stroke-width="1.2"/>
+          <text x="40" y="62" fill="#2b3dc5">Γ ⊢ n : int</text>
 
           <!-- VAR -->
-          <text x="20" y="100" fill="#8888a8" font-size="9">(T-Var)</text>
-          <text x="40" y="98" fill="#a78bfa">x : τ ∈ Γ</text>
-          <line x1="20" y1="110" x2="180" y2="110" stroke="#4ecb8d" stroke-width="1.2"/>
-          <text x="55" y="128" fill="#60a5fa">Γ ⊢ x : τ</text>
+          <text x="20" y="100" fill="#6a6a63" font-size="9">(T-Var)</text>
+          <text x="40" y="98" fill="#6435bc">x : τ ∈ Γ</text>
+          <line x1="20" y1="110" x2="180" y2="110" stroke="#1c815a" stroke-width="1.2"/>
+          <text x="55" y="128" fill="#2b3dc5">Γ ⊢ x : τ</text>
 
           <!-- IF -->
-          <text x="20" y="170" fill="#8888a8" font-size="9">(T-If)</text>
-          <text x="22" y="166" fill="#cdd6f4" font-size="10">Γ⊢e₁:bool &nbsp;Γ⊢e₂:τ &nbsp;Γ⊢e₃:τ</text>
-          <line x1="20" y1="178" x2="395" y2="178" stroke="#4ecb8d" stroke-width="1.2"/>
-          <text x="60" y="196" fill="#60a5fa">Γ ⊢ if e₁ then e₂ else e₃ : τ</text>
+          <text x="20" y="170" fill="#6a6a63" font-size="9">(T-If)</text>
+          <text x="22" y="166" fill="#242422" font-size="10">Γ⊢e₁:bool &nbsp;Γ⊢e₂:τ &nbsp;Γ⊢e₃:τ</text>
+          <line x1="20" y1="178" x2="395" y2="178" stroke="#1c815a" stroke-width="1.2"/>
+          <text x="60" y="196" fill="#2b3dc5">Γ ⊢ if e₁ then e₂ else e₃ : τ</text>
 
           <!-- APP -->
-          <text x="20" y="232" fill="#8888a8" font-size="9">(T-App)</text>
-          <text x="30" y="228" fill="#cdd6f4" font-size="11">Γ ⊢ e₁ : σ→τ &nbsp;&nbsp; Γ ⊢ e₂ : σ</text>
-          <line x1="20" y1="240" x2="340" y2="240" stroke="#4ecb8d" stroke-width="1.2"/>
-          <text x="80" y="258" fill="#60a5fa">Γ ⊢ e₁ e₂ : τ</text>
+          <text x="20" y="232" fill="#6a6a63" font-size="9">(T-App)</text>
+          <text x="30" y="228" fill="#242422" font-size="11">Γ ⊢ e₁ : σ→τ &nbsp;&nbsp; Γ ⊢ e₂ : σ</text>
+          <line x1="20" y1="240" x2="340" y2="240" stroke="#1c815a" stroke-width="1.2"/>
+          <text x="80" y="258" fill="#2b3dc5">Γ ⊢ e₁ e₂ : τ</text>
         </g>
       </svg>
     </div>
@@ -757,7 +758,7 @@ E → id        { E.type =
 
 
 <!-- ═══════════════════════════════ SLIDE 15 — DERIVATION ═══════════════════════════════ -->
-<section data-background-color="#0a0a0f">
+<section data-background-color="#fafaf8">
   <div class="slide-hdr">
     <span class="tag">14</span>
     <h2>A Worked Derivation</h2>
@@ -766,25 +767,25 @@ E → id        { E.type =
   <div class="cols cols-6040">
     <div>
       <svg class="diagram" viewBox="0 0 540 200" width="540" height="200">
-        <g font-family="JetBrains Mono" font-size="11" fill="#cdd6f4">
+        <g font-family="JetBrains Mono" font-size="11" fill="#242422">
           <!-- premises -->
-          <text x="20" y="60" fill="#a78bfa" font-size="9">b:bool∈Γ</text>
-          <line x1="15" y1="68" x2="110" y2="68" stroke="#4ecb8d" stroke-width="1"/>
-          <text x="22" y="84" fill="#60a5fa" font-size="10">Γ ⊢ b : bool</text>
+          <text x="20" y="60" fill="#6435bc" font-size="9">b:bool∈Γ</text>
+          <line x1="15" y1="68" x2="110" y2="68" stroke="#1c815a" stroke-width="1"/>
+          <text x="22" y="84" fill="#2b3dc5" font-size="10">Γ ⊢ b : bool</text>
 
-          <text x="160" y="60" fill="#a78bfa" font-size="9">x:int∈Γ</text>
-          <line x1="155" y1="68" x2="245" y2="68" stroke="#4ecb8d" stroke-width="1"/>
-          <text x="168" y="84" fill="#60a5fa" font-size="10">Γ ⊢ x : int</text>
+          <text x="160" y="60" fill="#6435bc" font-size="9">x:int∈Γ</text>
+          <line x1="155" y1="68" x2="245" y2="68" stroke="#1c815a" stroke-width="1"/>
+          <text x="168" y="84" fill="#2b3dc5" font-size="10">Γ ⊢ x : int</text>
 
-          <text x="300" y="60" fill="#8888a8" font-size="9">(T-Int)</text>
-          <line x1="295" y1="68" x2="385" y2="68" stroke="#4ecb8d" stroke-width="1"/>
-          <text x="312" y="84" fill="#60a5fa" font-size="10">Γ ⊢ 0 : int</text>
+          <text x="300" y="60" fill="#6a6a63" font-size="9">(T-Int)</text>
+          <line x1="295" y1="68" x2="385" y2="68" stroke="#1c815a" stroke-width="1"/>
+          <text x="312" y="84" fill="#2b3dc5" font-size="10">Γ ⊢ 0 : int</text>
 
           <!-- combine -->
-          <line x1="15" y1="110" x2="430" y2="110" stroke="#f5a623" stroke-width="1.3"/>
-          <text x="440" y="105" fill="#8888a8" font-size="9">(T-If)</text>
-          <text x="60" y="132" fill="#f5a623" font-size="11">Γ ⊢ if b then x else 0 : int</text>
-          <text x="60" y="170" fill="#8888a8" font-size="9">both branches : int  ⇒  whole expr : int  ✓</text>
+          <line x1="15" y1="110" x2="430" y2="110" stroke="#bf7d10" stroke-width="1.3"/>
+          <text x="440" y="105" fill="#6a6a63" font-size="9">(T-If)</text>
+          <text x="60" y="132" fill="#bf7d10" font-size="11">Γ ⊢ if b then x else 0 : int</text>
+          <text x="60" y="170" fill="#6a6a63" font-size="9">both branches : int  ⇒  whole expr : int  ✓</text>
         </g>
       </svg>
     </div>
@@ -807,7 +808,7 @@ E → id        { E.type =
 
 
 <!-- ═══════════════════════════════ SLIDE 16 — TYPE INFERENCE / HM ═══════════════════════════════ -->
-<section data-background-color="#0a0a0f">
+<section data-background-color="#fafaf8">
   <div class="slide-hdr">
     <span class="tag">15</span>
     <h2>Type Inference &mdash; Hindley&ndash;Milner</h2>
@@ -857,7 +858,7 @@ id x = x
 
 
 <!-- ═══════════════════════════════ SLIDE 17 — UNIFICATION ═══════════════════════════════ -->
-<section data-background-color="#0a0a0f">
+<section data-background-color="#fafaf8">
   <div class="slide-hdr">
     <span class="tag">16</span>
     <h2>Unification &amp; the Occurs-Check</h2>
@@ -904,7 +905,7 @@ id x = x
 
 
 <!-- ═══════════════════════════════ SLIDE 18 — UNIFICATION WORKED + SVG ═══════════════════════════════ -->
-<section data-background-color="#0a0a0f">
+<section data-background-color="#fafaf8">
   <div class="slide-hdr">
     <span class="tag">17</span>
     <h2>Unification &mdash; a Worked Example</h2>
@@ -930,27 +931,27 @@ generalise free vars β, γ →  ∀β γ. ...
     </div>
     <div>
       <svg class="diagram" viewBox="0 0 420 240" width="420" height="240">
-        <text x="210" y="20" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="9">unify(  α  ,  β → γ  )</text>
+        <text x="210" y="20" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="9">unify(  α  ,  β → γ  )</text>
         <!-- left term α -->
-        <rect x="40" y="45" width="70" height="38" rx="6" fill="#1a1a12" stroke="#f5a623" stroke-width="1.5"/>
-        <text x="75" y="69" text-anchor="middle" fill="#f5a623" font-family="JetBrains Mono" font-size="14">α</text>
-        <text x="75" y="98" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">a variable</text>
+        <rect x="40" y="45" width="70" height="38" rx="6" fill="#eaeae6" stroke="#bf7d10" stroke-width="1.5"/>
+        <text x="75" y="69" text-anchor="middle" fill="#bf7d10" font-family="JetBrains Mono" font-size="14">α</text>
+        <text x="75" y="98" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">a variable</text>
         <!-- right term arrow -->
-        <rect x="240" y="45" width="140" height="38" rx="6" fill="#0e0e18" stroke="#4ecb8d" stroke-width="1.4"/>
-        <text x="310" y="69" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="13">β → γ</text>
-        <text x="310" y="98" text-anchor="middle" fill="#8888a8" font-family="JetBrains Mono" font-size="8">→ constructor</text>
+        <rect x="240" y="45" width="140" height="38" rx="6" fill="#f3f3f1" stroke="#1c815a" stroke-width="1.4"/>
+        <text x="310" y="69" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="13">β → γ</text>
+        <text x="310" y="98" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">→ constructor</text>
         <!-- bind arrow -->
-        <line x1="112" y1="64" x2="238" y2="64" stroke="#a78bfa" stroke-width="1.6" stroke-dasharray="4" marker-end="url(#uA)"/>
-        <text x="175" y="56" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono" font-size="9">bind α</text>
+        <line x1="112" y1="64" x2="238" y2="64" stroke="#6435bc" stroke-width="1.6" stroke-dasharray="4" marker-end="url(#uA)"/>
+        <text x="175" y="56" text-anchor="middle" fill="#6435bc" font-family="JetBrains Mono" font-size="9">bind α</text>
         <!-- occurs check -->
-        <rect x="110" y="130" width="200" height="40" rx="6" fill="#1a1212" stroke="#f87171" stroke-width="1.3"/>
-        <text x="210" y="148" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono" font-size="9">occurs-check: α ∈ β→γ ?</text>
-        <text x="210" y="163" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="9">no → safe to bind ✓</text>
+        <rect x="110" y="130" width="200" height="40" rx="6" fill="#eeeeeb" stroke="#db3a30" stroke-width="1.3"/>
+        <text x="210" y="148" text-anchor="middle" fill="#db3a30" font-family="JetBrains Mono" font-size="9">occurs-check: α ∈ β→γ ?</text>
+        <text x="210" y="163" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="9">no → safe to bind ✓</text>
         <!-- result -->
-        <rect x="70" y="195" width="280" height="34" rx="6" fill="#1a2a1a" stroke="#4ecb8d" stroke-width="1.5"/>
-        <text x="210" y="217" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono" font-size="11">mgu = { α ↦ β → γ }</text>
+        <rect x="70" y="195" width="280" height="34" rx="6" fill="#d3e1d5" stroke="#1c815a" stroke-width="1.5"/>
+        <text x="210" y="217" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="11">mgu = { α ↦ β → γ }</text>
         <defs>
-          <marker id="uA" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#a78bfa"/></marker>
+          <marker id="uA" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#6435bc"/></marker>
         </defs>
       </svg>
     </div>
@@ -959,7 +960,7 @@ generalise free vars β, γ →  ∀β γ. ...
 
 
 <!-- ═══════════════════════════════ SLIDE 19 — LET-POLYMORPHISM ═══════════════════════════════ -->
-<section data-background-color="#0a0a0f">
+<section data-background-color="#fafaf8">
   <div class="slide-hdr">
     <span class="tag">18</span>
     <h2>Let-Polymorphism &amp; Generalisation</h2>
@@ -996,7 +997,7 @@ generalise free vars β, γ →  ∀β γ. ...
 
 
 <!-- ═══════════════════════════════ SLIDE 20 — SUBTYPING & VARIANCE ═══════════════════════════════ -->
-<section data-background-color="#0a0a0f">
+<section data-background-color="#fafaf8">
   <div class="slide-hdr">
     <span class="tag">19</span>
     <h2>Subtyping &amp; Variance</h2>
@@ -1036,7 +1037,7 @@ generalise free vars β, γ →  ∀β γ. ...
 
 
 <!-- ═══════════════════════════════ SLIDE 21 — POLYMORPHISM FLAVOURS ═══════════════════════════════ -->
-<section data-background-color="#0a0a0f">
+<section data-background-color="#fafaf8">
   <div class="slide-hdr">
     <span class="tag">20</span>
     <h2>Generics, Type Classes &amp; Overloading</h2>
@@ -1073,7 +1074,7 @@ generalise free vars β, γ →  ∀β γ. ...
 
 
 <!-- ═══════════════════════════════ SLIDE 22 — COERCIONS & ALIASES ═══════════════════════════════ -->
-<section data-background-color="#0a0a0f">
+<section data-background-color="#fafaf8">
   <div class="slide-hdr">
     <span class="tag">21</span>
     <h2>Coercions, Conversions &amp; Aliases</h2>
@@ -1109,7 +1110,7 @@ generalise free vars β, γ →  ∀β γ. ...
 
 
 <!-- ═══════════════════════════════ SLIDE 23 — OTHER STATIC CHECKS ═══════════════════════════════ -->
-<section data-background-color="#0a0a0f">
+<section data-background-color="#fafaf8">
   <div class="slide-hdr">
     <span class="tag">22</span>
     <h2>Other Semantic Checks</h2>
@@ -1146,7 +1147,7 @@ generalise free vars β, γ →  ∀β γ. ...
 
 
 <!-- ═══════════════════════════════ SLIDE 24 — BORROW CHECKER & DEPENDENT ═══════════════════════════════ -->
-<section data-background-color="#0a0a0f">
+<section data-background-color="#fafaf8">
   <div class="slide-hdr">
     <span class="tag">23</span>
     <h2>Frontiers &mdash; Borrows, Dependent &amp; Refinement Types</h2>
@@ -1179,7 +1180,7 @@ generalise free vars β, γ →  ∀β γ. ...
 
 
 <!-- ═══════════════════════════════ SLIDE 25 — DIAGNOSTICS ═══════════════════════════════ -->
-<section data-background-color="#0a0a0f">
+<section data-background-color="#fafaf8">
   <div class="slide-hdr">
     <span class="tag">24</span>
     <h2>Diagnostics &amp; Error Recovery</h2>
@@ -1225,7 +1226,7 @@ error[E0308]: mismatched types
 
 
 <!-- ═══════════════════════════════ SLIDE 26 — SUMMARY ═══════════════════════════════ -->
-<section data-background-color="#0a0a0f">
+<section data-background-color="#fafaf8">
   <div class="slide-hdr">
     <span class="tag">25</span>
     <h2>Summary &amp; Further Reading</h2>
@@ -1280,7 +1281,7 @@ error[E0308]: mismatched types
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/highlight/highlight.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/highlight/monokai.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css">
 <script>
 Reveal.initialize({
   hash: true,

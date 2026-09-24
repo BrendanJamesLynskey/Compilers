@@ -11,12 +11,12 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-primary: #0a0a0f; --bg-card: #0d1117; --bg-code: #161b22;
-            --text-primary: #e6edf3; --text-secondary: #8b949e;
-            --accent: #f5a623; --accent-dim: #f5a62322; --accent-glow: #f5a62333;
-            --accent-2: #f87171; --accent-3: #a78bfa; --accent-4: #4ecb8d;
-            --accent-5: #60a5fa;
-            --border: #21262d;
+            --bg-primary: #fafaf8; --bg-card: #f1f1ee; --bg-code: #e8e8e4;
+            --text-primary: #121212; --text-secondary: #62625b;
+            --accent: #bf7d10; --accent-dim: #bf7d1022; --accent-glow: #bf7d101a;
+            --accent-2: #db3a30; --accent-3: #6435bc; --accent-4: #1c815a;
+            --accent-5: #2b3dc5;
+            --border: #d8d8d3;
             --font-display: 'Space Grotesk', sans-serif;
             --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
             --font-body: 'Inter', sans-serif;
@@ -66,10 +66,10 @@
                padding: 0.25rem 0.7rem; border-radius: 999px;
                border: 1px solid var(--accent); color: var(--accent);
                background: var(--accent-dim); white-space: nowrap; }
-        .tag.r { border-color: var(--accent-2); color: var(--accent-2); background: rgba(248,113,113,0.10); }
-        .tag.p { border-color: var(--accent-3); color: var(--accent-3); background: rgba(167,139,250,0.10); }
-        .tag.g { border-color: var(--accent-4); color: var(--accent-4); background: rgba(78,203,141,0.10); }
-        .tag.b { border-color: var(--accent-5); color: var(--accent-5); background: rgba(96,165,250,0.10); }
+        .tag.r { border-color: var(--accent-2); color: var(--accent-2); background: rgba(219,58,48,0.10); }
+        .tag.p { border-color: var(--accent-3); color: var(--accent-3); background: rgba(100,53,188,0.10); }
+        .tag.g { border-color: var(--accent-4); color: var(--accent-4); background: rgba(28,129,90,0.10); }
+        .tag.b { border-color: var(--accent-5); color: var(--accent-5); background: rgba(43,61,197,0.10); }
 
         .container { max-width: var(--max-width); margin: 0 auto; padding: 2rem 1.5rem; }
         h2 { font-family: var(--font-display); font-size: 1.65rem; font-weight: 700;
@@ -124,7 +124,7 @@
                  font-size: 0.65rem; padding: 0.1rem 0.5rem; border-radius: 999px;
                  border: 1px solid var(--border); color: var(--text-secondary); }
         .badge.live { border-color: var(--accent-4); color: var(--accent-4);
-                      background: rgba(78,203,141,0.10); }
+                      background: rgba(28,129,90,0.10); }
 
         /* ── callout ── */
         .callout { background: var(--bg-card); border-left: 3px solid var(--accent);
@@ -174,6 +174,7 @@
         .footer a { color: var(--accent); text-decoration: none; }
         .footer a:hover { text-decoration: underline; }
     </style>
+<style>.reveal .slide-number{background-color:transparent}</style>
 </head>
 <body>
 <header class="hero">
@@ -217,33 +218,33 @@
     <div class="diagram-wrap">
       <svg class="flow" viewBox="0 0 860 220" width="860" height="220" role="img" aria-label="The compiler pipeline from source to machine code">
         <defs>
-          <marker id="ar" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="#f5a623"/></marker>
+          <marker id="ar" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="#bf7d10"/></marker>
         </defs>
         <!-- front end -->
-        <rect x="10" y="70" width="250" height="80" rx="7" fill="none" stroke="#4ecb8d" stroke-width="1.4" stroke-dasharray="5"/>
-        <text x="135" y="62" text-anchor="middle" fill="#4ecb8d" font-family="Space Grotesk" font-size="13" font-weight="700">Front End &middot; analysis</text>
+        <rect x="10" y="70" width="250" height="80" rx="7" fill="none" stroke="#1c815a" stroke-width="1.4" stroke-dasharray="5"/>
+        <text x="135" y="62" text-anchor="middle" fill="#1c815a" font-family="Space Grotesk" font-size="13" font-weight="700">Front End &middot; analysis</text>
         <!-- middle end -->
-        <rect x="300" y="70" width="230" height="80" rx="7" fill="none" stroke="#a78bfa" stroke-width="1.4" stroke-dasharray="5"/>
-        <text x="415" y="62" text-anchor="middle" fill="#a78bfa" font-family="Space Grotesk" font-size="13" font-weight="700">Middle End</text>
+        <rect x="300" y="70" width="230" height="80" rx="7" fill="none" stroke="#6435bc" stroke-width="1.4" stroke-dasharray="5"/>
+        <text x="415" y="62" text-anchor="middle" fill="#6435bc" font-family="Space Grotesk" font-size="13" font-weight="700">Middle End</text>
         <!-- back end -->
-        <rect x="570" y="70" width="280" height="80" rx="7" fill="none" stroke="#f5a623" stroke-width="1.4" stroke-dasharray="5"/>
-        <text x="710" y="62" text-anchor="middle" fill="#f5a623" font-family="Space Grotesk" font-size="13" font-weight="700">Back End &middot; synthesis</text>
+        <rect x="570" y="70" width="280" height="80" rx="7" fill="none" stroke="#bf7d10" stroke-width="1.4" stroke-dasharray="5"/>
+        <text x="710" y="62" text-anchor="middle" fill="#bf7d10" font-family="Space Grotesk" font-size="13" font-weight="700">Back End &middot; synthesis</text>
 
         <!-- stage boxes -->
         <g font-family="JetBrains Mono" font-size="10">
-          <rect x="22" y="92" width="68" height="40" rx="5" fill="#181824" stroke="#4ecb8d"/><text x="56" y="110" text-anchor="middle" fill="#4ecb8d">Lexer</text><text x="56" y="124" text-anchor="middle" fill="#8b949e">03</text>
-          <rect x="100" y="92" width="68" height="40" rx="5" fill="#181824" stroke="#4ecb8d"/><text x="134" y="110" text-anchor="middle" fill="#4ecb8d">Parser</text><text x="134" y="124" text-anchor="middle" fill="#8b949e">04</text>
-          <rect x="178" y="92" width="72" height="40" rx="5" fill="#181824" stroke="#4ecb8d"/><text x="214" y="108" text-anchor="middle" fill="#4ecb8d">Semantic</text><text x="214" y="124" text-anchor="middle" fill="#8b949e">05</text>
+          <rect x="22" y="92" width="68" height="40" rx="5" fill="#eaeae6" stroke="#1c815a"/><text x="56" y="110" text-anchor="middle" fill="#1c815a">Lexer</text><text x="56" y="124" text-anchor="middle" fill="#62625b">03</text>
+          <rect x="100" y="92" width="68" height="40" rx="5" fill="#eaeae6" stroke="#1c815a"/><text x="134" y="110" text-anchor="middle" fill="#1c815a">Parser</text><text x="134" y="124" text-anchor="middle" fill="#62625b">04</text>
+          <rect x="178" y="92" width="72" height="40" rx="5" fill="#eaeae6" stroke="#1c815a"/><text x="214" y="108" text-anchor="middle" fill="#1c815a">Semantic</text><text x="214" y="124" text-anchor="middle" fill="#62625b">05</text>
 
-          <rect x="312" y="92" width="86" height="40" rx="5" fill="#181824" stroke="#a78bfa"/><text x="355" y="108" text-anchor="middle" fill="#a78bfa">IR / SSA</text><text x="355" y="124" text-anchor="middle" fill="#8b949e">06</text>
-          <rect x="408" y="92" width="110" height="40" rx="5" fill="#181824" stroke="#a78bfa"/><text x="463" y="108" text-anchor="middle" fill="#a78bfa">Optimiser</text><text x="463" y="124" text-anchor="middle" fill="#8b949e">07</text>
+          <rect x="312" y="92" width="86" height="40" rx="5" fill="#eaeae6" stroke="#6435bc"/><text x="355" y="108" text-anchor="middle" fill="#6435bc">IR / SSA</text><text x="355" y="124" text-anchor="middle" fill="#62625b">06</text>
+          <rect x="408" y="92" width="110" height="40" rx="5" fill="#eaeae6" stroke="#6435bc"/><text x="463" y="108" text-anchor="middle" fill="#6435bc">Optimiser</text><text x="463" y="124" text-anchor="middle" fill="#62625b">07</text>
 
-          <rect x="582" y="92" width="100" height="40" rx="5" fill="#181824" stroke="#f5a623"/><text x="632" y="108" text-anchor="middle" fill="#f5a623">Codegen</text><text x="632" y="124" text-anchor="middle" fill="#8b949e">08</text>
-          <rect x="692" y="92" width="146" height="40" rx="5" fill="#181824" stroke="#f5a623"/><text x="765" y="108" text-anchor="middle" fill="#f5a623">Runtime / JIT</text><text x="765" y="124" text-anchor="middle" fill="#8b949e">09</text>
+          <rect x="582" y="92" width="100" height="40" rx="5" fill="#eaeae6" stroke="#bf7d10"/><text x="632" y="108" text-anchor="middle" fill="#bf7d10">Codegen</text><text x="632" y="124" text-anchor="middle" fill="#62625b">08</text>
+          <rect x="692" y="92" width="146" height="40" rx="5" fill="#eaeae6" stroke="#bf7d10"/><text x="765" y="108" text-anchor="middle" fill="#bf7d10">Runtime / JIT</text><text x="765" y="124" text-anchor="middle" fill="#62625b">09</text>
         </g>
 
         <!-- flow arrows between stages -->
-        <g stroke="#f5a623" stroke-width="1.4">
+        <g stroke="#bf7d10" stroke-width="1.4">
           <line x1="90"  y1="112" x2="99"  y2="112" marker-end="url(#ar)"/>
           <line x1="168" y1="112" x2="177" y2="112" marker-end="url(#ar)"/>
           <line x1="250" y1="112" x2="311" y2="112" marker-end="url(#ar)"/>
@@ -253,14 +254,14 @@
         </g>
 
         <!-- source / output endpoints -->
-        <text x="56" y="180" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">source text</text>
-        <text x="765" y="180" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">machine code</text>
+        <text x="56" y="180" text-anchor="middle" fill="#62625b" font-family="JetBrains Mono" font-size="9">source text</text>
+        <text x="765" y="180" text-anchor="middle" fill="#62625b" font-family="JetBrains Mono" font-size="9">machine code</text>
 
         <!-- cross-cutting -->
-        <rect x="190" y="22" width="470" height="26" rx="5" fill="#0e0e18" stroke="#60a5fa" stroke-dasharray="3"/>
-        <text x="425" y="39" text-anchor="middle" fill="#60a5fa" font-family="JetBrains Mono" font-size="9">Symbol Table &middot; Error Reporting &middot; Source Locations &mdash; threaded through every phase</text>
+        <rect x="190" y="22" width="470" height="26" rx="5" fill="#f3f3f1" stroke="#2b3dc5" stroke-dasharray="3"/>
+        <text x="425" y="39" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="9">Symbol Table &middot; Error Reporting &middot; Source Locations &mdash; threaded through every phase</text>
 
-        <text x="425" y="205" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">History &amp; framing in Part 01&ndash;02 &middot; the whole thing built by hand in Part 10</text>
+        <text x="425" y="205" text-anchor="middle" fill="#62625b" font-family="JetBrains Mono" font-size="9">History &amp; framing in Part 01&ndash;02 &middot; the whole thing built by hand in Part 10</text>
       </svg>
     </div>
 
