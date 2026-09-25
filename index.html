@@ -8,7 +8,7 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,600;0,700;1,400;1,700&family=Azeret+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400;1,700&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-primary: #fafaf8; --bg-card: #f1f1ee; --bg-code: #e8e8e4;
@@ -17,9 +17,9 @@
             --accent-2: #db3a30; --accent-3: #6435bc; --accent-4: #1c815a;
             --accent-5: #2b3dc5;
             --border: #d8d8d3;
-            --font-display: 'Space Grotesk', sans-serif;
-            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-            --font-body: 'Inter', sans-serif;
+            --font-display: 'Schibsted Grotesk', sans-serif;
+            --font-mono: 'Azeret Mono', 'Azeret Mono', monospace;
+            --font-body: 'Schibsted Grotesk', sans-serif;
             --max-width: 980px;
         }
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -222,16 +222,16 @@
         </defs>
         <!-- front end -->
         <rect x="10" y="70" width="250" height="80" rx="7" fill="none" stroke="#1c815a" stroke-width="1.4" stroke-dasharray="5"/>
-        <text x="135" y="62" text-anchor="middle" fill="#1c815a" font-family="Space Grotesk" font-size="13" font-weight="700">Front End &middot; analysis</text>
+        <text x="135" y="62" text-anchor="middle" fill="#1c815a" font-family="Schibsted Grotesk" font-size="13" font-weight="700">Front End &middot; analysis</text>
         <!-- middle end -->
         <rect x="300" y="70" width="230" height="80" rx="7" fill="none" stroke="#6435bc" stroke-width="1.4" stroke-dasharray="5"/>
-        <text x="415" y="62" text-anchor="middle" fill="#6435bc" font-family="Space Grotesk" font-size="13" font-weight="700">Middle End</text>
+        <text x="415" y="62" text-anchor="middle" fill="#6435bc" font-family="Schibsted Grotesk" font-size="13" font-weight="700">Middle End</text>
         <!-- back end -->
         <rect x="570" y="70" width="280" height="80" rx="7" fill="none" stroke="#bf7d10" stroke-width="1.4" stroke-dasharray="5"/>
-        <text x="710" y="62" text-anchor="middle" fill="#bf7d10" font-family="Space Grotesk" font-size="13" font-weight="700">Back End &middot; synthesis</text>
+        <text x="710" y="62" text-anchor="middle" fill="#bf7d10" font-family="Schibsted Grotesk" font-size="13" font-weight="700">Back End &middot; synthesis</text>
 
         <!-- stage boxes -->
-        <g font-family="JetBrains Mono" font-size="10">
+        <g font-family="Azeret Mono" font-size="10">
           <rect x="22" y="92" width="68" height="40" rx="5" fill="#eaeae6" stroke="#1c815a"/><text x="56" y="110" text-anchor="middle" fill="#1c815a">Lexer</text><text x="56" y="124" text-anchor="middle" fill="#62625b">03</text>
           <rect x="100" y="92" width="68" height="40" rx="5" fill="#eaeae6" stroke="#1c815a"/><text x="134" y="110" text-anchor="middle" fill="#1c815a">Parser</text><text x="134" y="124" text-anchor="middle" fill="#62625b">04</text>
           <rect x="178" y="92" width="72" height="40" rx="5" fill="#eaeae6" stroke="#1c815a"/><text x="214" y="108" text-anchor="middle" fill="#1c815a">Semantic</text><text x="214" y="124" text-anchor="middle" fill="#62625b">05</text>
@@ -254,14 +254,14 @@
         </g>
 
         <!-- source / output endpoints -->
-        <text x="56" y="180" text-anchor="middle" fill="#62625b" font-family="JetBrains Mono" font-size="9">source text</text>
-        <text x="765" y="180" text-anchor="middle" fill="#62625b" font-family="JetBrains Mono" font-size="9">machine code</text>
+        <text x="56" y="180" text-anchor="middle" fill="#62625b" font-family="Azeret Mono" font-size="9">source text</text>
+        <text x="765" y="180" text-anchor="middle" fill="#62625b" font-family="Azeret Mono" font-size="9">machine code</text>
 
         <!-- cross-cutting -->
         <rect x="190" y="22" width="470" height="26" rx="5" fill="#f3f3f1" stroke="#2b3dc5" stroke-dasharray="3"/>
-        <text x="425" y="39" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="9">Symbol Table &middot; Error Reporting &middot; Source Locations &mdash; threaded through every phase</text>
+        <text x="425" y="39" text-anchor="middle" fill="#2b3dc5" font-family="Azeret Mono" font-size="9">Symbol Table &middot; Error Reporting &middot; Source Locations &mdash; threaded through every phase</text>
 
-        <text x="425" y="205" text-anchor="middle" fill="#62625b" font-family="JetBrains Mono" font-size="9">History &amp; framing in Part 01&ndash;02 &middot; the whole thing built by hand in Part 10</text>
+        <text x="425" y="205" text-anchor="middle" fill="#62625b" font-family="Azeret Mono" font-size="9">History &amp; framing in Part 01&ndash;02 &middot; the whole thing built by hand in Part 10</text>
       </svg>
     </div>
 
@@ -307,7 +307,7 @@
     </div>
 
     <h2>How these are built</h2>
-    <p class="lead">Every deck is a single self-contained <span style="font-family:var(--font-mono)">index.html</span> &mdash; no build step, no npm install, nothing to download. Slides are authored in HTML and rendered with <a href="https://revealjs.com" style="text-decoration:none">Reveal.js&nbsp;4.6</a>; code is highlighted with <a href="https://highlightjs.org" style="text-decoration:none">highlight.js</a>; every diagram is hand-drawn inline SVG. Typeset in Playfair Display, DM&nbsp;Sans and JetBrains&nbsp;Mono. Each deck also ships a plain-Markdown <span style="font-family:var(--font-mono)">presentation.md</span> for reading on GitHub.</p>
+    <p class="lead">Every deck is a single self-contained <span style="font-family:var(--font-mono)">index.html</span> &mdash; no build step, no npm install, nothing to download. Slides are authored in HTML and rendered with <a href="https://revealjs.com" style="text-decoration:none">Reveal.js&nbsp;4.6</a>; code is highlighted with <a href="https://highlightjs.org" style="text-decoration:none">highlight.js</a>; every diagram is hand-drawn inline SVG. Typeset in Schibsted Grotesk and Azeret&nbsp;Mono. Each deck also ships a plain-Markdown <span style="font-family:var(--font-mono)">presentation.md</span> for reading on GitHub.</p>
 
     <h2>References</h2>
     <p class="lead">

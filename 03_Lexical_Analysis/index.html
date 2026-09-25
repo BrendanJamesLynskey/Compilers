@@ -6,7 +6,7 @@
 <title>Compilers — Part 03: Lexical Analysis</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,600;0,700;1,400;1,700&family=Azeret+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/theme/white.min.css">
 <style>
@@ -27,14 +27,14 @@
   .reveal-viewport { background: var(--bg); }
   .reveal .slides section { background: transparent; }
 
-  .reveal { font-family: 'DM Sans', sans-serif; color: var(--text); }
-  .reveal h1, .reveal h2, .reveal h3 { font-family: 'Playfair Display', serif; font-weight: 700; }
+  .reveal { font-family: 'Schibsted Grotesk', sans-serif; color: var(--text); }
+  .reveal h1, .reveal h2, .reveal h3 { font-family: 'Schibsted Grotesk', serif; font-weight: 700; }
   .reveal h1 { font-size: 1.6em; color: var(--amber); line-height: 1.1; }
   .reveal h2 { font-size: 1.1em; color: var(--amber); margin-bottom: .2em; }
   .reveal h3 { font-size: .78em; color: var(--green); margin-bottom: .15em; }
   .reveal p  { font-size: .56em; line-height: 1.45; color: var(--text); }
   .reveal li { font-size: .54em; line-height: 1.45; margin-bottom: .1em; }
-  .reveal code { font-family: 'JetBrains Mono', monospace; font-size: .72em; }
+  .reveal code { font-family: 'Azeret Mono', monospace; font-size: .72em; }
   .reveal pre  { box-shadow: none; background: var(--bg3); border: 1px solid var(--border);
                  border-radius: 6px; padding: .3em .5em; margin: .25em 0; }
   .reveal pre code { font-size: .52em; line-height: 1.35; background: transparent; color: #242422; }
@@ -46,7 +46,7 @@
     padding-bottom: .2em; margin-bottom: .3em;
   }
   .slide-hdr .tag {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Azeret Mono', monospace;
     font-size: .42em; font-weight: 500;
     color: var(--bg); background: var(--amber);
     padding: .1em .4em; border-radius: 3px;
@@ -89,14 +89,14 @@
   .p  { color: var(--purple); font-weight: 600; }
   .b  { color: var(--blue); font-weight: 600; }
   .r  { color: var(--red); font-weight: 600; }
-  .mono { font-family: 'JetBrains Mono', monospace; }
+  .mono { font-family: 'Azeret Mono', monospace; }
 
   /* ── SVG graph diagrams ── */
   svg.diagram { display: block; margin: 0 auto; overflow: visible; }
 
   /* ── pill badges ── */
   .pill {
-    display: inline-block; font-family: 'JetBrains Mono', monospace;
+    display: inline-block; font-family: 'Azeret Mono', monospace;
     font-size: .44em; padding: .08em .4em; border-radius: 99px;
     border: 1px solid; margin: 0 .08em;
   }
@@ -110,15 +110,15 @@
   /* title slide special */
   .title-slide h1 { font-size: 1.8em; }
   .title-slide .subtitle {
-    font-size: .7em; color: var(--green); font-family: 'DM Sans', sans-serif;
+    font-size: .7em; color: var(--green); font-family: 'Schibsted Grotesk', sans-serif;
     font-weight: 300; letter-spacing: .04em; margin: .3em 0 .6em;
   }
-  .title-slide .meta { font-size: .48em; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+  .title-slide .meta { font-size: .48em; color: var(--muted); font-family: 'Azeret Mono', monospace; }
 
   /* ── super-step animator ── */
   .ss-row {
     display: flex; gap: .25em; align-items: center;
-    margin: .1em 0; font-size: .55em; font-family: 'JetBrains Mono', monospace;
+    margin: .1em 0; font-size: .55em; font-family: 'Azeret Mono', monospace;
   }
   .ss-node {
     padding: .2em .55em; border-radius: 5px; font-size: .9em;
@@ -143,7 +143,7 @@
 <!-- ═══════════════════════════════ SLIDE 01 — TITLE ═══════════════════════════════ -->
 <section class="title-slide" data-background-color="#fafaf8">
   <div style="text-align:left; max-width:820px; margin:0 auto; padding: 1em 0;">
-    <div style="font-family:'JetBrains Mono',monospace; font-size:.5em; color:var(--muted); margin-bottom:.4em; letter-spacing:.1em;">
+    <div style="font-family:'Azeret Mono',monospace; font-size:.5em; color:var(--muted); margin-bottom:.4em; letter-spacing:.1em;">
       COMPILERS SERIES &middot; PART 03 OF 10
     </div>
     <h1>Lexical<br>Analysis</h1>
@@ -241,28 +241,28 @@
     </defs>
     <!-- source -->
     <rect x="10" y="70" width="150" height="60" rx="5" fill="#eaeae6" stroke="#2b3dc5" stroke-width="1.4"/>
-    <text x="85" y="95" text-anchor="middle" fill="#2b3dc5" font-family="Playfair Display" font-size="13" font-weight="700">Source Text</text>
-    <text x="85" y="113" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">char stream</text>
+    <text x="85" y="95" text-anchor="middle" fill="#2b3dc5" font-family="Schibsted Grotesk" font-size="13" font-weight="700">Source Text</text>
+    <text x="85" y="113" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">char stream</text>
     <line x1="162" y1="100" x2="205" y2="100" stroke="#bf7d10" stroke-width="1.5" marker-end="url(#ar)"/>
     <!-- lexer -->
     <rect x="208" y="60" width="170" height="80" rx="5" fill="#d3e1d5" stroke="#1c815a" stroke-width="1.6"/>
-    <text x="293" y="88" text-anchor="middle" fill="#1c815a" font-family="Playfair Display" font-size="13" font-weight="700">Lexer / Scanner</text>
-    <text x="293" y="106" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">DFA over characters</text>
-    <text x="293" y="120" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">strips whitespace</text>
+    <text x="293" y="88" text-anchor="middle" fill="#1c815a" font-family="Schibsted Grotesk" font-size="13" font-weight="700">Lexer / Scanner</text>
+    <text x="293" y="106" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">DFA over characters</text>
+    <text x="293" y="120" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">strips whitespace</text>
     <line x1="380" y1="100" x2="423" y2="100" stroke="#bf7d10" stroke-width="1.5" marker-end="url(#ar)"/>
     <!-- token stream -->
     <rect x="426" y="60" width="190" height="80" rx="5" fill="#eaeae6" stroke="#6435bc" stroke-width="1.4"/>
-    <text x="521" y="86" text-anchor="middle" fill="#6435bc" font-family="Playfair Display" font-size="12" font-weight="700">Token Stream</text>
-    <text x="521" y="104" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">ID PLUS NUM SEMI &hellip;</text>
-    <text x="521" y="118" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">getNextToken()</text>
+    <text x="521" y="86" text-anchor="middle" fill="#6435bc" font-family="Schibsted Grotesk" font-size="12" font-weight="700">Token Stream</text>
+    <text x="521" y="104" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">ID PLUS NUM SEMI &hellip;</text>
+    <text x="521" y="118" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">getNextToken()</text>
     <line x1="618" y1="100" x2="661" y2="100" stroke="#bf7d10" stroke-width="1.5" marker-end="url(#ar)"/>
     <!-- parser -->
     <rect x="664" y="70" width="150" height="60" rx="5" fill="#eaeae6" stroke="#bf7d10" stroke-width="1.4"/>
-    <text x="739" y="95" text-anchor="middle" fill="#bf7d10" font-family="Playfair Display" font-size="13" font-weight="700">Parser</text>
-    <text x="739" y="113" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">builds the tree</text>
+    <text x="739" y="95" text-anchor="middle" fill="#bf7d10" font-family="Schibsted Grotesk" font-size="13" font-weight="700">Parser</text>
+    <text x="739" y="113" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">builds the tree</text>
     <!-- symbol table feedback -->
     <rect x="426" y="165" width="190" height="26" rx="4" fill="#f3f3f1" stroke="#db3a30" stroke-width="1"/>
-    <text x="521" y="182" text-anchor="middle" fill="#db3a30" font-family="JetBrains Mono" font-size="8">Symbol Table (shared)</text>
+    <text x="521" y="182" text-anchor="middle" fill="#db3a30" font-family="Azeret Mono" font-size="8">Symbol Table (shared)</text>
     <line x1="293" y1="142" x2="450" y2="165" stroke="#6a6a63" stroke-width="0.8" stroke-dasharray="3"/>
     <line x1="739" y1="132" x2="592" y2="165" stroke="#6a6a63" stroke-width="0.8" stroke-dasharray="3"/>
   </svg>
@@ -353,7 +353,7 @@
   <pre><code class="language-c">  int  total = price * qty;   // running cost</code></pre>
   <svg class="diagram" viewBox="0 0 900 110" width="900" height="110">
     <defs><marker id="art" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#6a6a63"/></marker></defs>
-    <g font-family="JetBrains Mono" font-size="10">
+    <g font-family="Azeret Mono" font-size="10">
       <rect x="10"  y="30" width="78"  height="34" rx="4" fill="#d3e1d5" stroke="#1c815a"/><text x="49"  y="51" text-anchor="middle" fill="#1c815a">KW_INT</text>
       <rect x="98"  y="30" width="86"  height="34" rx="4" fill="#eaeae6" stroke="#6435bc"/><text x="141" y="46" text-anchor="middle" fill="#6435bc">IDENT</text><text x="141" y="58" text-anchor="middle" fill="#6a6a63" font-size="8">"total"</text>
       <rect x="194" y="30" width="50"  height="34" rx="4" fill="#eaeae6" stroke="#bf7d10"/><text x="219" y="51" text-anchor="middle" fill="#bf7d10">ASSIGN</text>
@@ -462,17 +462,17 @@ ws      = (" " | "\t" | "\n")+</code></pre>
     <defs><marker id="a2" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="#6435bc"/></marker>
           <marker id="a3" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="#2b3dc5"/></marker></defs>
     <!-- NFA snippet: q0 --a--> q1, q0 --a--> q0 (nondeterministic on a) -->
-    <text x="130" y="22" text-anchor="middle" fill="#6435bc" font-family="Playfair Display" font-size="12" font-weight="700">NFA: two moves on 'a'</text>
-    <circle cx="60"  cy="80" r="20" fill="#eaeae6" stroke="#6435bc" stroke-width="1.5"/><text x="60"  y="85" text-anchor="middle" fill="#6435bc" font-family="JetBrains Mono" font-size="11">q0</text>
-    <circle cx="200" cy="80" r="20" fill="#d3e1d5" stroke="#1c815a" stroke-width="1.5"/><circle cx="200" cy="80" r="15" fill="none" stroke="#1c815a" stroke-width="1"/><text x="200" y="85" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="11">q1</text>
-    <path d="M80,75 Q140,55 180,72" fill="none" stroke="#6435bc" stroke-width="1.4" marker-end="url(#a2)"/><text x="130" y="52" text-anchor="middle" fill="#6435bc" font-family="JetBrains Mono" font-size="10">a</text>
-    <path d="M48,98 Q40,135 62,118" fill="none" stroke="#6435bc" stroke-width="1.4" marker-end="url(#a2)"/><text x="30" y="120" text-anchor="middle" fill="#6435bc" font-family="JetBrains Mono" font-size="10">a</text>
+    <text x="130" y="22" text-anchor="middle" fill="#6435bc" font-family="Schibsted Grotesk" font-size="12" font-weight="700">NFA: two moves on 'a'</text>
+    <circle cx="60"  cy="80" r="20" fill="#eaeae6" stroke="#6435bc" stroke-width="1.5"/><text x="60"  y="85" text-anchor="middle" fill="#6435bc" font-family="Azeret Mono" font-size="11">q0</text>
+    <circle cx="200" cy="80" r="20" fill="#d3e1d5" stroke="#1c815a" stroke-width="1.5"/><circle cx="200" cy="80" r="15" fill="none" stroke="#1c815a" stroke-width="1"/><text x="200" y="85" text-anchor="middle" fill="#1c815a" font-family="Azeret Mono" font-size="11">q1</text>
+    <path d="M80,75 Q140,55 180,72" fill="none" stroke="#6435bc" stroke-width="1.4" marker-end="url(#a2)"/><text x="130" y="52" text-anchor="middle" fill="#6435bc" font-family="Azeret Mono" font-size="10">a</text>
+    <path d="M48,98 Q40,135 62,118" fill="none" stroke="#6435bc" stroke-width="1.4" marker-end="url(#a2)"/><text x="30" y="120" text-anchor="middle" fill="#6435bc" font-family="Azeret Mono" font-size="10">a</text>
     <!-- DFA snippet -->
-    <text x="640" y="22" text-anchor="middle" fill="#2b3dc5" font-family="Playfair Display" font-size="12" font-weight="700">DFA: one move on 'a'</text>
-    <circle cx="560" cy="80" r="20" fill="#eaeae6" stroke="#2b3dc5" stroke-width="1.5"/><text x="560" y="85" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="11">s0</text>
-    <circle cx="720" cy="80" r="20" fill="#d3e1d5" stroke="#1c815a" stroke-width="1.5"/><circle cx="720" cy="80" r="15" fill="none" stroke="#1c815a" stroke-width="1"/><text x="720" y="85" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="11">s1</text>
-    <path d="M580,80 L698,80" fill="none" stroke="#2b3dc5" stroke-width="1.4" marker-end="url(#a3)"/><text x="640" y="72" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="10">a</text>
-    <text x="640" y="135" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="9">double ring = accepting state</text>
+    <text x="640" y="22" text-anchor="middle" fill="#2b3dc5" font-family="Schibsted Grotesk" font-size="12" font-weight="700">DFA: one move on 'a'</text>
+    <circle cx="560" cy="80" r="20" fill="#eaeae6" stroke="#2b3dc5" stroke-width="1.5"/><text x="560" y="85" text-anchor="middle" fill="#2b3dc5" font-family="Azeret Mono" font-size="11">s0</text>
+    <circle cx="720" cy="80" r="20" fill="#d3e1d5" stroke="#1c815a" stroke-width="1.5"/><circle cx="720" cy="80" r="15" fill="none" stroke="#1c815a" stroke-width="1"/><text x="720" y="85" text-anchor="middle" fill="#1c815a" font-family="Azeret Mono" font-size="11">s1</text>
+    <path d="M580,80 L698,80" fill="none" stroke="#2b3dc5" stroke-width="1.4" marker-end="url(#a3)"/><text x="640" y="72" text-anchor="middle" fill="#2b3dc5" font-family="Azeret Mono" font-size="10">a</text>
+    <text x="640" y="135" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="9">double ring = accepting state</text>
   </svg>
 </section>
 
@@ -486,18 +486,18 @@ ws      = (" " | "\t" | "\n")+</code></pre>
   <p>Ken Thompson&rsquo;s 1968 algorithm builds an NFA from a regex <span class="a">compositionally</span> &mdash; one small fragment per operator, glued with &epsilon;-transitions. Each fragment has exactly one start and one accept state.</p>
   <svg class="diagram" viewBox="0 0 900 290" width="900" height="290">
     <defs><marker id="te" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="#6a6a63"/></marker></defs>
-    <g font-family="JetBrains Mono" font-size="10">
+    <g font-family="Azeret Mono" font-size="10">
       <!-- symbol a -->
-      <text x="20" y="30" fill="#bf7d10" font-family="Playfair Display" font-size="12" font-weight="700">symbol  a</text>
+      <text x="20" y="30" fill="#bf7d10" font-family="Schibsted Grotesk" font-size="12" font-weight="700">symbol  a</text>
       <circle cx="40" cy="62" r="13" fill="#eaeae6" stroke="#2b3dc5"/><circle cx="150" cy="62" r="13" fill="#d3e1d5" stroke="#1c815a"/>
       <line x1="53" y1="62" x2="135" y2="62" stroke="#6a6a63" marker-end="url(#te)"/><text x="94" y="55" text-anchor="middle" fill="#bf7d10">a</text>
       <!-- concat r s -->
-      <text x="250" y="30" fill="#bf7d10" font-family="Playfair Display" font-size="12" font-weight="700">concat  r&middot;s</text>
+      <text x="250" y="30" fill="#bf7d10" font-family="Schibsted Grotesk" font-size="12" font-weight="700">concat  r&middot;s</text>
       <rect x="250" y="45" width="70" height="34" rx="5" fill="#f3f3f1" stroke="#6435bc"/><text x="285" y="66" text-anchor="middle" fill="#6435bc">r</text>
       <rect x="370" y="45" width="70" height="34" rx="5" fill="#f3f3f1" stroke="#6435bc"/><text x="405" y="66" text-anchor="middle" fill="#6435bc">s</text>
       <line x1="320" y1="62" x2="368" y2="62" stroke="#6a6a63" marker-end="url(#te)"/><text x="344" y="55" text-anchor="middle" fill="#6a6a63">&epsilon;</text>
       <!-- union r|s -->
-      <text x="560" y="30" fill="#bf7d10" font-family="Playfair Display" font-size="12" font-weight="700">union  r|s</text>
+      <text x="560" y="30" fill="#bf7d10" font-family="Schibsted Grotesk" font-size="12" font-weight="700">union  r|s</text>
       <circle cx="555" cy="62" r="12" fill="#eaeae6" stroke="#2b3dc5"/>
       <rect x="610" y="38" width="70" height="26" rx="5" fill="#f3f3f1" stroke="#6435bc"/><text x="645" y="56" text-anchor="middle" fill="#6435bc">r</text>
       <rect x="610" y="74" width="70" height="26" rx="5" fill="#f3f3f1" stroke="#6435bc"/><text x="645" y="92" text-anchor="middle" fill="#6435bc">s</text>
@@ -506,7 +506,7 @@ ws      = (" " | "\t" | "\n")+</code></pre>
       <line x1="680" y1="50" x2="724" y2="58" stroke="#6a6a63" marker-end="url(#te)"/><line x1="680" y1="86" x2="724" y2="66" stroke="#6a6a63" marker-end="url(#te)"/>
       <text x="555" y="120" text-anchor="middle" fill="#6a6a63" font-size="8">&epsilon; to both branches</text>
       <!-- star r* -->
-      <text x="120" y="170" fill="#bf7d10" font-family="Playfair Display" font-size="12" font-weight="700">Kleene star  r*</text>
+      <text x="120" y="170" fill="#bf7d10" font-family="Schibsted Grotesk" font-size="12" font-weight="700">Kleene star  r*</text>
       <circle cx="120" cy="225" r="12" fill="#eaeae6" stroke="#2b3dc5"/>
       <rect x="190" y="210" width="80" height="30" rx="5" fill="#f3f3f1" stroke="#6435bc"/><text x="230" y="230" text-anchor="middle" fill="#6435bc">r</text>
       <circle cx="340" cy="225" r="12" fill="#d3e1d5" stroke="#1c815a"/>
@@ -531,22 +531,22 @@ ws      = (" " | "\t" | "\n")+</code></pre>
     <defs><marker id="na" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="#6435bc"/></marker></defs>
     <!-- start arrow -->
     <line x1="40" y1="120" x2="78" y2="120" stroke="#1c815a" stroke-width="1.5" marker-end="url(#na)"/>
-    <text x="55" y="110" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="9">start</text>
+    <text x="55" y="110" text-anchor="middle" fill="#1c815a" font-family="Azeret Mono" font-size="9">start</text>
     <!-- states: 0 (loop), 1, 2, 3(accept) -->
-    <circle cx="105" cy="120" r="24" fill="#eaeae6" stroke="#6435bc" stroke-width="1.6"/><text x="105" y="125" text-anchor="middle" fill="#6435bc" font-family="JetBrains Mono" font-size="13">0</text>
-    <circle cx="340" cy="120" r="24" fill="#eaeae6" stroke="#6435bc" stroke-width="1.6"/><text x="340" y="125" text-anchor="middle" fill="#6435bc" font-family="JetBrains Mono" font-size="13">1</text>
-    <circle cx="575" cy="120" r="24" fill="#eaeae6" stroke="#6435bc" stroke-width="1.6"/><text x="575" y="125" text-anchor="middle" fill="#6435bc" font-family="JetBrains Mono" font-size="13">2</text>
-    <circle cx="810" cy="120" r="24" fill="#d3e1d5" stroke="#1c815a" stroke-width="1.8"/><circle cx="810" cy="120" r="18" fill="none" stroke="#1c815a" stroke-width="1"/><text x="810" y="125" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="13">3</text>
+    <circle cx="105" cy="120" r="24" fill="#eaeae6" stroke="#6435bc" stroke-width="1.6"/><text x="105" y="125" text-anchor="middle" fill="#6435bc" font-family="Azeret Mono" font-size="13">0</text>
+    <circle cx="340" cy="120" r="24" fill="#eaeae6" stroke="#6435bc" stroke-width="1.6"/><text x="340" y="125" text-anchor="middle" fill="#6435bc" font-family="Azeret Mono" font-size="13">1</text>
+    <circle cx="575" cy="120" r="24" fill="#eaeae6" stroke="#6435bc" stroke-width="1.6"/><text x="575" y="125" text-anchor="middle" fill="#6435bc" font-family="Azeret Mono" font-size="13">2</text>
+    <circle cx="810" cy="120" r="24" fill="#d3e1d5" stroke="#1c815a" stroke-width="1.8"/><circle cx="810" cy="120" r="18" fill="none" stroke="#1c815a" stroke-width="1"/><text x="810" y="125" text-anchor="middle" fill="#1c815a" font-family="Azeret Mono" font-size="13">3</text>
     <!-- self-loop on 0: a,b -->
     <path d="M88,100 Q70,50 105,68 Q130,82 122,100" fill="none" stroke="#6435bc" stroke-width="1.4" marker-end="url(#na)"/>
-    <text x="95" y="48" text-anchor="middle" fill="#6435bc" font-family="JetBrains Mono" font-size="11">a, b</text>
+    <text x="95" y="48" text-anchor="middle" fill="#6435bc" font-family="Azeret Mono" font-size="11">a, b</text>
     <!-- 0 -> 1 on a -->
-    <line x1="129" y1="120" x2="316" y2="120" stroke="#6435bc" stroke-width="1.4" marker-end="url(#na)"/><text x="222" y="110" text-anchor="middle" fill="#6435bc" font-family="JetBrains Mono" font-size="12">a</text>
+    <line x1="129" y1="120" x2="316" y2="120" stroke="#6435bc" stroke-width="1.4" marker-end="url(#na)"/><text x="222" y="110" text-anchor="middle" fill="#6435bc" font-family="Azeret Mono" font-size="12">a</text>
     <!-- 1 -> 2 on b -->
-    <line x1="364" y1="120" x2="551" y2="120" stroke="#6435bc" stroke-width="1.4" marker-end="url(#na)"/><text x="457" y="110" text-anchor="middle" fill="#6435bc" font-family="JetBrains Mono" font-size="12">b</text>
+    <line x1="364" y1="120" x2="551" y2="120" stroke="#6435bc" stroke-width="1.4" marker-end="url(#na)"/><text x="457" y="110" text-anchor="middle" fill="#6435bc" font-family="Azeret Mono" font-size="12">b</text>
     <!-- 2 -> 3 on b -->
-    <line x1="599" y1="120" x2="786" y2="120" stroke="#6435bc" stroke-width="1.4" marker-end="url(#na)"/><text x="692" y="110" text-anchor="middle" fill="#6435bc" font-family="JetBrains Mono" font-size="12">b</text>
-    <text x="455" y="200" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="9">Non-deterministic: in state 0, on 'a' it may loop (stay 0) OR step to 1 &mdash; it &ldquo;guesses&rdquo; when the final abb begins.</text>
+    <line x1="599" y1="120" x2="786" y2="120" stroke="#6435bc" stroke-width="1.4" marker-end="url(#na)"/><text x="692" y="110" text-anchor="middle" fill="#6435bc" font-family="Azeret Mono" font-size="12">b</text>
+    <text x="455" y="200" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="9">Non-deterministic: in state 0, on 'a' it may loop (stay 0) OR step to 1 &mdash; it &ldquo;guesses&rdquo; when the final abb begins.</text>
   </svg>
   <p style="margin-top:.1em;">State 0 is <span class="p">non-deterministic</span> on input <code>a</code>: both the self-loop and the edge to state 1 are valid. A real run must explore both possibilities &mdash; which is exactly what the subset construction makes deterministic.</p>
 </section>
@@ -565,16 +565,16 @@ ws      = (" " | "\t" | "\n")+</code></pre>
         <defs><marker id="sc" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="#2b3dc5"/></marker></defs>
         <!-- DFA state = subset of NFA states -->
         <rect x="20"  y="90" width="120" height="44" rx="8" fill="#eaeae6" stroke="#2b3dc5" stroke-width="1.5"/>
-        <text x="80" y="108" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="11">A = {0}</text>
-        <text x="80" y="124" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">one DFA state</text>
+        <text x="80" y="108" text-anchor="middle" fill="#2b3dc5" font-family="Azeret Mono" font-size="11">A = {0}</text>
+        <text x="80" y="124" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">one DFA state</text>
         <rect x="230" y="40"  width="140" height="44" rx="8" fill="#eaeae6" stroke="#2b3dc5" stroke-width="1.5"/>
-        <text x="300" y="58" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="11">B = {0,1}</text>
-        <text x="300" y="74" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">subset of NFA states</text>
+        <text x="300" y="58" text-anchor="middle" fill="#2b3dc5" font-family="Azeret Mono" font-size="11">B = {0,1}</text>
+        <text x="300" y="74" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">subset of NFA states</text>
         <rect x="230" y="140" width="140" height="44" rx="8" fill="#eaeae6" stroke="#2b3dc5" stroke-width="1.5"/>
-        <text x="300" y="158" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="11">C = {0,2}</text>
-        <text x="300" y="174" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">distinct subset = new state</text>
-        <line x1="140" y1="105" x2="226" y2="68"  stroke="#2b3dc5" stroke-width="1.4" marker-end="url(#sc)"/><text x="178" y="80" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="10">a</text>
-        <line x1="140" y1="120" x2="226" y2="158" stroke="#2b3dc5" stroke-width="1.4" marker-end="url(#sc)"/><text x="178" y="152" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="10">b</text>
+        <text x="300" y="158" text-anchor="middle" fill="#2b3dc5" font-family="Azeret Mono" font-size="11">C = {0,2}</text>
+        <text x="300" y="174" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">distinct subset = new state</text>
+        <line x1="140" y1="105" x2="226" y2="68"  stroke="#2b3dc5" stroke-width="1.4" marker-end="url(#sc)"/><text x="178" y="80" text-anchor="middle" fill="#2b3dc5" font-family="Azeret Mono" font-size="10">a</text>
+        <line x1="140" y1="120" x2="226" y2="158" stroke="#2b3dc5" stroke-width="1.4" marker-end="url(#sc)"/><text x="178" y="152" text-anchor="middle" fill="#2b3dc5" font-family="Azeret Mono" font-size="10">b</text>
       </svg>
     </div>
     <div>
@@ -626,28 +626,28 @@ ws      = (" " | "\t" | "\n")+</code></pre>
       <svg class="diagram" viewBox="0 0 460 280" width="460" height="280">
         <defs><marker id="dd" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="#2b3dc5"/></marker></defs>
         <line x1="30" y1="50" x2="62" y2="50" stroke="#1c815a" stroke-width="1.4" marker-end="url(#dd)"/>
-        <circle cx="90"  cy="50"  r="22" fill="#eaeae6" stroke="#2b3dc5" stroke-width="1.6"/><text x="90"  y="55"  text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="13">A</text>
-        <circle cx="300" cy="50"  r="22" fill="#eaeae6" stroke="#2b3dc5" stroke-width="1.6"/><text x="300" y="55"  text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="13">B</text>
-        <circle cx="300" cy="170" r="22" fill="#eaeae6" stroke="#2b3dc5" stroke-width="1.6"/><text x="300" y="175" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="13">C</text>
-        <circle cx="90"  cy="170" r="22" fill="#d3e1d5" stroke="#1c815a" stroke-width="1.8"/><circle cx="90" cy="170" r="16" fill="none" stroke="#1c815a" stroke-width="1"/><text x="90" y="175" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="13">D</text>
+        <circle cx="90"  cy="50"  r="22" fill="#eaeae6" stroke="#2b3dc5" stroke-width="1.6"/><text x="90"  y="55"  text-anchor="middle" fill="#2b3dc5" font-family="Azeret Mono" font-size="13">A</text>
+        <circle cx="300" cy="50"  r="22" fill="#eaeae6" stroke="#2b3dc5" stroke-width="1.6"/><text x="300" y="55"  text-anchor="middle" fill="#2b3dc5" font-family="Azeret Mono" font-size="13">B</text>
+        <circle cx="300" cy="170" r="22" fill="#eaeae6" stroke="#2b3dc5" stroke-width="1.6"/><text x="300" y="175" text-anchor="middle" fill="#2b3dc5" font-family="Azeret Mono" font-size="13">C</text>
+        <circle cx="90"  cy="170" r="22" fill="#d3e1d5" stroke="#1c815a" stroke-width="1.8"/><circle cx="90" cy="170" r="16" fill="none" stroke="#1c815a" stroke-width="1"/><text x="90" y="175" text-anchor="middle" fill="#1c815a" font-family="Azeret Mono" font-size="13">D</text>
         <!-- A->B a -->
-        <line x1="112" y1="50" x2="278" y2="50" stroke="#2b3dc5" stroke-width="1.3" marker-end="url(#dd)"/><text x="195" y="42" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="11">a</text>
+        <line x1="112" y1="50" x2="278" y2="50" stroke="#2b3dc5" stroke-width="1.3" marker-end="url(#dd)"/><text x="195" y="42" text-anchor="middle" fill="#2b3dc5" font-family="Azeret Mono" font-size="11">a</text>
         <!-- A self b -->
-        <path d="M74,32 Q60,-2 96,28" fill="none" stroke="#2b3dc5" stroke-width="1.3" marker-end="url(#dd)"/><text x="62" y="6" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="11">b</text>
+        <path d="M74,32 Q60,-2 96,28" fill="none" stroke="#2b3dc5" stroke-width="1.3" marker-end="url(#dd)"/><text x="62" y="6" text-anchor="middle" fill="#2b3dc5" font-family="Azeret Mono" font-size="11">b</text>
         <!-- B self a -->
-        <path d="M318,32 Q332,-2 322,30" fill="none" stroke="#2b3dc5" stroke-width="1.3" marker-end="url(#dd)"/><text x="345" y="10" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="11">a</text>
+        <path d="M318,32 Q332,-2 322,30" fill="none" stroke="#2b3dc5" stroke-width="1.3" marker-end="url(#dd)"/><text x="345" y="10" text-anchor="middle" fill="#2b3dc5" font-family="Azeret Mono" font-size="11">a</text>
         <!-- B->C b -->
-        <line x1="300" y1="72" x2="300" y2="148" stroke="#2b3dc5" stroke-width="1.3" marker-end="url(#dd)"/><text x="312" y="115" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="11">b</text>
+        <line x1="300" y1="72" x2="300" y2="148" stroke="#2b3dc5" stroke-width="1.3" marker-end="url(#dd)"/><text x="312" y="115" text-anchor="middle" fill="#2b3dc5" font-family="Azeret Mono" font-size="11">b</text>
         <!-- C->B a -->
-        <path d="M282,150 Q250,110 282,72" fill="none" stroke="#2b3dc5" stroke-width="1.3" marker-end="url(#dd)"/><text x="248" y="112" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="11">a</text>
+        <path d="M282,150 Q250,110 282,72" fill="none" stroke="#2b3dc5" stroke-width="1.3" marker-end="url(#dd)"/><text x="248" y="112" text-anchor="middle" fill="#2b3dc5" font-family="Azeret Mono" font-size="11">a</text>
         <!-- C->D b -->
-        <line x1="278" y1="170" x2="112" y2="170" stroke="#2b3dc5" stroke-width="1.3" marker-end="url(#dd)"/><text x="195" y="162" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="11">b</text>
+        <line x1="278" y1="170" x2="112" y2="170" stroke="#2b3dc5" stroke-width="1.3" marker-end="url(#dd)"/><text x="195" y="162" text-anchor="middle" fill="#2b3dc5" font-family="Azeret Mono" font-size="11">b</text>
         <!-- D->B a (curve) -->
-        <path d="M108,154 Q210,90 290,68" fill="none" stroke="#2b3dc5" stroke-width="1.1" stroke-dasharray="3" marker-end="url(#dd)"/><text x="180" y="100" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="10">a</text>
+        <path d="M108,154 Q210,90 290,68" fill="none" stroke="#2b3dc5" stroke-width="1.1" stroke-dasharray="3" marker-end="url(#dd)"/><text x="180" y="100" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="10">a</text>
         <!-- D->A b -->
-        <line x1="90" y1="148" x2="90" y2="72" stroke="#2b3dc5" stroke-width="1.3" marker-end="url(#dd)"/><text x="78" y="115" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="11">b</text>
-        <text x="230" y="245" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="9">Deterministic: one outgoing edge per symbol</text>
-        <text x="230" y="262" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="9">D is the only accepting state</text>
+        <line x1="90" y1="148" x2="90" y2="72" stroke="#2b3dc5" stroke-width="1.3" marker-end="url(#dd)"/><text x="78" y="115" text-anchor="middle" fill="#2b3dc5" font-family="Azeret Mono" font-size="11">b</text>
+        <text x="230" y="245" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="9">Deterministic: one outgoing edge per symbol</text>
+        <text x="230" y="262" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="9">D is the only accepting state</text>
       </svg>
     </div>
   </div>
@@ -684,11 +684,11 @@ ws      = (" " | "\t" | "\n")+</code></pre>
       </div>
       <svg class="diagram" viewBox="0 0 420 160" width="420" height="160" style="margin-top:.3em;">
         <defs><marker id="mn" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#6435bc"/></marker></defs>
-        <circle cx="60"  cy="50" r="18" fill="#eaeae6" stroke="#db3a30"/><text x="60"  y="55" text-anchor="middle" fill="#db3a30" font-family="JetBrains Mono" font-size="10">d1</text>
-        <circle cx="60"  cy="110" r="18" fill="#eaeae6" stroke="#db3a30"/><text x="60" y="115" text-anchor="middle" fill="#db3a30" font-family="JetBrains Mono" font-size="10">d2</text>
-        <text x="150" y="84" text-anchor="middle" fill="#6435bc" font-family="JetBrains Mono" font-size="20">&rArr;</text>
-        <circle cx="280" cy="80" r="20" fill="#e6e6e2" stroke="#6435bc" stroke-width="1.6"/><text x="280" y="85" text-anchor="middle" fill="#6435bc" font-family="JetBrains Mono" font-size="11">d</text>
-        <text x="280" y="135" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="9">merged: same behaviour</text>
+        <circle cx="60"  cy="50" r="18" fill="#eaeae6" stroke="#db3a30"/><text x="60"  y="55" text-anchor="middle" fill="#db3a30" font-family="Azeret Mono" font-size="10">d1</text>
+        <circle cx="60"  cy="110" r="18" fill="#eaeae6" stroke="#db3a30"/><text x="60" y="115" text-anchor="middle" fill="#db3a30" font-family="Azeret Mono" font-size="10">d2</text>
+        <text x="150" y="84" text-anchor="middle" fill="#6435bc" font-family="Azeret Mono" font-size="20">&rArr;</text>
+        <circle cx="280" cy="80" r="20" fill="#e6e6e2" stroke="#6435bc" stroke-width="1.6"/><text x="280" y="85" text-anchor="middle" fill="#6435bc" font-family="Azeret Mono" font-size="11">d</text>
+        <text x="280" y="135" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="9">merged: same behaviour</text>
       </svg>
       <p style="margin-top:.15em;">Smaller DFA &rarr; smaller transition table &rarr; better cache behaviour. <code>flex</code> minimises by default.</p>
     </div>
@@ -705,7 +705,7 @@ ws      = (" " | "\t" | "\n")+</code></pre>
   <p>Putting the theory together: a token specification is a list of regexes, and a fully mechanical pipeline turns it into a fast scanner. This is exactly what <code>lex</code> and <code>flex</code> do at build time.</p>
   <svg class="diagram" viewBox="0 0 900 130" width="900" height="130">
     <defs><marker id="pp" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="#bf7d10"/></marker></defs>
-    <g font-family="JetBrains Mono">
+    <g font-family="Azeret Mono">
       <rect x="10"  y="45" width="140" height="50" rx="6" fill="#eaeae6" stroke="#bf7d10" stroke-width="1.4"/><text x="80"  y="68" text-anchor="middle" fill="#bf7d10" font-size="11">Regex specs</text><text x="80" y="84" text-anchor="middle" fill="#6a6a63" font-size="8">per token class</text>
       <line x1="152" y1="70" x2="188" y2="70" stroke="#bf7d10" stroke-width="1.5" marker-end="url(#pp)"/>
       <rect x="190" y="45" width="140" height="50" rx="6" fill="#eaeae6" stroke="#6435bc" stroke-width="1.4"/><text x="260" y="68" text-anchor="middle" fill="#6435bc" font-size="11">NFA</text><text x="260" y="84" text-anchor="middle" fill="#6a6a63" font-size="8">Thompson</text>
@@ -1002,7 +1002,7 @@ quoted"""                  // multiline</code></pre>
     </div>
   </div>
   <svg class="diagram" viewBox="0 0 900 120" width="900" height="120">
-    <g font-family="JetBrains Mono" font-size="11">
+    <g font-family="Azeret Mono" font-size="11">
       <!-- buffer halves -->
       <rect x="20" y="40" width="400" height="40" fill="#eaeae6" stroke="#2b3dc5" stroke-width="1.4"/>
       <rect x="420" y="40" width="400" height="40" fill="#eaeae6" stroke="#6435bc" stroke-width="1.4"/>

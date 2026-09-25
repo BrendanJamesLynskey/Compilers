@@ -6,7 +6,7 @@
 <title>Compilers — Part 01: A History of Compilers</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,600;0,700;1,400;1,700&family=Azeret+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/theme/white.min.css">
 <style>
@@ -27,14 +27,14 @@
   .reveal-viewport { background: var(--bg); }
   .reveal .slides section { background: transparent; }
 
-  .reveal { font-family: 'DM Sans', sans-serif; color: var(--text); }
-  .reveal h1, .reveal h2, .reveal h3 { font-family: 'Playfair Display', serif; font-weight: 700; }
+  .reveal { font-family: 'Schibsted Grotesk', sans-serif; color: var(--text); }
+  .reveal h1, .reveal h2, .reveal h3 { font-family: 'Schibsted Grotesk', serif; font-weight: 700; }
   .reveal h1 { font-size: 1.6em; color: var(--amber); line-height: 1.1; }
   .reveal h2 { font-size: 1.1em; color: var(--amber); margin-bottom: .2em; }
   .reveal h3 { font-size: .78em; color: var(--green); margin-bottom: .15em; }
   .reveal p  { font-size: .56em; line-height: 1.45; color: var(--text); }
   .reveal li { font-size: .54em; line-height: 1.45; margin-bottom: .1em; }
-  .reveal code { font-family: 'JetBrains Mono', monospace; font-size: .72em; }
+  .reveal code { font-family: 'Azeret Mono', monospace; font-size: .72em; }
   .reveal pre  { box-shadow: none; background: var(--bg3); border: 1px solid var(--border);
                  border-radius: 6px; padding: .3em .5em; margin: .25em 0; }
   .reveal pre code { font-size: .52em; line-height: 1.35; background: transparent; color: #242422; }
@@ -46,7 +46,7 @@
     padding-bottom: .2em; margin-bottom: .3em;
   }
   .slide-hdr .tag {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Azeret Mono', monospace;
     font-size: .42em; font-weight: 500;
     color: var(--bg); background: var(--amber);
     padding: .1em .4em; border-radius: 3px;
@@ -89,14 +89,14 @@
   .p  { color: var(--purple); font-weight: 600; }
   .b  { color: var(--blue); font-weight: 600; }
   .r  { color: var(--red); font-weight: 600; }
-  .mono { font-family: 'JetBrains Mono', monospace; }
+  .mono { font-family: 'Azeret Mono', monospace; }
 
   /* ── SVG graph diagrams ── */
   svg.diagram { display: block; margin: 0 auto; overflow: visible; }
 
   /* ── pill badges ── */
   .pill {
-    display: inline-block; font-family: 'JetBrains Mono', monospace;
+    display: inline-block; font-family: 'Azeret Mono', monospace;
     font-size: .44em; padding: .08em .4em; border-radius: 99px;
     border: 1px solid; margin: 0 .08em;
   }
@@ -110,15 +110,15 @@
   /* title slide special */
   .title-slide h1 { font-size: 1.8em; }
   .title-slide .subtitle {
-    font-size: .7em; color: var(--green); font-family: 'DM Sans', sans-serif;
+    font-size: .7em; color: var(--green); font-family: 'Schibsted Grotesk', sans-serif;
     font-weight: 300; letter-spacing: .04em; margin: .3em 0 .6em;
   }
-  .title-slide .meta { font-size: .48em; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+  .title-slide .meta { font-size: .48em; color: var(--muted); font-family: 'Azeret Mono', monospace; }
 
   /* ── super-step animator ── */
   .ss-row {
     display: flex; gap: .25em; align-items: center;
-    margin: .1em 0; font-size: .55em; font-family: 'JetBrains Mono', monospace;
+    margin: .1em 0; font-size: .55em; font-family: 'Azeret Mono', monospace;
   }
   .ss-node {
     padding: .2em .55em; border-radius: 5px; font-size: .9em;
@@ -143,7 +143,7 @@
 <!-- ═══════════════════════════════ SLIDE 01 — TITLE ═══════════════════════════════ -->
 <section class="title-slide" data-background-color="#fafaf8">
   <div style="text-align:left; max-width:820px; margin:0 auto; padding: 1em 0;">
-    <div style="font-family:'JetBrains Mono',monospace; font-size:.5em; color:var(--muted); margin-bottom:.4em; letter-spacing:.1em;">
+    <div style="font-family:'Azeret Mono',monospace; font-size:.5em; color:var(--muted); margin-bottom:.4em; letter-spacing:.1em;">
       COMPILERS SERIES &middot; PART 01 OF 10
     </div>
     <h1>A History of<br>Compilers</h1>
@@ -237,7 +237,7 @@
     <!-- baseline -->
     <line x1="30" y1="150" x2="950" y2="150" stroke="#d1d1cb" stroke-width="2"/>
     <!-- decade ticks -->
-    <g font-family="JetBrains Mono" font-size="10" fill="#6a6a63" text-anchor="middle">
+    <g font-family="Azeret Mono" font-size="10" fill="#6a6a63" text-anchor="middle">
       <line x1="40"  y1="145" x2="40"  y2="155" stroke="#6a6a63"/><text x="40"  y="172">1950</text>
       <line x1="170" y1="145" x2="170" y2="155" stroke="#6a6a63"/><text x="170" y="172">1960</text>
       <line x1="300" y1="145" x2="300" y2="155" stroke="#6a6a63"/><text x="300" y="172">1970</text>
@@ -248,7 +248,7 @@
       <line x1="940" y1="145" x2="940" y2="155" stroke="#6a6a63"/><text x="940" y="172">2020</text>
     </g>
     <!-- milestones above (amber) -->
-    <g font-family="JetBrains Mono" font-size="8.5" text-anchor="middle">
+    <g font-family="Azeret Mono" font-size="8.5" text-anchor="middle">
       <circle cx="66"  cy="150" r="4" fill="#bf7d10"/><line x1="66"  y1="146" x2="66"  y2="118" stroke="#bf7d10" stroke-width="1"/><text x="66"  y="110" fill="#bf7d10">A-0 '52</text>
       <circle cx="105" cy="150" r="4" fill="#bf7d10"/><line x1="105" y1="146" x2="105" y2="92"  stroke="#bf7d10" stroke-width="1"/><text x="105" y="84"  fill="#bf7d10">FORTRAN '57</text>
       <circle cx="157" cy="150" r="4" fill="#1c815a"/><line x1="157" y1="146" x2="157" y2="64"  stroke="#1c815a" stroke-width="1"/><text x="157" y="56"  fill="#1c815a">ALGOL 60</text>
@@ -259,7 +259,7 @@
       <circle cx="520" cy="150" r="4" fill="#6435bc"/><line x1="520" y1="146" x2="520" y2="64"  stroke="#6435bc" stroke-width="1"/><text x="520" y="56"  fill="#6435bc">GCC '87</text>
     </g>
     <!-- milestones below (blue) -->
-    <g font-family="JetBrains Mono" font-size="8.5" text-anchor="middle">
+    <g font-family="Azeret Mono" font-size="8.5" text-anchor="middle">
       <circle cx="573" cy="150" r="4" fill="#2b3dc5"/><line x1="573" y1="154" x2="573" y2="200" stroke="#2b3dc5" stroke-width="1"/><text x="573" y="212" fill="#2b3dc5">SSA '91</text>
       <circle cx="677" cy="150" r="4" fill="#2b3dc5"/><line x1="677" y1="154" x2="677" y2="200" stroke="#2b3dc5" stroke-width="1"/><text x="677" y="212" fill="#2b3dc5">HotSpot '99</text>
       <circle cx="729" cy="150" r="4" fill="#bf7d10"/><line x1="729" y1="154" x2="729" y2="224" stroke="#bf7d10" stroke-width="1"/><text x="729" y="236" fill="#bf7d10">LLVM '03</text>
@@ -325,22 +325,22 @@
     <div>
       <svg class="diagram" viewBox="0 0 560 200" width="560" height="200">
         <rect x="10" y="20" width="150" height="50" rx="5" fill="#eaeae6" stroke="#bf7d10" stroke-width="1.3"/>
-        <text x="85" y="42" text-anchor="middle" fill="#bf7d10" font-family="JetBrains Mono" font-size="10">call-number list</text>
-        <text x="85" y="58" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">+ arguments</text>
+        <text x="85" y="42" text-anchor="middle" fill="#bf7d10" font-family="Azeret Mono" font-size="10">call-number list</text>
+        <text x="85" y="58" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">+ arguments</text>
         <line x1="160" y1="45" x2="205" y2="45" stroke="#bf7d10" stroke-width="1.3" marker-end="url(#arA)"/>
         <rect x="208" y="20" width="150" height="50" rx="5" fill="#d3e1d5" stroke="#1c815a" stroke-width="1.3"/>
-        <text x="283" y="42" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="10">A-0 compiler</text>
-        <text x="283" y="58" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">linker / relocator</text>
+        <text x="283" y="42" text-anchor="middle" fill="#1c815a" font-family="Azeret Mono" font-size="10">A-0 compiler</text>
+        <text x="283" y="58" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">linker / relocator</text>
         <!-- tape library -->
         <rect x="208" y="120" width="150" height="55" rx="5" fill="#eaeae6" stroke="#6435bc" stroke-width="1.3"/>
-        <text x="283" y="143" text-anchor="middle" fill="#6435bc" font-family="JetBrains Mono" font-size="10">subroutine tape</text>
-        <text x="283" y="159" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">library of routines</text>
+        <text x="283" y="143" text-anchor="middle" fill="#6435bc" font-family="Azeret Mono" font-size="10">subroutine tape</text>
+        <text x="283" y="159" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">library of routines</text>
         <line x1="283" y1="120" x2="283" y2="72" stroke="#6435bc" stroke-width="1.3" marker-end="url(#arP)"/>
-        <text x="300" y="100" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">pulls &amp; relocates</text>
+        <text x="300" y="100" fill="#6a6a63" font-family="Azeret Mono" font-size="8">pulls &amp; relocates</text>
         <line x1="358" y1="45" x2="405" y2="45" stroke="#2b3dc5" stroke-width="1.3" marker-end="url(#arB)"/>
         <rect x="408" y="20" width="140" height="50" rx="5" fill="#eaeae6" stroke="#2b3dc5" stroke-width="1.3"/>
-        <text x="478" y="42" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="10">runnable</text>
-        <text x="478" y="58" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">UNIVAC program</text>
+        <text x="478" y="42" text-anchor="middle" fill="#2b3dc5" font-family="Azeret Mono" font-size="10">runnable</text>
+        <text x="478" y="58" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">UNIVAC program</text>
         <defs>
           <marker id="arA" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#bf7d10"/></marker>
           <marker id="arB" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#2b3dc5"/></marker>
@@ -471,13 +471,13 @@
       </div>
       <svg class="diagram" viewBox="0 0 460 140" width="460" height="140" style="margin-top:.4em;">
         <rect x="10"  y="10" width="440" height="120" rx="6" fill="none" stroke="#db3a30" stroke-width="1.2"/>
-        <text x="30" y="26" fill="#db3a30" font-family="JetBrains Mono" font-size="9">Type-0 recursively enumerable</text>
+        <text x="30" y="26" fill="#db3a30" font-family="Azeret Mono" font-size="9">Type-0 recursively enumerable</text>
         <rect x="40"  y="34" width="380" height="88" rx="6" fill="none" stroke="#6435bc" stroke-width="1.2"/>
-        <text x="60" y="50" fill="#6435bc" font-family="JetBrains Mono" font-size="9">Type-1 context-sensitive</text>
+        <text x="60" y="50" fill="#6435bc" font-family="Azeret Mono" font-size="9">Type-1 context-sensitive</text>
         <rect x="70"  y="58" width="320" height="56" rx="6" fill="none" stroke="#2b3dc5" stroke-width="1.2"/>
-        <text x="90" y="74" fill="#2b3dc5" font-family="JetBrains Mono" font-size="9">Type-2 context-free (parsing)</text>
+        <text x="90" y="74" fill="#2b3dc5" font-family="Azeret Mono" font-size="9">Type-2 context-free (parsing)</text>
         <rect x="100" y="82" width="260" height="24" rx="6" fill="#d3e1d5" stroke="#1c815a" stroke-width="1.2"/>
-        <text x="230" y="98" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="9">Type-3 regular (lexing)</text>
+        <text x="230" y="98" text-anchor="middle" fill="#1c815a" font-family="Azeret Mono" font-size="9">Type-3 regular (lexing)</text>
       </svg>
     </div>
     <div>
@@ -567,29 +567,29 @@ end</code></pre>
     </div>
     <div>
       <svg class="diagram" viewBox="0 0 420 280" width="420" height="280">
-        <text x="210" y="16" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="9">parse tree for  a + b * c</text>
+        <text x="210" y="16" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="9">parse tree for  a + b * c</text>
         <!-- E -->
-        <circle cx="210" cy="45" r="15" fill="#eaeae6" stroke="#bf7d10" stroke-width="1.3"/><text x="210" y="49" text-anchor="middle" fill="#bf7d10" font-family="JetBrains Mono" font-size="10">E</text>
+        <circle cx="210" cy="45" r="15" fill="#eaeae6" stroke="#bf7d10" stroke-width="1.3"/><text x="210" y="49" text-anchor="middle" fill="#bf7d10" font-family="Azeret Mono" font-size="10">E</text>
         <line x1="198" y1="55" x2="120" y2="95" stroke="#d1d1cb"/><line x1="210" y1="60" x2="210" y2="95" stroke="#d1d1cb"/><line x1="222" y1="55" x2="300" y2="95" stroke="#d1d1cb"/>
         <!-- E + T -->
-        <circle cx="115" cy="110" r="15" fill="#eaeae6" stroke="#bf7d10" stroke-width="1.3"/><text x="115" y="114" text-anchor="middle" fill="#bf7d10" font-family="JetBrains Mono" font-size="10">E</text>
-        <text x="210" y="114" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="12">+</text>
-        <circle cx="305" cy="110" r="15" fill="#eaeae6" stroke="#1c815a" stroke-width="1.3"/><text x="305" y="114" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="10">T</text>
+        <circle cx="115" cy="110" r="15" fill="#eaeae6" stroke="#bf7d10" stroke-width="1.3"/><text x="115" y="114" text-anchor="middle" fill="#bf7d10" font-family="Azeret Mono" font-size="10">E</text>
+        <text x="210" y="114" text-anchor="middle" fill="#2b3dc5" font-family="Azeret Mono" font-size="12">+</text>
+        <circle cx="305" cy="110" r="15" fill="#eaeae6" stroke="#1c815a" stroke-width="1.3"/><text x="305" y="114" text-anchor="middle" fill="#1c815a" font-family="Azeret Mono" font-size="10">T</text>
         <!-- E -> T -> a -->
         <line x1="115" y1="125" x2="115" y2="160" stroke="#d1d1cb"/>
-        <circle cx="115" cy="175" r="15" fill="#eaeae6" stroke="#1c815a" stroke-width="1.3"/><text x="115" y="179" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="10">T</text>
+        <circle cx="115" cy="175" r="15" fill="#eaeae6" stroke="#1c815a" stroke-width="1.3"/><text x="115" y="179" text-anchor="middle" fill="#1c815a" font-family="Azeret Mono" font-size="10">T</text>
         <line x1="115" y1="190" x2="115" y2="225" stroke="#d1d1cb"/>
-        <circle cx="115" cy="240" r="14" fill="#f3f3f1" stroke="#6435bc" stroke-width="1.3"/><text x="115" y="244" text-anchor="middle" fill="#6435bc" font-family="JetBrains Mono" font-size="10">a</text>
+        <circle cx="115" cy="240" r="14" fill="#f3f3f1" stroke="#6435bc" stroke-width="1.3"/><text x="115" y="244" text-anchor="middle" fill="#6435bc" font-family="Azeret Mono" font-size="10">a</text>
         <!-- T -> T * F -->
         <line x1="293" y1="120" x2="250" y2="160" stroke="#d1d1cb"/><line x1="305" y1="125" x2="305" y2="160" stroke="#d1d1cb"/><line x1="317" y1="120" x2="360" y2="160" stroke="#d1d1cb"/>
-        <circle cx="245" cy="175" r="15" fill="#eaeae6" stroke="#1c815a" stroke-width="1.3"/><text x="245" y="179" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="10">T</text>
-        <text x="305" y="179" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="12">*</text>
-        <circle cx="365" cy="175" r="15" fill="#eaeae6" stroke="#1c815a" stroke-width="1.3"/><text x="365" y="179" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="10">F</text>
+        <circle cx="245" cy="175" r="15" fill="#eaeae6" stroke="#1c815a" stroke-width="1.3"/><text x="245" y="179" text-anchor="middle" fill="#1c815a" font-family="Azeret Mono" font-size="10">T</text>
+        <text x="305" y="179" text-anchor="middle" fill="#2b3dc5" font-family="Azeret Mono" font-size="12">*</text>
+        <circle cx="365" cy="175" r="15" fill="#eaeae6" stroke="#1c815a" stroke-width="1.3"/><text x="365" y="179" text-anchor="middle" fill="#1c815a" font-family="Azeret Mono" font-size="10">F</text>
         <line x1="245" y1="190" x2="245" y2="225" stroke="#d1d1cb"/>
-        <circle cx="245" cy="240" r="14" fill="#f3f3f1" stroke="#6435bc" stroke-width="1.3"/><text x="245" y="244" text-anchor="middle" fill="#6435bc" font-family="JetBrains Mono" font-size="10">b</text>
+        <circle cx="245" cy="240" r="14" fill="#f3f3f1" stroke="#6435bc" stroke-width="1.3"/><text x="245" y="244" text-anchor="middle" fill="#6435bc" font-family="Azeret Mono" font-size="10">b</text>
         <line x1="365" y1="190" x2="365" y2="225" stroke="#d1d1cb"/>
-        <circle cx="365" cy="240" r="14" fill="#f3f3f1" stroke="#6435bc" stroke-width="1.3"/><text x="365" y="244" text-anchor="middle" fill="#6435bc" font-family="JetBrains Mono" font-size="10">c</text>
-        <text x="210" y="272" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">precedence baked into the grammar: * binds tighter than +</text>
+        <circle cx="365" cy="240" r="14" fill="#f3f3f1" stroke="#6435bc" stroke-width="1.3"/><text x="365" y="244" text-anchor="middle" fill="#6435bc" font-family="Azeret Mono" font-size="10">c</text>
+        <text x="210" y="272" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">precedence baked into the grammar: * binds tighter than +</text>
       </svg>
     </div>
   </div>
@@ -624,17 +624,17 @@ end</code></pre>
     </div>
     <div>
       <svg class="diagram" viewBox="0 0 460 230" width="460" height="230">
-        <rect x="20" y="20" width="120" height="42" rx="5" fill="#eaeae6" stroke="#bf7d10" stroke-width="1.2"/><text x="80" y="40" text-anchor="middle" fill="#bf7d10" font-family="JetBrains Mono" font-size="9">tokens.l</text><text x="80" y="54" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="7">regex rules</text>
-        <rect x="20" y="120" width="120" height="42" rx="5" fill="#eaeae6" stroke="#1c815a" stroke-width="1.2"/><text x="80" y="140" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="9">grammar.y</text><text x="80" y="154" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="7">BNF + actions</text>
+        <rect x="20" y="20" width="120" height="42" rx="5" fill="#eaeae6" stroke="#bf7d10" stroke-width="1.2"/><text x="80" y="40" text-anchor="middle" fill="#bf7d10" font-family="Azeret Mono" font-size="9">tokens.l</text><text x="80" y="54" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="7">regex rules</text>
+        <rect x="20" y="120" width="120" height="42" rx="5" fill="#eaeae6" stroke="#1c815a" stroke-width="1.2"/><text x="80" y="140" text-anchor="middle" fill="#1c815a" font-family="Azeret Mono" font-size="9">grammar.y</text><text x="80" y="154" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="7">BNF + actions</text>
         <line x1="140" y1="41" x2="185" y2="41" stroke="#bf7d10" stroke-width="1.2" marker-end="url(#tcA)"/>
         <line x1="140" y1="141" x2="185" y2="141" stroke="#1c815a" stroke-width="1.2" marker-end="url(#tcG)"/>
-        <rect x="188" y="20" width="90" height="42" rx="5" fill="#f3f3f1" stroke="#bf7d10" stroke-width="1.2"/><text x="233" y="45" text-anchor="middle" fill="#bf7d10" font-family="JetBrains Mono" font-size="9">lex</text>
-        <rect x="188" y="120" width="90" height="42" rx="5" fill="#f3f3f1" stroke="#1c815a" stroke-width="1.2"/><text x="233" y="145" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="9">yacc</text>
+        <rect x="188" y="20" width="90" height="42" rx="5" fill="#f3f3f1" stroke="#bf7d10" stroke-width="1.2"/><text x="233" y="45" text-anchor="middle" fill="#bf7d10" font-family="Azeret Mono" font-size="9">lex</text>
+        <rect x="188" y="120" width="90" height="42" rx="5" fill="#f3f3f1" stroke="#1c815a" stroke-width="1.2"/><text x="233" y="145" text-anchor="middle" fill="#1c815a" font-family="Azeret Mono" font-size="9">yacc</text>
         <line x1="278" y1="41" x2="320" y2="60" stroke="#6a6a63" stroke-width="1.2" marker-end="url(#tcM)"/>
         <line x1="278" y1="141" x2="320" y2="110" stroke="#6a6a63" stroke-width="1.2" marker-end="url(#tcM)"/>
-        <rect x="322" y="62" width="120" height="50" rx="5" fill="#e6e6e2" stroke="#6435bc" stroke-width="1.3"/><text x="382" y="84" text-anchor="middle" fill="#6435bc" font-family="JetBrains Mono" font-size="9">C source</text><text x="382" y="100" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="7">lex.yy.c + y.tab.c</text>
+        <rect x="322" y="62" width="120" height="50" rx="5" fill="#e6e6e2" stroke="#6435bc" stroke-width="1.3"/><text x="382" y="84" text-anchor="middle" fill="#6435bc" font-family="Azeret Mono" font-size="9">C source</text><text x="382" y="100" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="7">lex.yy.c + y.tab.c</text>
         <line x1="382" y1="112" x2="382" y2="150" stroke="#6435bc" stroke-width="1.2" marker-end="url(#tcP)"/>
-        <rect x="322" y="152" width="120" height="44" rx="5" fill="#eaeae6" stroke="#2b3dc5" stroke-width="1.3"/><text x="382" y="178" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="9">compiled compiler</text>
+        <rect x="322" y="152" width="120" height="44" rx="5" fill="#eaeae6" stroke="#2b3dc5" stroke-width="1.3"/><text x="382" y="178" text-anchor="middle" fill="#2b3dc5" font-family="Azeret Mono" font-size="9">compiled compiler</text>
         <defs>
           <marker id="tcA" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#bf7d10"/></marker>
           <marker id="tcG" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#1c815a"/></marker>
@@ -678,8 +678,8 @@ end</code></pre>
     </div>
     <div>
       <svg class="diagram" viewBox="0 0 300 320" width="300" height="320">
-        <text x="150" y="16" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="9">the canonical pipeline</text>
-        <g font-family="JetBrains Mono" font-size="9" text-anchor="middle">
+        <text x="150" y="16" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="9">the canonical pipeline</text>
+        <g font-family="Azeret Mono" font-size="9" text-anchor="middle">
           <rect x="70" y="26"  width="160" height="30" rx="5" fill="#eaeae6" stroke="#bf7d10" stroke-width="1.2"/><text x="150" y="45" fill="#bf7d10">Lexical analysis</text>
           <rect x="70" y="68"  width="160" height="30" rx="5" fill="#eaeae6" stroke="#bf7d10" stroke-width="1.2"/><text x="150" y="87" fill="#bf7d10">Syntax analysis</text>
           <rect x="70" y="110" width="160" height="30" rx="5" fill="#eaeae6" stroke="#bf7d10" stroke-width="1.2"/><text x="150" y="129" fill="#bf7d10">Semantic analysis</text>
@@ -696,8 +696,8 @@ end</code></pre>
           <line x1="150" y1="224" x2="150" y2="234" marker-end="url(#dgM)"/>
           <line x1="150" y1="266" x2="150" y2="276" marker-end="url(#dgM)"/>
         </g>
-        <text x="28" y="92"  fill="#bf7d10" font-family="JetBrains Mono" font-size="8" transform="rotate(-90 28 92)">analysis</text>
-        <text x="278" y="245" fill="#6435bc" font-family="JetBrains Mono" font-size="8" transform="rotate(-90 278 245)">synthesis</text>
+        <text x="28" y="92"  fill="#bf7d10" font-family="Azeret Mono" font-size="8" transform="rotate(-90 28 92)">analysis</text>
+        <text x="278" y="245" fill="#6435bc" font-family="Azeret Mono" font-size="8" transform="rotate(-90 278 245)">synthesis</text>
         <defs><marker id="dgM" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#6a6a63"/></marker></defs>
       </svg>
     </div>
@@ -729,13 +729,13 @@ end</code></pre>
         <p>A compiler for language L written <em>in</em> L. You bootstrap by first compiling a subset with another tool, then compiling the full compiler with itself. C, Pascal, Go, Rust and Swift are all self-hosting today.</p>
       </div>
       <svg class="diagram" viewBox="0 0 440 150" width="440" height="150" style="margin-top:.4em;">
-        <rect x="15" y="55" width="115" height="46" rx="5" fill="#eaeae6" stroke="#6a6a63" stroke-width="1.2"/><text x="72" y="76" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8.5">stage 0</text><text x="72" y="92" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="7.5">subset, other lang</text>
+        <rect x="15" y="55" width="115" height="46" rx="5" fill="#eaeae6" stroke="#6a6a63" stroke-width="1.2"/><text x="72" y="76" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8.5">stage 0</text><text x="72" y="92" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="7.5">subset, other lang</text>
         <line x1="130" y1="78" x2="168" y2="78" stroke="#bf7d10" stroke-width="1.2" marker-end="url(#bsA)"/>
-        <rect x="170" y="55" width="115" height="46" rx="5" fill="#d3e1d5" stroke="#1c815a" stroke-width="1.2"/><text x="227" y="76" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="8.5">stage 1</text><text x="227" y="92" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="7.5">compiler in L</text>
+        <rect x="170" y="55" width="115" height="46" rx="5" fill="#d3e1d5" stroke="#1c815a" stroke-width="1.2"/><text x="227" y="76" text-anchor="middle" fill="#1c815a" font-family="Azeret Mono" font-size="8.5">stage 1</text><text x="227" y="92" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="7.5">compiler in L</text>
         <line x1="285" y1="78" x2="323" y2="78" stroke="#1c815a" stroke-width="1.2" marker-end="url(#bsG)"/>
-        <rect x="325" y="55" width="105" height="46" rx="5" fill="#e6e6e2" stroke="#6435bc" stroke-width="1.2"/><text x="377" y="76" text-anchor="middle" fill="#6435bc" font-family="JetBrains Mono" font-size="8.5">stage 2</text><text x="377" y="92" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="7.5">self-compiled</text>
+        <rect x="325" y="55" width="105" height="46" rx="5" fill="#e6e6e2" stroke="#6435bc" stroke-width="1.2"/><text x="377" y="76" text-anchor="middle" fill="#6435bc" font-family="Azeret Mono" font-size="8.5">stage 2</text><text x="377" y="92" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="7.5">self-compiled</text>
         <path d="M377 101 q 0 35 -150 35 q -155 0 -155 -33" fill="none" stroke="#6435bc" stroke-width="1" stroke-dasharray="4" marker-end="url(#bsP)"/>
-        <text x="227" y="146" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="7.5">stage1 ≡ stage2 output ⇒ fixpoint reached</text>
+        <text x="227" y="146" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="7.5">stage1 ≡ stage2 output ⇒ fixpoint reached</text>
         <defs>
           <marker id="bsA" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#bf7d10"/></marker>
           <marker id="bsG" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#1c815a"/></marker>
@@ -756,8 +756,8 @@ end</code></pre>
   <p>The single most important structural idea in compiler engineering, stated visually. A shared intermediate representation collapses a quadratic problem into a linear one &mdash; the insight UNCOL named and LLVM finally delivered.</p>
   <svg class="diagram" viewBox="0 0 900 240" width="900" height="240">
     <!-- LEFT: M×N tangle -->
-    <text x="200" y="18" text-anchor="middle" fill="#db3a30" font-family="Playfair Display" font-size="13" font-weight="700">Without a common IR &mdash; M&times;N</text>
-    <g font-family="JetBrains Mono" font-size="9" text-anchor="middle">
+    <text x="200" y="18" text-anchor="middle" fill="#db3a30" font-family="Schibsted Grotesk" font-size="13" font-weight="700">Without a common IR &mdash; M&times;N</text>
+    <g font-family="Azeret Mono" font-size="9" text-anchor="middle">
       <rect x="20"  y="40"  width="70" height="26" rx="4" fill="#eaeae6" stroke="#bf7d10"/><text x="55"  y="57" fill="#bf7d10">C</text>
       <rect x="20"  y="95"  width="70" height="26" rx="4" fill="#eaeae6" stroke="#bf7d10"/><text x="55"  y="112" fill="#bf7d10">Rust</text>
       <rect x="20"  y="150" width="70" height="26" rx="4" fill="#eaeae6" stroke="#bf7d10"/><text x="55"  y="167" fill="#bf7d10">Swift</text>
@@ -770,10 +770,10 @@ end</code></pre>
       <line x1="90" y1="108" x2="310" y2="53"/><line x1="90" y1="108" x2="310" y2="108"/><line x1="90" y1="108" x2="310" y2="163"/>
       <line x1="90" y1="163" x2="310" y2="53"/><line x1="90" y1="163" x2="310" y2="108"/><line x1="90" y1="163" x2="310" y2="163"/>
     </g>
-    <text x="200" y="210" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="9">3 langs &times; 3 targets = 9 back-ends to write</text>
+    <text x="200" y="210" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="9">3 langs &times; 3 targets = 9 back-ends to write</text>
     <!-- RIGHT: M+N hub -->
-    <text x="700" y="18" text-anchor="middle" fill="#1c815a" font-family="Playfair Display" font-size="13" font-weight="700">With a common IR &mdash; M+N</text>
-    <g font-family="JetBrains Mono" font-size="9" text-anchor="middle">
+    <text x="700" y="18" text-anchor="middle" fill="#1c815a" font-family="Schibsted Grotesk" font-size="13" font-weight="700">With a common IR &mdash; M+N</text>
+    <g font-family="Azeret Mono" font-size="9" text-anchor="middle">
       <rect x="520" y="40"  width="70" height="26" rx="4" fill="#eaeae6" stroke="#bf7d10"/><text x="555" y="57" fill="#bf7d10">C</text>
       <rect x="520" y="95"  width="70" height="26" rx="4" fill="#eaeae6" stroke="#bf7d10"/><text x="555" y="112" fill="#bf7d10">Rust</text>
       <rect x="520" y="150" width="70" height="26" rx="4" fill="#eaeae6" stroke="#bf7d10"/><text x="555" y="167" fill="#bf7d10">Swift</text>
@@ -786,7 +786,7 @@ end</code></pre>
       <line x1="590" y1="53"  x2="660" y2="100"/><line x1="590" y1="108" x2="660" y2="110"/><line x1="590" y1="163" x2="660" y2="120"/>
       <line x1="750" y1="100" x2="820" y2="53"/><line x1="750" y1="110" x2="820" y2="108"/><line x1="750" y1="120" x2="820" y2="163"/>
     </g>
-    <text x="700" y="210" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="9">3 front-ends + 3 back-ends = 6, and the optimiser is shared</text>
+    <text x="700" y="210" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="9">3 front-ends + 3 back-ends = 6, and the optimiser is shared</text>
   </svg>
 </section>
 
@@ -856,18 +856,18 @@ y1 = x3 + 3</code></pre>
     </div>
     <div>
       <svg class="diagram" viewBox="0 0 380 250" width="380" height="250">
-        <rect x="140" y="14" width="100" height="40" rx="5" fill="#eaeae6" stroke="#bf7d10" stroke-width="1.3"/><text x="190" y="32" text-anchor="middle" fill="#bf7d10" font-family="JetBrains Mono" font-size="9">x1 = 1</text><text x="190" y="47" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">if cond</text>
+        <rect x="140" y="14" width="100" height="40" rx="5" fill="#eaeae6" stroke="#bf7d10" stroke-width="1.3"/><text x="190" y="32" text-anchor="middle" fill="#bf7d10" font-family="Azeret Mono" font-size="9">x1 = 1</text><text x="190" y="47" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">if cond</text>
         <line x1="160" y1="54" x2="90" y2="92"  stroke="#6a6a63" marker-end="url(#ssM)"/>
         <line x1="220" y1="54" x2="290" y2="92" stroke="#6a6a63" marker-end="url(#ssM)"/>
-        <text x="115" y="78" fill="#1c815a" font-family="JetBrains Mono" font-size="8">true</text>
-        <text x="255" y="78" fill="#db3a30" font-family="JetBrains Mono" font-size="8">false</text>
-        <rect x="30" y="96" width="110" height="36" rx="5" fill="#d3e1d5" stroke="#1c815a" stroke-width="1.3"/><text x="85" y="118" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="9">x2 = 2</text>
-        <rect x="240" y="96" width="110" height="36" rx="5" fill="#eaeae6" stroke="#6a6a63" stroke-width="1.1"/><text x="295" y="118" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="9">(no def)</text>
+        <text x="115" y="78" fill="#1c815a" font-family="Azeret Mono" font-size="8">true</text>
+        <text x="255" y="78" fill="#db3a30" font-family="Azeret Mono" font-size="8">false</text>
+        <rect x="30" y="96" width="110" height="36" rx="5" fill="#d3e1d5" stroke="#1c815a" stroke-width="1.3"/><text x="85" y="118" text-anchor="middle" fill="#1c815a" font-family="Azeret Mono" font-size="9">x2 = 2</text>
+        <rect x="240" y="96" width="110" height="36" rx="5" fill="#eaeae6" stroke="#6a6a63" stroke-width="1.1"/><text x="295" y="118" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="9">(no def)</text>
         <line x1="85" y1="132" x2="160" y2="178"  stroke="#6a6a63" marker-end="url(#ssM)"/>
         <line x1="295" y1="132" x2="220" y2="178" stroke="#6a6a63" marker-end="url(#ssM)"/>
         <rect x="110" y="182" width="160" height="52" rx="5" fill="#e6e6e2" stroke="#6435bc" stroke-width="1.4"/>
-        <text x="190" y="203" text-anchor="middle" fill="#6435bc" font-family="JetBrains Mono" font-size="9">x3 = &phi;(x1, x2)</text>
-        <text x="190" y="222" text-anchor="middle" fill="#6435bc" font-family="JetBrains Mono" font-size="9">y1 = x3 + 3</text>
+        <text x="190" y="203" text-anchor="middle" fill="#6435bc" font-family="Azeret Mono" font-size="9">x3 = &phi;(x1, x2)</text>
+        <text x="190" y="222" text-anchor="middle" fill="#6435bc" font-family="Azeret Mono" font-size="9">y1 = x3 + 3</text>
         <defs><marker id="ssM" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#6a6a63"/></marker></defs>
       </svg>
       <p style="margin-top:.1em; text-align:center; color:var(--muted);">&phi; sits at the merge block (the dominance frontier of the two defs).</p>
@@ -969,7 +969,7 @@ entry:
   </div>
   <p>How the threads connect. The <span class="g">ALGOL</span> line gives us C and the systems languages; the dynamic line runs through Smalltalk and Self; modern languages converge on shared back-ends (<span class="a">LLVM</span>).</p>
   <svg class="diagram" viewBox="0 0 960 330" width="960" height="330">
-    <g font-family="JetBrains Mono" font-size="9" text-anchor="middle">
+    <g font-family="Azeret Mono" font-size="9" text-anchor="middle">
       <!-- roots -->
       <rect x="30" y="20" width="90" height="28" rx="4" fill="#eaeae6" stroke="#bf7d10"/><text x="75" y="38" fill="#bf7d10">FORTRAN '57</text>
       <rect x="30" y="120" width="90" height="28" rx="4" fill="#eaeae6" stroke="#1c815a"/><text x="75" y="138" fill="#1c815a">ALGOL 60</text>
@@ -1002,7 +1002,7 @@ entry:
       <path d="M510 88 Q620 120 690 165"/><path d="M520 253 Q620 210 690 178"/>
       <path d="M780 170 L860 83"/><path d="M780 172 L860 133"/><path d="M780 178 L860 183"/><path d="M780 185 L860 233"/>
     </g>
-    <text x="500" y="320" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">dashed = optimisation ideas (SSA, FORTRAN-era analysis) flowing into modern back-ends</text>
+    <text x="500" y="320" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">dashed = optimisation ideas (SSA, FORTRAN-era analysis) flowing into modern back-ends</text>
   </svg>
 </section>
 
@@ -1087,10 +1087,10 @@ entry:
   <p>One structural idea has survived intact since FORTRAN: a compiler is a <span class="a">front-end</span> that <em>analyses</em> the source into a meaning-bearing IR, and a <span class="b">back-end</span> that <em>synthesises</em> target code from it. Every later breakthrough &mdash; BNF, the Dragon pipeline, GCC&rsquo;s RTL, LLVM IR, MLIR &mdash; is a refinement of where to draw that line and what the IR should be.</p>
   <svg class="diagram" viewBox="0 0 900 200" width="900" height="200">
     <rect x="20" y="40" width="380" height="120" rx="8" fill="none" stroke="#bf7d10" stroke-width="1.4" stroke-dasharray="5"/>
-    <text x="210" y="32" text-anchor="middle" fill="#bf7d10" font-family="Playfair Display" font-size="13" font-weight="700">Front-end &mdash; Analysis</text>
+    <text x="210" y="32" text-anchor="middle" fill="#bf7d10" font-family="Schibsted Grotesk" font-size="13" font-weight="700">Front-end &mdash; Analysis</text>
     <rect x="500" y="40" width="380" height="120" rx="8" fill="none" stroke="#2b3dc5" stroke-width="1.4" stroke-dasharray="5"/>
-    <text x="690" y="32" text-anchor="middle" fill="#2b3dc5" font-family="Playfair Display" font-size="13" font-weight="700">Back-end &mdash; Synthesis</text>
-    <g font-family="JetBrains Mono" font-size="8.5" text-anchor="middle">
+    <text x="690" y="32" text-anchor="middle" fill="#2b3dc5" font-family="Schibsted Grotesk" font-size="13" font-weight="700">Back-end &mdash; Synthesis</text>
+    <g font-family="Azeret Mono" font-size="8.5" text-anchor="middle">
       <rect x="35"  y="80" width="80" height="36" rx="4" fill="#eaeae6" stroke="#bf7d10"/><text x="75"  y="102" fill="#bf7d10">lex</text>
       <rect x="135" y="80" width="80" height="36" rx="4" fill="#eaeae6" stroke="#bf7d10"/><text x="175" y="102" fill="#bf7d10">parse</text>
       <rect x="235" y="80" width="80" height="36" rx="4" fill="#eaeae6" stroke="#bf7d10"/><text x="275" y="96" fill="#bf7d10">semantic</text><text x="275" y="108" fill="#bf7d10">+ types</text>
@@ -1099,11 +1099,11 @@ entry:
       <rect x="715" y="80" width="80" height="36" rx="4" fill="#eaeae6" stroke="#2b3dc5"/><text x="755" y="96" fill="#2b3dc5">reg</text><text x="755" y="108" fill="#2b3dc5">alloc</text>
     </g>
     <rect x="408" y="78" width="84" height="44" rx="6" fill="#d3e1d5" stroke="#1c815a" stroke-width="1.6"/>
-    <text x="450" y="98" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="10">IR</text>
-    <text x="450" y="113" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="7.5">the contract</text>
+    <text x="450" y="98" text-anchor="middle" fill="#1c815a" font-family="Azeret Mono" font-size="10">IR</text>
+    <text x="450" y="113" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="7.5">the contract</text>
     <line x1="315" y1="100" x2="406" y2="100" stroke="#1c815a" stroke-width="1.3" marker-end="url(#asM)"/>
     <line x1="492" y1="100" x2="513" y2="100" stroke="#1c815a" stroke-width="1.3" marker-end="url(#asM)"/>
-    <text x="450" y="150" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">UNCOL &rarr; P-code &rarr; RTL/GIMPLE &rarr; LLVM IR &rarr; MLIR dialects</text>
+    <text x="450" y="150" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">UNCOL &rarr; P-code &rarr; RTL/GIMPLE &rarr; LLVM IR &rarr; MLIR dialects</text>
     <defs><marker id="asM" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#1c815a"/></marker></defs>
   </svg>
 </section>

@@ -6,7 +6,7 @@
 <title>Compilers — Part 09: Runtimes, JITs & Modern Backends</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,600;0,700;1,400;1,700&family=Azeret+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/theme/white.min.css">
 <style>
@@ -27,14 +27,14 @@
   .reveal-viewport { background: var(--bg); }
   .reveal .slides section { background: transparent; }
 
-  .reveal { font-family: 'DM Sans', sans-serif; color: var(--text); }
-  .reveal h1, .reveal h2, .reveal h3 { font-family: 'Playfair Display', serif; font-weight: 700; }
+  .reveal { font-family: 'Schibsted Grotesk', sans-serif; color: var(--text); }
+  .reveal h1, .reveal h2, .reveal h3 { font-family: 'Schibsted Grotesk', serif; font-weight: 700; }
   .reveal h1 { font-size: 1.6em; color: var(--amber); line-height: 1.1; }
   .reveal h2 { font-size: 1.1em; color: var(--amber); margin-bottom: .2em; }
   .reveal h3 { font-size: .78em; color: var(--green); margin-bottom: .15em; }
   .reveal p  { font-size: .56em; line-height: 1.45; color: var(--text); }
   .reveal li { font-size: .54em; line-height: 1.45; margin-bottom: .1em; }
-  .reveal code { font-family: 'JetBrains Mono', monospace; font-size: .72em; }
+  .reveal code { font-family: 'Azeret Mono', monospace; font-size: .72em; }
   .reveal pre  { box-shadow: none; background: var(--bg3); border: 1px solid var(--border);
                  border-radius: 6px; padding: .3em .5em; margin: .25em 0; }
   .reveal pre code { font-size: .52em; line-height: 1.35; background: transparent; color: #242422; }
@@ -46,7 +46,7 @@
     padding-bottom: .2em; margin-bottom: .3em;
   }
   .slide-hdr .tag {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Azeret Mono', monospace;
     font-size: .42em; font-weight: 500;
     color: var(--bg); background: var(--amber);
     padding: .1em .4em; border-radius: 3px;
@@ -89,14 +89,14 @@
   .p  { color: var(--purple); font-weight: 600; }
   .b  { color: var(--blue); font-weight: 600; }
   .r  { color: var(--red); font-weight: 600; }
-  .mono { font-family: 'JetBrains Mono', monospace; }
+  .mono { font-family: 'Azeret Mono', monospace; }
 
   /* ── SVG graph diagrams ── */
   svg.diagram { display: block; margin: 0 auto; overflow: visible; }
 
   /* ── pill badges ── */
   .pill {
-    display: inline-block; font-family: 'JetBrains Mono', monospace;
+    display: inline-block; font-family: 'Azeret Mono', monospace;
     font-size: .44em; padding: .08em .4em; border-radius: 99px;
     border: 1px solid; margin: 0 .08em;
   }
@@ -110,15 +110,15 @@
   /* title slide special */
   .title-slide h1 { font-size: 1.8em; }
   .title-slide .subtitle {
-    font-size: .7em; color: var(--green); font-family: 'DM Sans', sans-serif;
+    font-size: .7em; color: var(--green); font-family: 'Schibsted Grotesk', sans-serif;
     font-weight: 300; letter-spacing: .04em; margin: .3em 0 .6em;
   }
-  .title-slide .meta { font-size: .48em; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+  .title-slide .meta { font-size: .48em; color: var(--muted); font-family: 'Azeret Mono', monospace; }
 
   /* ── super-step animator ── */
   .ss-row {
     display: flex; gap: .25em; align-items: center;
-    margin: .1em 0; font-size: .55em; font-family: 'JetBrains Mono', monospace;
+    margin: .1em 0; font-size: .55em; font-family: 'Azeret Mono', monospace;
   }
   .ss-node {
     padding: .2em .55em; border-radius: 5px; font-size: .9em;
@@ -143,7 +143,7 @@
 <!-- ═══════════════════════════════ SLIDE 01 — TITLE ═══════════════════════════════ -->
 <section class="title-slide" data-background-color="#fafaf8">
   <div style="text-align:left; max-width:820px; margin:0 auto; padding: 1em 0;">
-    <div style="font-family:'JetBrains Mono',monospace; font-size:.5em; color:var(--muted); margin-bottom:.4em; letter-spacing:.1em;">
+    <div style="font-family:'Azeret Mono',monospace; font-size:.5em; color:var(--muted); margin-bottom:.4em; letter-spacing:.1em;">
       COMPILERS SERIES &middot; PART 09 OF 10
     </div>
     <h1>Runtimes, JITs &amp;<br>Modern Backends</h1>
@@ -251,29 +251,29 @@
   <svg class="diagram" viewBox="0 0 900 175" width="900" height="175">
     <!-- spectrum bar -->
     <line x1="40" y1="40" x2="860" y2="40" stroke="#d1d1cb" stroke-width="2"/>
-    <text x="40" y="28" fill="#6a6a63" font-family="JetBrains Mono" font-size="9">all work before run</text>
-    <text x="860" y="28" text-anchor="end" fill="#6a6a63" font-family="JetBrains Mono" font-size="9">all work during run</text>
+    <text x="40" y="28" fill="#6a6a63" font-family="Azeret Mono" font-size="9">all work before run</text>
+    <text x="860" y="28" text-anchor="end" fill="#6a6a63" font-family="Azeret Mono" font-size="9">all work during run</text>
     <!-- AOT -->
     <rect x="40" y="55" width="190" height="100" rx="6" fill="#eaeae6" stroke="#bf7d10" stroke-width="1.5"/>
-    <text x="135" y="78" text-anchor="middle" fill="#bf7d10" font-family="Playfair Display" font-size="13" font-weight="700">AOT compile</text>
-    <text x="135" y="98" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">C, C++, Rust, Go, Swift</text>
-    <text x="135" y="113" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="8">+ fast start, peak perf</text>
-    <text x="135" y="127" text-anchor="middle" fill="#db3a30" font-family="JetBrains Mono" font-size="8">- no runtime feedback</text>
-    <text x="135" y="141" text-anchor="middle" fill="#db3a30" font-family="JetBrains Mono" font-size="8">- one target per binary</text>
+    <text x="135" y="78" text-anchor="middle" fill="#bf7d10" font-family="Schibsted Grotesk" font-size="13" font-weight="700">AOT compile</text>
+    <text x="135" y="98" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">C, C++, Rust, Go, Swift</text>
+    <text x="135" y="113" text-anchor="middle" fill="#1c815a" font-family="Azeret Mono" font-size="8">+ fast start, peak perf</text>
+    <text x="135" y="127" text-anchor="middle" fill="#db3a30" font-family="Azeret Mono" font-size="8">- no runtime feedback</text>
+    <text x="135" y="141" text-anchor="middle" fill="#db3a30" font-family="Azeret Mono" font-size="8">- one target per binary</text>
     <!-- JIT -->
     <rect x="355" y="55" width="190" height="100" rx="6" fill="#e6e6e2" stroke="#6435bc" stroke-width="1.5"/>
-    <text x="450" y="78" text-anchor="middle" fill="#6435bc" font-family="Playfair Display" font-size="13" font-weight="700">JIT compile</text>
-    <text x="450" y="98" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">JVM, V8, .NET, PyPy</text>
-    <text x="450" y="113" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="8">+ profile-driven, portable</text>
-    <text x="450" y="127" text-anchor="middle" fill="#db3a30" font-family="JetBrains Mono" font-size="8">- warmup, memory cost</text>
-    <text x="450" y="141" text-anchor="middle" fill="#db3a30" font-family="JetBrains Mono" font-size="8">- compiler ships at runtime</text>
+    <text x="450" y="78" text-anchor="middle" fill="#6435bc" font-family="Schibsted Grotesk" font-size="13" font-weight="700">JIT compile</text>
+    <text x="450" y="98" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">JVM, V8, .NET, PyPy</text>
+    <text x="450" y="113" text-anchor="middle" fill="#1c815a" font-family="Azeret Mono" font-size="8">+ profile-driven, portable</text>
+    <text x="450" y="127" text-anchor="middle" fill="#db3a30" font-family="Azeret Mono" font-size="8">- warmup, memory cost</text>
+    <text x="450" y="141" text-anchor="middle" fill="#db3a30" font-family="Azeret Mono" font-size="8">- compiler ships at runtime</text>
     <!-- Interpret -->
     <rect x="670" y="55" width="190" height="100" rx="6" fill="#d3e1d5" stroke="#1c815a" stroke-width="1.5"/>
-    <text x="765" y="78" text-anchor="middle" fill="#1c815a" font-family="Playfair Display" font-size="13" font-weight="700">Interpret</text>
-    <text x="765" y="98" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">CPython, Ruby, shells</text>
-    <text x="765" y="113" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="8">+ instant start, tiny, portable</text>
-    <text x="765" y="127" text-anchor="middle" fill="#db3a30" font-family="JetBrains Mono" font-size="8">- slowest steady-state</text>
-    <text x="765" y="141" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">- dispatch overhead per op</text>
+    <text x="765" y="78" text-anchor="middle" fill="#1c815a" font-family="Schibsted Grotesk" font-size="13" font-weight="700">Interpret</text>
+    <text x="765" y="98" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">CPython, Ruby, shells</text>
+    <text x="765" y="113" text-anchor="middle" fill="#1c815a" font-family="Azeret Mono" font-size="8">+ instant start, tiny, portable</text>
+    <text x="765" y="127" text-anchor="middle" fill="#db3a30" font-family="Azeret Mono" font-size="8">- slowest steady-state</text>
+    <text x="765" y="141" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">- dispatch overhead per op</text>
     <line x1="232" y1="105" x2="352" y2="105" stroke="#d1d1cb" stroke-width="1" stroke-dasharray="3"/>
     <line x1="547" y1="105" x2="667" y2="105" stroke="#d1d1cb" stroke-width="1" stroke-dasharray="3"/>
   </svg>
@@ -389,33 +389,33 @@ for (;;) {
       <marker id="aRed" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#db3a30"/></marker>
     </defs>
     <!-- switch model -->
-    <text x="170" y="22" text-anchor="middle" fill="#db3a30" font-family="Playfair Display" font-size="13" font-weight="700">Switch-based</text>
+    <text x="170" y="22" text-anchor="middle" fill="#db3a30" font-family="Schibsted Grotesk" font-size="13" font-weight="700">Switch-based</text>
     <rect x="60" y="35" width="220" height="40" rx="5" fill="#eaeae6" stroke="#db3a30" stroke-width="1.2"/>
-    <text x="170" y="60" text-anchor="middle" fill="#242422" font-family="JetBrains Mono" font-size="9">single switch jump (1 branch site)</text>
-    <rect x="40" y="95" width="80" height="30" rx="4" fill="#f3f3f1" stroke="#6a6a63"/><text x="80" y="114" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">ADD</text>
-    <rect x="130" y="95" width="80" height="30" rx="4" fill="#f3f3f1" stroke="#6a6a63"/><text x="170" y="114" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">LOAD</text>
-    <rect x="220" y="95" width="80" height="30" rx="4" fill="#f3f3f1" stroke="#6a6a63"/><text x="260" y="114" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">JMP</text>
+    <text x="170" y="60" text-anchor="middle" fill="#242422" font-family="Azeret Mono" font-size="9">single switch jump (1 branch site)</text>
+    <rect x="40" y="95" width="80" height="30" rx="4" fill="#f3f3f1" stroke="#6a6a63"/><text x="80" y="114" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">ADD</text>
+    <rect x="130" y="95" width="80" height="30" rx="4" fill="#f3f3f1" stroke="#6a6a63"/><text x="170" y="114" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">LOAD</text>
+    <rect x="220" y="95" width="80" height="30" rx="4" fill="#f3f3f1" stroke="#6a6a63"/><text x="260" y="114" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">JMP</text>
     <line x1="170" y1="75" x2="80" y2="93" stroke="#db3a30" stroke-width="1" marker-end="url(#aRed)"/>
     <line x1="170" y1="75" x2="170" y2="93" stroke="#db3a30" stroke-width="1" marker-end="url(#aRed)"/>
     <line x1="170" y1="75" x2="260" y2="93" stroke="#db3a30" stroke-width="1" marker-end="url(#aRed)"/>
     <line x1="80" y1="125" x2="160" y2="145" stroke="#db3a30" stroke-width="1" stroke-dasharray="3"/>
     <line x1="170" y1="125" x2="170" y2="145" stroke="#db3a30" stroke-width="1" stroke-dasharray="3"/>
     <rect x="60" y="145" width="220" height="30" rx="4" fill="#eaeae6" stroke="#db3a30" stroke-width="1"/>
-    <text x="170" y="164" text-anchor="middle" fill="#db3a30" font-family="JetBrains Mono" font-size="8">all handlers loop back to one site</text>
-    <text x="170" y="200" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">predictor cannot learn — mispredicts</text>
+    <text x="170" y="164" text-anchor="middle" fill="#db3a30" font-family="Azeret Mono" font-size="8">all handlers loop back to one site</text>
+    <text x="170" y="200" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">predictor cannot learn — mispredicts</text>
     <!-- threaded model -->
-    <text x="640" y="22" text-anchor="middle" fill="#1c815a" font-family="Playfair Display" font-size="13" font-weight="700">Direct-threaded (computed goto)</text>
+    <text x="640" y="22" text-anchor="middle" fill="#1c815a" font-family="Schibsted Grotesk" font-size="13" font-weight="700">Direct-threaded (computed goto)</text>
     <rect x="500" y="40" width="120" height="34" rx="5" fill="#d3e1d5" stroke="#1c815a" stroke-width="1.2"/>
-    <text x="560" y="62" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="9">ADD handler</text>
+    <text x="560" y="62" text-anchor="middle" fill="#1c815a" font-family="Azeret Mono" font-size="9">ADD handler</text>
     <rect x="660" y="40" width="120" height="34" rx="5" fill="#d3e1d5" stroke="#1c815a" stroke-width="1.2"/>
-    <text x="720" y="62" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="9">LOAD handler</text>
+    <text x="720" y="62" text-anchor="middle" fill="#1c815a" font-family="Azeret Mono" font-size="9">LOAD handler</text>
     <rect x="580" y="120" width="120" height="34" rx="5" fill="#d3e1d5" stroke="#1c815a" stroke-width="1.2"/>
-    <text x="640" y="142" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="9">JMP handler</text>
+    <text x="640" y="142" text-anchor="middle" fill="#1c815a" font-family="Azeret Mono" font-size="9">JMP handler</text>
     <line x1="620" y1="57" x2="658" y2="57" stroke="#1c815a" stroke-width="1.2" marker-end="url(#aGreen)"/>
     <line x1="720" y1="74" x2="660" y2="118" stroke="#1c815a" stroke-width="1.2" marker-end="url(#aGreen)"/>
     <line x1="580" y1="138" x2="540" y2="74" stroke="#1c815a" stroke-width="1.2" marker-end="url(#aGreen)"/>
-    <text x="640" y="185" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">each handler jumps straight to the next:</text>
-    <text x="640" y="200" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">many branch sites — predictor learns op-pair correlations</text>
+    <text x="640" y="185" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">each handler jumps straight to the next:</text>
+    <text x="640" y="200" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">many branch sites — predictor learns op-pair correlations</text>
   </svg>
   <table style="margin-top:.2em;">
     <thead><tr><th>Technique</th><th>Mechanism</th><th>Note</th></tr></thead>
@@ -542,40 +542,40 @@ do_ret:   return pop();</code></pre>
     </defs>
     <!-- tiers -->
     <rect x="20" y="60" width="160" height="80" rx="6" fill="#d3e1d5" stroke="#1c815a" stroke-width="1.5"/>
-    <text x="100" y="85" text-anchor="middle" fill="#1c815a" font-family="Playfair Display" font-size="12" font-weight="700">Interpreter</text>
-    <text x="100" y="104" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">Ignition</text>
-    <text x="100" y="118" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">instant start</text>
-    <text x="100" y="132" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">gathers feedback</text>
+    <text x="100" y="85" text-anchor="middle" fill="#1c815a" font-family="Schibsted Grotesk" font-size="12" font-weight="700">Interpreter</text>
+    <text x="100" y="104" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">Ignition</text>
+    <text x="100" y="118" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">instant start</text>
+    <text x="100" y="132" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">gathers feedback</text>
 
     <rect x="230" y="60" width="160" height="80" rx="6" fill="#eaeae6" stroke="#2b3dc5" stroke-width="1.5"/>
-    <text x="310" y="85" text-anchor="middle" fill="#2b3dc5" font-family="Playfair Display" font-size="12" font-weight="700">Baseline JIT</text>
-    <text x="310" y="104" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">Sparkplug</text>
-    <text x="310" y="118" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">template, no opt</text>
-    <text x="310" y="132" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">compiles fast</text>
+    <text x="310" y="85" text-anchor="middle" fill="#2b3dc5" font-family="Schibsted Grotesk" font-size="12" font-weight="700">Baseline JIT</text>
+    <text x="310" y="104" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">Sparkplug</text>
+    <text x="310" y="118" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">template, no opt</text>
+    <text x="310" y="132" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">compiles fast</text>
 
     <rect x="440" y="60" width="160" height="80" rx="6" fill="#e6e6e2" stroke="#6435bc" stroke-width="1.5"/>
-    <text x="520" y="85" text-anchor="middle" fill="#6435bc" font-family="Playfair Display" font-size="12" font-weight="700">Mid-tier JIT</text>
-    <text x="520" y="104" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">Maglev</text>
-    <text x="520" y="118" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">SSA, some specul.</text>
-    <text x="520" y="132" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">balanced</text>
+    <text x="520" y="85" text-anchor="middle" fill="#6435bc" font-family="Schibsted Grotesk" font-size="12" font-weight="700">Mid-tier JIT</text>
+    <text x="520" y="104" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">Maglev</text>
+    <text x="520" y="118" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">SSA, some specul.</text>
+    <text x="520" y="132" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">balanced</text>
 
     <rect x="650" y="60" width="160" height="80" rx="6" fill="#eaeae6" stroke="#bf7d10" stroke-width="1.5"/>
-    <text x="730" y="85" text-anchor="middle" fill="#bf7d10" font-family="Playfair Display" font-size="12" font-weight="700">Optimising JIT</text>
-    <text x="730" y="104" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">TurboFan</text>
-    <text x="730" y="118" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">full specul. opt</text>
-    <text x="730" y="132" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">slow, fastest code</text>
+    <text x="730" y="85" text-anchor="middle" fill="#bf7d10" font-family="Schibsted Grotesk" font-size="12" font-weight="700">Optimising JIT</text>
+    <text x="730" y="104" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">TurboFan</text>
+    <text x="730" y="118" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">full specul. opt</text>
+    <text x="730" y="132" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">slow, fastest code</text>
 
     <!-- promote arrows -->
     <line x1="180" y1="100" x2="226" y2="100" stroke="#bf7d10" stroke-width="1.5" marker-end="url(#tArr)"/>
     <line x1="390" y1="100" x2="436" y2="100" stroke="#bf7d10" stroke-width="1.5" marker-end="url(#tArr)"/>
     <line x1="600" y1="100" x2="646" y2="100" stroke="#bf7d10" stroke-width="1.5" marker-end="url(#tArr)"/>
-    <text x="100" y="48" text-anchor="middle" fill="#bf7d10" font-family="JetBrains Mono" font-size="8">hot? (counters)</text>
-    <text x="415" y="50" text-anchor="middle" fill="#bf7d10" font-family="JetBrains Mono" font-size="8">hotter</text>
-    <text x="623" y="50" text-anchor="middle" fill="#bf7d10" font-family="JetBrains Mono" font-size="8">hottest</text>
+    <text x="100" y="48" text-anchor="middle" fill="#bf7d10" font-family="Azeret Mono" font-size="8">hot? (counters)</text>
+    <text x="415" y="50" text-anchor="middle" fill="#bf7d10" font-family="Azeret Mono" font-size="8">hotter</text>
+    <text x="623" y="50" text-anchor="middle" fill="#bf7d10" font-family="Azeret Mono" font-size="8">hottest</text>
 
     <!-- deopt arrow back -->
     <path d="M730 140 Q 730 210 410 210 Q 100 210 100 142" fill="none" stroke="#db3a30" stroke-width="1.5" stroke-dasharray="5" marker-end="url(#tArrR)"/>
-    <text x="415" y="228" text-anchor="middle" fill="#db3a30" font-family="JetBrains Mono" font-size="9">DEOPTIMISE: speculation failed &rarr; fall back to interpreter, re-profile</text>
+    <text x="415" y="228" text-anchor="middle" fill="#db3a30" font-family="Azeret Mono" font-size="9">DEOPTIMISE: speculation failed &rarr; fall back to interpreter, re-profile</text>
   </svg>
   <p style="margin-top:.2em;">V8's modern shape is <span class="g">Ignition</span> &rarr; <span class="b">Sparkplug</span> &rarr; <span class="p">Maglev</span> &rarr; <span class="a">TurboFan</span>. HotSpot uses interpreter &rarr; <span class="b">C1</span> &rarr; <span class="a">C2</span>; .NET uses the interpreter-free <span class="b">Quick JIT</span> (Tier-0) &rarr; optimising <span class="a">RyuJIT</span> (Tier-1), plus ReadyToRun AOT.</p>
 </section>
@@ -592,30 +592,30 @@ do_ret:   return pop();</code></pre>
     <!-- axes -->
     <line x1="60" y1="210" x2="860" y2="210" stroke="#6a6a63" stroke-width="1.2"/>
     <line x1="60" y1="30" x2="60" y2="210" stroke="#6a6a63" stroke-width="1.2"/>
-    <text x="460" y="240" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="9">time / invocations &rarr;</text>
-    <text x="22" y="120" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="9" transform="rotate(-90 22 120)">throughput &rarr;</text>
+    <text x="460" y="240" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="9">time / invocations &rarr;</text>
+    <text x="22" y="120" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="9" transform="rotate(-90 22 120)">throughput &rarr;</text>
     <!-- interp step -->
     <line x1="60" y1="185" x2="230" y2="185" stroke="#1c815a" stroke-width="2.5"/>
-    <text x="145" y="178" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="8">interpret</text>
+    <text x="145" y="178" text-anchor="middle" fill="#1c815a" font-family="Azeret Mono" font-size="8">interpret</text>
     <!-- baseline step -->
     <line x1="230" y1="185" x2="245" y2="150" stroke="#2b3dc5" stroke-width="2.5"/>
     <line x1="245" y1="150" x2="430" y2="150" stroke="#2b3dc5" stroke-width="2.5"/>
-    <text x="335" y="143" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="8">baseline JIT</text>
+    <text x="335" y="143" text-anchor="middle" fill="#2b3dc5" font-family="Azeret Mono" font-size="8">baseline JIT</text>
     <!-- maglev step -->
     <line x1="430" y1="150" x2="450" y2="105" stroke="#6435bc" stroke-width="2.5"/>
     <line x1="450" y1="105" x2="600" y2="105" stroke="#6435bc" stroke-width="2.5"/>
-    <text x="525" y="98" text-anchor="middle" fill="#6435bc" font-family="JetBrains Mono" font-size="8">mid-tier</text>
+    <text x="525" y="98" text-anchor="middle" fill="#6435bc" font-family="Azeret Mono" font-size="8">mid-tier</text>
     <!-- turbofan step -->
     <line x1="600" y1="105" x2="625" y2="55" stroke="#bf7d10" stroke-width="2.5"/>
     <line x1="625" y1="55" x2="720" y2="55" stroke="#bf7d10" stroke-width="2.5"/>
-    <text x="672" y="48" text-anchor="middle" fill="#bf7d10" font-family="JetBrains Mono" font-size="8">optimising JIT (peak)</text>
+    <text x="672" y="48" text-anchor="middle" fill="#bf7d10" font-family="Azeret Mono" font-size="8">optimising JIT (peak)</text>
     <!-- deopt dip -->
     <line x1="720" y1="55" x2="735" y2="130" stroke="#db3a30" stroke-width="2.5"/>
     <line x1="735" y1="130" x2="770" y2="130" stroke="#db3a30" stroke-width="2.5"/>
     <line x1="770" y1="130" x2="790" y2="60" stroke="#bf7d10" stroke-width="2.5"/>
     <line x1="790" y1="60" x2="850" y2="58" stroke="#bf7d10" stroke-width="2.5"/>
-    <text x="745" y="148" text-anchor="middle" fill="#db3a30" font-family="JetBrains Mono" font-size="8">deopt dip</text>
-    <text x="820" y="50" text-anchor="middle" fill="#bf7d10" font-family="JetBrains Mono" font-size="8">re-opt</text>
+    <text x="745" y="148" text-anchor="middle" fill="#db3a30" font-family="Azeret Mono" font-size="8">deopt dip</text>
+    <text x="820" y="50" text-anchor="middle" fill="#bf7d10" font-family="Azeret Mono" font-size="8">re-opt</text>
   </svg>
   <div class="cols cols-2" style="margin-top:.1em;">
     <div class="card amber">
@@ -641,32 +641,32 @@ do_ret:   return pop();</code></pre>
     <defs><marker id="icA" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#6a6a63"/></marker></defs>
     <!-- mono -->
     <rect x="20" y="40" width="250" height="150" rx="6" fill="#d3e1d5" stroke="#1c815a" stroke-width="1.5"/>
-    <text x="145" y="62" text-anchor="middle" fill="#1c815a" font-family="Playfair Display" font-size="12" font-weight="700">Monomorphic</text>
+    <text x="145" y="62" text-anchor="middle" fill="#1c815a" font-family="Schibsted Grotesk" font-size="12" font-weight="700">Monomorphic</text>
     <rect x="45" y="80" width="200" height="34" rx="4" fill="#f3f3f1" stroke="#1c815a"/>
-    <text x="145" y="96" text-anchor="middle" fill="#242422" font-family="JetBrains Mono" font-size="8">site obj.x — seen shape S1</text>
-    <text x="145" y="108" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="7">if shape==S1 &rarr; load @offset 16</text>
-    <text x="145" y="140" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="9">1 type &rarr; fastest</text>
-    <text x="145" y="160" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">guard + direct field load,</text>
-    <text x="145" y="173" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">fully inlinable</text>
+    <text x="145" y="96" text-anchor="middle" fill="#242422" font-family="Azeret Mono" font-size="8">site obj.x — seen shape S1</text>
+    <text x="145" y="108" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="7">if shape==S1 &rarr; load @offset 16</text>
+    <text x="145" y="140" text-anchor="middle" fill="#1c815a" font-family="Azeret Mono" font-size="9">1 type &rarr; fastest</text>
+    <text x="145" y="160" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">guard + direct field load,</text>
+    <text x="145" y="173" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">fully inlinable</text>
     <!-- poly -->
     <rect x="320" y="40" width="250" height="150" rx="6" fill="#e6e6e2" stroke="#6435bc" stroke-width="1.5"/>
-    <text x="445" y="62" text-anchor="middle" fill="#6435bc" font-family="Playfair Display" font-size="12" font-weight="700">Polymorphic</text>
-    <rect x="345" y="80" width="200" height="22" rx="3" fill="#f3f3f1" stroke="#6435bc"/><text x="445" y="95" text-anchor="middle" fill="#242422" font-family="JetBrains Mono" font-size="7">S1 &rarr; offset 16</text>
-    <rect x="345" y="106" width="200" height="22" rx="3" fill="#f3f3f1" stroke="#6435bc"/><text x="445" y="121" text-anchor="middle" fill="#242422" font-family="JetBrains Mono" font-size="7">S2 &rarr; offset 24</text>
-    <text x="445" y="150" text-anchor="middle" fill="#6435bc" font-family="JetBrains Mono" font-size="9">2&ndash;4 types &rarr; small list</text>
-    <text x="445" y="170" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">linear check, still fast</text>
+    <text x="445" y="62" text-anchor="middle" fill="#6435bc" font-family="Schibsted Grotesk" font-size="12" font-weight="700">Polymorphic</text>
+    <rect x="345" y="80" width="200" height="22" rx="3" fill="#f3f3f1" stroke="#6435bc"/><text x="445" y="95" text-anchor="middle" fill="#242422" font-family="Azeret Mono" font-size="7">S1 &rarr; offset 16</text>
+    <rect x="345" y="106" width="200" height="22" rx="3" fill="#f3f3f1" stroke="#6435bc"/><text x="445" y="121" text-anchor="middle" fill="#242422" font-family="Azeret Mono" font-size="7">S2 &rarr; offset 24</text>
+    <text x="445" y="150" text-anchor="middle" fill="#6435bc" font-family="Azeret Mono" font-size="9">2&ndash;4 types &rarr; small list</text>
+    <text x="445" y="170" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">linear check, still fast</text>
     <!-- mega -->
     <rect x="620" y="40" width="250" height="150" rx="6" fill="#eaeae6" stroke="#db3a30" stroke-width="1.5"/>
-    <text x="745" y="62" text-anchor="middle" fill="#db3a30" font-family="Playfair Display" font-size="12" font-weight="700">Megamorphic</text>
+    <text x="745" y="62" text-anchor="middle" fill="#db3a30" font-family="Schibsted Grotesk" font-size="12" font-weight="700">Megamorphic</text>
     <rect x="645" y="80" width="200" height="34" rx="4" fill="#f3f3f1" stroke="#db3a30"/>
-    <text x="745" y="101" text-anchor="middle" fill="#242422" font-family="JetBrains Mono" font-size="8">many shapes &rarr; give up cache</text>
-    <text x="745" y="140" text-anchor="middle" fill="#db3a30" font-family="JetBrains Mono" font-size="9">&gt;N types &rarr; slow path</text>
-    <text x="745" y="160" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">full runtime lookup,</text>
-    <text x="745" y="173" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">no inlining, deopt source</text>
+    <text x="745" y="101" text-anchor="middle" fill="#242422" font-family="Azeret Mono" font-size="8">many shapes &rarr; give up cache</text>
+    <text x="745" y="140" text-anchor="middle" fill="#db3a30" font-family="Azeret Mono" font-size="9">&gt;N types &rarr; slow path</text>
+    <text x="745" y="160" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">full runtime lookup,</text>
+    <text x="745" y="173" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">no inlining, deopt source</text>
     <line x1="272" y1="115" x2="318" y2="115" stroke="#6a6a63" stroke-width="1" marker-end="url(#icA)"/>
     <line x1="572" y1="115" x2="618" y2="115" stroke="#6a6a63" stroke-width="1" marker-end="url(#icA)"/>
-    <text x="295" y="108" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="7">+type</text>
-    <text x="595" y="108" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="7">+more</text>
+    <text x="295" y="108" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="7">+type</text>
+    <text x="595" y="108" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="7">+more</text>
   </svg>
   <p style="margin-top:.1em;">An IC <em>degrades</em> as it sees more types: <span class="g">monomorphic</span> (1) &rarr; <span class="p">polymorphic</span> (2&ndash;4) &rarr; <span class="r">megamorphic</span> (many). The optimising JIT reads these states as <em>type feedback</em>: a monomorphic site can be inlined to a single guarded field load; a megamorphic one cannot.</p>
 </section>
@@ -857,32 +857,32 @@ function sum(arr) {
     <defs><marker id="gA" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="#bf7d10"/></marker></defs>
     <!-- young gen -->
     <rect x="30" y="45" width="430" height="120" rx="6" fill="none" stroke="#1c815a" stroke-width="1.5" stroke-dasharray="4"/>
-    <text x="245" y="38" text-anchor="middle" fill="#1c815a" font-family="Playfair Display" font-size="12" font-weight="700">Young Generation (collected often, copying)</text>
+    <text x="245" y="38" text-anchor="middle" fill="#1c815a" font-family="Schibsted Grotesk" font-size="12" font-weight="700">Young Generation (collected often, copying)</text>
     <rect x="50" y="70" width="220" height="70" rx="5" fill="#d3e1d5" stroke="#1c815a"/>
-    <text x="160" y="92" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="10">Eden</text>
-    <text x="160" y="110" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">bump-allocate new objects</text>
-    <text x="160" y="124" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">most die here</text>
+    <text x="160" y="92" text-anchor="middle" fill="#1c815a" font-family="Azeret Mono" font-size="10">Eden</text>
+    <text x="160" y="110" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">bump-allocate new objects</text>
+    <text x="160" y="124" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">most die here</text>
     <rect x="285" y="70" width="80" height="70" rx="5" fill="#f3f3f1" stroke="#1c815a"/>
-    <text x="325" y="100" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">Survivor</text>
-    <text x="325" y="112" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">S0</text>
+    <text x="325" y="100" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">Survivor</text>
+    <text x="325" y="112" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">S0</text>
     <rect x="375" y="70" width="80" height="70" rx="5" fill="#f3f3f1" stroke="#1c815a"/>
-    <text x="415" y="100" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">Survivor</text>
-    <text x="415" y="112" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">S1</text>
+    <text x="415" y="100" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">Survivor</text>
+    <text x="415" y="112" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">S1</text>
     <!-- old gen -->
     <rect x="520" y="45" width="350" height="120" rx="6" fill="none" stroke="#2b3dc5" stroke-width="1.5" stroke-dasharray="4"/>
-    <text x="695" y="38" text-anchor="middle" fill="#2b3dc5" font-family="Playfair Display" font-size="12" font-weight="700">Old / Tenured (collected rarely)</text>
+    <text x="695" y="38" text-anchor="middle" fill="#2b3dc5" font-family="Schibsted Grotesk" font-size="12" font-weight="700">Old / Tenured (collected rarely)</text>
     <rect x="540" y="70" width="310" height="70" rx="5" fill="#e6e6e2" stroke="#2b3dc5"/>
-    <text x="695" y="98" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="10">long-lived objects</text>
-    <text x="695" y="116" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">mark-compact or concurrent collection</text>
+    <text x="695" y="98" text-anchor="middle" fill="#2b3dc5" font-family="Azeret Mono" font-size="10">long-lived objects</text>
+    <text x="695" y="116" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">mark-compact or concurrent collection</text>
     <!-- promote arrow -->
     <line x1="458" y1="105" x2="536" y2="105" stroke="#bf7d10" stroke-width="1.5" marker-end="url(#gA)"/>
-    <text x="497" y="98" text-anchor="middle" fill="#bf7d10" font-family="JetBrains Mono" font-size="8">promote</text>
-    <text x="497" y="120" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="7">(survived N GCs)</text>
+    <text x="497" y="98" text-anchor="middle" fill="#bf7d10" font-family="Azeret Mono" font-size="8">promote</text>
+    <text x="497" y="120" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="7">(survived N GCs)</text>
     <!-- remembered set -->
     <rect x="540" y="170" width="310" height="40" rx="5" fill="#eaeae6" stroke="#bf7d10" stroke-width="1"/>
-    <text x="695" y="186" text-anchor="middle" fill="#bf7d10" font-family="JetBrains Mono" font-size="8">remembered set / card table</text>
-    <text x="695" y="200" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="7">old&rarr;young pointers recorded by write barrier</text>
-    <text x="245" y="200" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">minor GC = trace roots + remembered set, copy survivors Eden+Sx &rarr; other Sx</text>
+    <text x="695" y="186" text-anchor="middle" fill="#bf7d10" font-family="Azeret Mono" font-size="8">remembered set / card table</text>
+    <text x="695" y="200" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="7">old&rarr;young pointers recorded by write barrier</text>
+    <text x="245" y="200" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">minor GC = trace roots + remembered set, copy survivors Eden+Sx &rarr; other Sx</text>
   </svg>
 </section>
 
@@ -1179,29 +1179,29 @@ printf_plt:
     <defs><marker id="wA" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="#6435bc"/></marker>
           <marker id="wB" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="#bf7d10"/></marker></defs>
     <!-- sources fan in -->
-    <rect x="20" y="35" width="120" height="26" rx="4" fill="#eaeae6" stroke="#2b3dc5"/><text x="80" y="52" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="9">C / C++ (clang)</text>
-    <rect x="20" y="75" width="120" height="26" rx="4" fill="#eaeae6" stroke="#2b3dc5"/><text x="80" y="92" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="9">Rust</text>
-    <rect x="20" y="115" width="120" height="26" rx="4" fill="#eaeae6" stroke="#2b3dc5"/><text x="80" y="132" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="9">Go / Swift</text>
-    <rect x="20" y="155" width="120" height="26" rx="4" fill="#eaeae6" stroke="#2b3dc5"/><text x="80" y="172" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="9">AssemblyScript</text>
+    <rect x="20" y="35" width="120" height="26" rx="4" fill="#eaeae6" stroke="#2b3dc5"/><text x="80" y="52" text-anchor="middle" fill="#2b3dc5" font-family="Azeret Mono" font-size="9">C / C++ (clang)</text>
+    <rect x="20" y="75" width="120" height="26" rx="4" fill="#eaeae6" stroke="#2b3dc5"/><text x="80" y="92" text-anchor="middle" fill="#2b3dc5" font-family="Azeret Mono" font-size="9">Rust</text>
+    <rect x="20" y="115" width="120" height="26" rx="4" fill="#eaeae6" stroke="#2b3dc5"/><text x="80" y="132" text-anchor="middle" fill="#2b3dc5" font-family="Azeret Mono" font-size="9">Go / Swift</text>
+    <rect x="20" y="155" width="120" height="26" rx="4" fill="#eaeae6" stroke="#2b3dc5"/><text x="80" y="172" text-anchor="middle" fill="#2b3dc5" font-family="Azeret Mono" font-size="9">AssemblyScript</text>
     <!-- wasm hub -->
     <rect x="350" y="80" width="190" height="90" rx="8" fill="#e6e6e2" stroke="#6435bc" stroke-width="2"/>
-    <text x="445" y="118" text-anchor="middle" fill="#6435bc" font-family="Playfair Display" font-size="16" font-weight="700">.wasm</text>
-    <text x="445" y="140" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">portable stack-machine</text>
-    <text x="445" y="153" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="8">module (the waypoint)</text>
+    <text x="445" y="118" text-anchor="middle" fill="#6435bc" font-family="Schibsted Grotesk" font-size="16" font-weight="700">.wasm</text>
+    <text x="445" y="140" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">portable stack-machine</text>
+    <text x="445" y="153" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="8">module (the waypoint)</text>
     <line x1="142" y1="48" x2="348" y2="100" stroke="#6435bc" stroke-width="1.2" marker-end="url(#wA)"/>
     <line x1="142" y1="88" x2="348" y2="112" stroke="#6435bc" stroke-width="1.2" marker-end="url(#wA)"/>
     <line x1="142" y1="128" x2="348" y2="128" stroke="#6435bc" stroke-width="1.2" marker-end="url(#wA)"/>
     <line x1="142" y1="168" x2="348" y2="150" stroke="#6435bc" stroke-width="1.2" marker-end="url(#wA)"/>
     <!-- engines fan out -->
-    <rect x="700" y="30" width="180" height="30" rx="4" fill="#d3e1d5" stroke="#1c815a"/><text x="790" y="50" text-anchor="middle" fill="#1c815a" font-family="JetBrains Mono" font-size="8">V8 Liftoff (baseline)</text>
-    <rect x="700" y="68" width="180" height="30" rx="4" fill="#eaeae6" stroke="#bf7d10"/><text x="790" y="88" text-anchor="middle" fill="#bf7d10" font-family="JetBrains Mono" font-size="8">V8 TurboFan (optimising)</text>
-    <rect x="700" y="106" width="180" height="30" rx="4" fill="#eaeae6" stroke="#bf7d10"/><text x="790" y="126" text-anchor="middle" fill="#bf7d10" font-family="JetBrains Mono" font-size="8">Wasmtime + Cranelift</text>
-    <rect x="700" y="144" width="180" height="30" rx="4" fill="#e6e6e2" stroke="#2b3dc5"/><text x="790" y="164" text-anchor="middle" fill="#2b3dc5" font-family="JetBrains Mono" font-size="8">Wasmer / WAMR / wasm3</text>
+    <rect x="700" y="30" width="180" height="30" rx="4" fill="#d3e1d5" stroke="#1c815a"/><text x="790" y="50" text-anchor="middle" fill="#1c815a" font-family="Azeret Mono" font-size="8">V8 Liftoff (baseline)</text>
+    <rect x="700" y="68" width="180" height="30" rx="4" fill="#eaeae6" stroke="#bf7d10"/><text x="790" y="88" text-anchor="middle" fill="#bf7d10" font-family="Azeret Mono" font-size="8">V8 TurboFan (optimising)</text>
+    <rect x="700" y="106" width="180" height="30" rx="4" fill="#eaeae6" stroke="#bf7d10"/><text x="790" y="126" text-anchor="middle" fill="#bf7d10" font-family="Azeret Mono" font-size="8">Wasmtime + Cranelift</text>
+    <rect x="700" y="144" width="180" height="30" rx="4" fill="#e6e6e2" stroke="#2b3dc5"/><text x="790" y="164" text-anchor="middle" fill="#2b3dc5" font-family="Azeret Mono" font-size="8">Wasmer / WAMR / wasm3</text>
     <line x1="542" y1="110" x2="698" y2="45" stroke="#bf7d10" stroke-width="1.2" marker-end="url(#wB)"/>
     <line x1="542" y1="118" x2="698" y2="83" stroke="#bf7d10" stroke-width="1.2" marker-end="url(#wB)"/>
     <line x1="542" y1="125" x2="698" y2="121" stroke="#bf7d10" stroke-width="1.2" marker-end="url(#wB)"/>
     <line x1="542" y1="133" x2="698" y2="159" stroke="#bf7d10" stroke-width="1.2" marker-end="url(#wB)"/>
-    <text x="445" y="205" text-anchor="middle" fill="#6a6a63" font-family="JetBrains Mono" font-size="9">M languages &rarr; 1 portable target &rarr; N engines  —  the UNCOL dream, finally working</text>
+    <text x="445" y="205" text-anchor="middle" fill="#6a6a63" font-family="Azeret Mono" font-size="9">M languages &rarr; 1 portable target &rarr; N engines  —  the UNCOL dream, finally working</text>
   </svg>
 </section>
 

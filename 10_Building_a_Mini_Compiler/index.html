@@ -6,7 +6,7 @@
 <title>Compilers — Part 10: Building a Mini-Compiler</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,600;0,700;1,400;1,700&family=Azeret+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/theme/white.min.css">
 <style>
@@ -27,14 +27,14 @@
   .reveal-viewport { background: var(--bg); }
   .reveal .slides section { background: transparent; }
 
-  .reveal { font-family: 'DM Sans', sans-serif; color: var(--text); }
-  .reveal h1, .reveal h2, .reveal h3 { font-family: 'Playfair Display', serif; font-weight: 700; }
+  .reveal { font-family: 'Schibsted Grotesk', sans-serif; color: var(--text); }
+  .reveal h1, .reveal h2, .reveal h3 { font-family: 'Schibsted Grotesk', serif; font-weight: 700; }
   .reveal h1 { font-size: 1.6em; color: var(--amber); line-height: 1.1; }
   .reveal h2 { font-size: 1.1em; color: var(--amber); margin-bottom: .2em; }
   .reveal h3 { font-size: .78em; color: var(--green); margin-bottom: .15em; }
   .reveal p  { font-size: .56em; line-height: 1.45; color: var(--text); }
   .reveal li { font-size: .54em; line-height: 1.45; margin-bottom: .1em; }
-  .reveal code { font-family: 'JetBrains Mono', monospace; font-size: .72em; }
+  .reveal code { font-family: 'Azeret Mono', monospace; font-size: .72em; }
   .reveal pre  { box-shadow: none; background: var(--bg3); border: 1px solid var(--border);
                  border-radius: 6px; padding: .3em .5em; margin: .25em 0; }
   .reveal pre code { font-size: .52em; line-height: 1.35; background: transparent; color: #242422; }
@@ -46,7 +46,7 @@
     padding-bottom: .2em; margin-bottom: .3em;
   }
   .slide-hdr .tag {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Azeret Mono', monospace;
     font-size: .42em; font-weight: 500;
     color: var(--bg); background: var(--amber);
     padding: .1em .4em; border-radius: 3px;
@@ -89,14 +89,14 @@
   .p  { color: var(--purple); font-weight: 600; }
   .b  { color: var(--blue); font-weight: 600; }
   .r  { color: var(--red); font-weight: 600; }
-  .mono { font-family: 'JetBrains Mono', monospace; }
+  .mono { font-family: 'Azeret Mono', monospace; }
 
   /* ── SVG graph diagrams ── */
   svg.diagram { display: block; margin: 0 auto; overflow: visible; }
 
   /* ── pill badges ── */
   .pill {
-    display: inline-block; font-family: 'JetBrains Mono', monospace;
+    display: inline-block; font-family: 'Azeret Mono', monospace;
     font-size: .44em; padding: .08em .4em; border-radius: 99px;
     border: 1px solid; margin: 0 .08em;
   }
@@ -110,15 +110,15 @@
   /* title slide special */
   .title-slide h1 { font-size: 1.8em; }
   .title-slide .subtitle {
-    font-size: .7em; color: var(--green); font-family: 'DM Sans', sans-serif;
+    font-size: .7em; color: var(--green); font-family: 'Schibsted Grotesk', sans-serif;
     font-weight: 300; letter-spacing: .04em; margin: .3em 0 .6em;
   }
-  .title-slide .meta { font-size: .48em; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+  .title-slide .meta { font-size: .48em; color: var(--muted); font-family: 'Azeret Mono', monospace; }
 
   /* ── super-step animator ── */
   .ss-row {
     display: flex; gap: .25em; align-items: center;
-    margin: .1em 0; font-size: .55em; font-family: 'JetBrains Mono', monospace;
+    margin: .1em 0; font-size: .55em; font-family: 'Azeret Mono', monospace;
   }
   .ss-node {
     padding: .2em .55em; border-radius: 5px; font-size: .9em;
@@ -143,7 +143,7 @@
 <!-- ═══════════════════════════════ SLIDE 01 — TITLE ═══════════════════════════════ -->
 <section class="title-slide" data-background-color="#fafaf8">
   <div style="text-align:left; max-width:840px; margin:0 auto; padding: 1em 0;">
-    <div style="font-family:'JetBrains Mono',monospace; font-size:.5em; color:var(--muted); margin-bottom:.4em; letter-spacing:.1em;">
+    <div style="font-family:'Azeret Mono',monospace; font-size:.5em; color:var(--muted); margin-bottom:.4em; letter-spacing:.1em;">
       COMPILERS SERIES &middot; PART 10 OF 10 &middot; THE CAPSTONE
     </div>
     <h1>Building a<br>Mini-Compiler</h1>
@@ -244,7 +244,7 @@
     <defs>
       <marker id="aMain" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="#bf7d10"/></marker>
     </defs>
-    <g font-family="JetBrains Mono">
+    <g font-family="Azeret Mono">
       <!-- source -->
       <rect x="10" y="20" width="120" height="50" rx="6" fill="#eaeae6" stroke="#bf7d10" stroke-width="1.4"/>
       <text x="70" y="42" text-anchor="middle" fill="#bf7d10" font-size="10" font-weight="700">Source</text>
@@ -634,7 +634,7 @@ class Program: decls: list</code></pre>
     <defs>
       <marker id="aAst" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6" fill="#6a6a63"/></marker>
     </defs>
-    <g font-family="JetBrains Mono" font-size="9.5">
+    <g font-family="Azeret Mono" font-size="9.5">
       <!-- Program root -->
       <rect x="370" y="10" width="160" height="30" rx="5" fill="#eaeae6" stroke="#bf7d10" stroke-width="1.4"/>
       <text x="450" y="29" text-anchor="middle" fill="#bf7d10">Program</text>
@@ -859,7 +859,7 @@ exit:
           <marker id="aCfg" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6" fill="#bf7d10"/></marker>
           <marker id="aBack" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6" fill="#6435bc"/></marker>
         </defs>
-        <g font-family="JetBrains Mono" font-size="10">
+        <g font-family="Azeret Mono" font-size="10">
           <rect x="95" y="10" width="110" height="34" rx="6" fill="#d3e1d5" stroke="#1c815a" stroke-width="1.4"/>
           <text x="150" y="31" text-anchor="middle" fill="#1c815a">entry</text>
           <rect x="85" y="95" width="130" height="40" rx="6" fill="#e6e6e2" stroke="#6435bc" stroke-width="1.6"/>
@@ -1239,7 +1239,7 @@ def test_golden():
   </div>
   <p>Ten decks, one journey: from the history of the idea to a working compiler you built yourself. Each phase we coded today was a deck of its own &mdash; here they are, in order, threaded by the same arrow you saw on slide 1.</p>
   <svg class="diagram" viewBox="0 0 900 215" width="900" height="215">
-    <g font-family="JetBrains Mono" font-size="8.5">
+    <g font-family="Azeret Mono" font-size="8.5">
       <rect x="10"  y="20" width="120" height="40" rx="5" fill="#eaeae6" stroke="#bf7d10"/><text x="70" y="38" text-anchor="middle" fill="#bf7d10" font-size="9">01 History</text><text x="70" y="51" text-anchor="middle" fill="#6a6a63">Hopper→LLVM</text>
       <rect x="145" y="20" width="120" height="40" rx="5" fill="#eaeae6" stroke="#bf7d10"/><text x="205" y="38" text-anchor="middle" fill="#bf7d10" font-size="9">02 Pipeline</text><text x="205" y="51" text-anchor="middle" fill="#6a6a63">the phases</text>
       <rect x="280" y="20" width="120" height="40" rx="5" fill="#d3e1d5" stroke="#1c815a"/><text x="340" y="38" text-anchor="middle" fill="#1c815a" font-size="9">03 Lexing</text><text x="340" y="51" text-anchor="middle" fill="#6a6a63">DFA / tokens</text>
